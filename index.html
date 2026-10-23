@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>AI-V2G 내 차 · 진입</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #fff; color: #14213d;
+         font-family: -apple-system, "Malgun Gothic", "Segoe UI", sans-serif; padding: 24px; }
+  .box { max-width: 420px; text-align: center; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .1em; color: #2f5bff; background: #e6edff; border-radius: 999px; padding: 5px 12px; }
+  h1 { font-size: 26px; margin: 16px 0 8px; }
+  p { color: #5a6577; font-size: 15px; line-height: 1.6; margin: 8px 0; }
+  a.go { display: inline-block; margin-top: 16px; background: #2f5bff; color: #fff; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-weight: 600; }
+  .bar { display: flex; height: 4px; margin: 28px auto 0; width: 160px; }
+  .bar i { flex: 1; } .bar i:nth-child(1) { background: #c9d8ff; } .bar i:nth-child(2) { background: #bfebd9; } .bar i:nth-child(3) { background: #fad7c2; } .bar i:nth-child(4) { background: #dccbfa; }
+  .note { font-size: 12.5px; color: #8b95ab; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <span class="badge">AI-V2G</span>
+  <h1>AI-V2G 내 차</h1>
+  <p>진입 화면으로 연결합니다…</p>
+  <a class="go" id="go" href="#">진입 화면 열기</a>
+  <div class="bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <p class="note">열리지 않으면 서비스가 잠시 꺼져 있을 수 있어요. 담당자에게 문의해 주세요.</p>
+</div>
+<script>
+  // 현재 서비스 주소 — 서비스 주소가 바뀌면 이 한 줄만 고친다(scripts/update_entry_link.py)
+  var TARGET = "https://prescribed-stream-watching-referring.trycloudflare.com/";
+  document.getElementById('go').setAttribute('href', TARGET);
+  setTimeout(function () { location.replace(TARGET); }, 600);
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=https://prescribed-stream-watching-referring.trycloudflare.com/" /></noscript>
+</body>
+</html>
