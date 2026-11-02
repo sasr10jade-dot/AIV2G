@@ -122,13 +122,13 @@ def test_reject_reason_is_visible_to_member():
 def test_consent_change_recorded_only_when_state_changes():
     auth_store.create_user("owner1", "owner-pass-1", "owner", owned_ev_id="EV-001")
     _login("owner1", "owner-pass-1")
-    client.put("/owner/consent/notify", json={"granted": True})
-    client.put("/owner/consent/notify", json={"granted": True})      # 변화 없음 — 이력 추가 없음
-    client.put("/owner/consent/notify", json={"granted": False})
+    client.put("/owner/consent/v2g", json={"granted": True})
+    client.put("/owner/consent/v2g", json={"granted": True})      # 변화 없음 — 이력 추가 없음
+    client.put("/owner/consent/v2g", json={"granted": False})
     history = client.get("/owner/history").json()["history"]
     assert [i["action"] for i in history] == ["consent_withdraw", "consent_grant"]
     change = history[1]["changes"][0]
-    assert (change["field"], change["before"], change["after"]) == ("notify_consent", "False", "True")
+    assert (change["field"], change["before"], change["after"]) == ("v2g_discharge_consent", "False", "True")
 
 
 def test_resubmit_after_reject_is_recorded():

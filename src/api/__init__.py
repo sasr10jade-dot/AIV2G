@@ -12,7 +12,7 @@ from src.paths import PROJECT_ROOT
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-from .routers import auth, batch, copilot, dashboard, forecast, grid, ingest, models, ocpp, optimize, privacy, advisory, experiment, owner, pwa, notify, signup, registrations, solar, admin_app  # noqa: E402
+from .routers import auth, batch, copilot, dashboard, forecast, grid, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app  # noqa: E402
 from src.auth.store import ensure_bootstrap_super_admin  # noqa: E402
 
 TAGS_METADATA = [
@@ -20,11 +20,8 @@ TAGS_METADATA = [
     {"name": "owner", "description": "사용자 모바일웹(`/app`) — 차량 등록자(owner)가 본인 차량만 조회·설정. 알림·공지, 충전 시간 안내(안전 검증 포함), 수요 예측, 방전 참여·시범 포인트 적립 동의, 미션·포인트, 상품권 교환·쿠폰함, EV Bot(KR/EN), 내 정보(열람·정정·탈퇴)."},
     {"name": "admin", "description": "웹앱 관리(관리자, `/admin`) — 공지사항(영어 포함), 앱 문구(미션 안내) 편집, 상품권 교환 신청 처리·코드 등록(암호화 저장, 반려 시 포인트 환급)."},
     {"name": "advisory", "description": "추천 계획 발행·수용률(관리자) 및 AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율·EV Bot 호출 집계."},
-    {"name": "experiment", "description": "실험군/대조군 배정과 인센티브 정산 미리보기(동의한 차량만)."},
     {"name": "privacy", "description": "개인정보 보호 — 동의 이력, 해시체인 감사로그와 무결성 검증(최고관리자)."},
     {"name": "health", "description": "서버 상태 확인(공개)."},
-    {"name": "notify", "description": "알림 발송(관리자) — 수신 동의한 차량 등록자의 알림함으로 전달."},
-    {"name": "solar", "description": "태양광 연계 충전소 에뮬레이션(관리자) — 나주 태양광 사이트 모의 운영, 즉시 충전 vs 태양광 우선 충전 비교."},
     {"name": "signup", "description": "모바일 회원가입 — 계정과 차량·페르소나 정보를 승인 대기로 등록(공개)."},
     {"name": "registrations", "description": "차량 등록 심사(관리자) — 가입 신청을 PC에서 승인·반려하고 차량을 연결."},
     {"name": "ingest", "description": "데이터 연계·적재 (WS1) — 합성 데이터 생성, 실증 데이터 업로드, 파이프라인 실행."},
@@ -33,7 +30,6 @@ TAGS_METADATA = [
     {"name": "models", "description": "예측 모델 레지스트리 조회 (Monitoring 레이어 입력)."},
     {"name": "dashboard", "description": "실시간 웹 대시보드 데이터 (KPI·차트·Closed-loop 통합)."},
     {"name": "copilot", "description": "EV Bot — Gemini 기반 RAG 질의응답 (사업계획 문서 + 시나리오 데이터 근거)."},
-    {"name": "ocpp", "description": "OCPP 1.6/2.0.1 충전기 통신 (WS4 Control 레이어) — 가상 충전기 에뮬레이터, V2G 방전 포함."},
     {"name": "grid", "description": "한전 계통 수요반응(DR) 이벤트 — CEMS 외부 신호 수신 스텁, 가격 신호로 V2G 최적화에 반영."},
 ]
 
@@ -90,20 +86,16 @@ app.include_router(ingest.router)
 app.include_router(batch.router)
 app.include_router(privacy.router)
 app.include_router(advisory.router)
-app.include_router(experiment.router)
 app.include_router(forecast.router)
 app.include_router(optimize.router)
 app.include_router(models.router)
 app.include_router(dashboard.router)
 app.include_router(copilot.router)
-app.include_router(ocpp.router)
 app.include_router(grid.router)
 app.include_router(owner.router)
 app.include_router(pwa.router)
-app.include_router(notify.router)
 app.include_router(signup.router)
 app.include_router(registrations.router)
-app.include_router(solar.router)
 app.include_router(admin_app.router)
 
 dashboard.start_cache_warmer()

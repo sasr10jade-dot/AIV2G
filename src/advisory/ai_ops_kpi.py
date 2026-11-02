@@ -1,7 +1,7 @@
 """AI 운영 지표 — 감사로그·동의 이력에서 집계한다 (AI 관리체계 9장 성과평가: 위험통제 준수율·철회율 등).
 
-추천 안전 검증 결과(`owner_guide_issue`)와 EV Bot 호출(`owner_ask`)은 `privacy.audit`에, 방전 참여 동의·철회는
-`privacy.consent`에 남아 있다. 이 모듈은 그 기록을 읽기만 한다(개인 식별정보는 집계에 쓰지 않는다).
+추천 안전 검증 결과(`owner_guide_issue`)와 EV Bot 호출(`owner_ask`)은 `privacy.audit`에, 추천 응답은 `advisories`에,
+방전 참여 동의·철회는 `privacy.consent`에 남아 있다.
 순편익·예측 오차는 대시보드 데이터(`/dashboard/data`의 revenue_comparison·forecast_fit)가 이미 제공한다.
 """
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 
+from src.advisory import service as advisory
 from src.privacy import audit, consent
 
 
@@ -36,13 +37,10 @@ def compute() -> dict:
         participating += bool(d.get("participating"))
         failed.update(d.get("failed_checks") or [])
 
+    counts = advisory.acceptance_stats()["counts"]
+    accepted, declined = counts.get("accepted", 0), counts.get("declined", 0)
     cc = consent.connect()
     try:
-        has_plans = cc.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='guide_plans'").fetchone()
-        accepted = declined = 0
-        if has_plans and "response" in {r[1] for r in cc.execute("PRAGMA table_info(guide_plans)")}:
-            accepted, declined = cc.execute(
-                "SELECT COALESCE(SUM(response='accepted'),0), COALESCE(SUM(response='declined'),0) FROM guide_plans").fetchone()
         granted, withdrawn, active = cc.execute(
             "SELECT COUNT(*), COUNT(withdrawn_at), COUNT(*) - COUNT(withdrawn_at) FROM consents WHERE purpose='v2g_discharge'").fetchone()
     finally:

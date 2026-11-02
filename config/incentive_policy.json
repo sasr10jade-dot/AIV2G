@@ -1,9 +1,0 @@
-{
-  "_comment": "지역 인센티브 정책 — 지자체 협의 전 예시값(verified=false). 확정되면 값을 교체하고 verified를 true로 바꾼다. peak_hours는 피크 가산을 적용할 시각(0~23). monthly_cap_points가 null이면 상한 없음.",
-  "points_per_kwh": 100,
-  "peak_hours": [18, 19, 20, 21],
-  "peak_multiplier": 1.5,
-  "monthly_cap_points": 50000,
-  "krw_per_point": 1.0,
-  "verified": false
-}

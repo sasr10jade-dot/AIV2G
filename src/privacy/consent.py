@@ -2,11 +2,10 @@
 
 목적(purpose)
 - collect         OBD·충전 데이터 수집
-- share_external  외부(공공기관·사업자·LLM) 제공 시 가명 데이터 사용
-- incentive       인센티브·정산 목적 이용
+- share_external  외부(참여기관 ㈜아크릴 학습 데이터·LLM 등) 제공 시 가명 데이터 사용
 - research        연구·분석 목적 이용
-- notify          모바일웹 알림 수신(충전 요금 시간대·수요예측·충·방전 추천 안내)
-- profile         가입 시 받은 페르소나 정보(차종·직업군·거주지) 수집·이용 — 맞춤 안내 목적
+- profile         가입 시 받은 페르소나·운행 정보(차종·직업군·거주지·출발 시각·목표 배터리) 수집·이용 — 맞춤 안내 목적
+- v2g_discharge   방전(V2G) 추론 안내 참여 — 기본은 꺼짐, 켜야 방전 시간대를 안내한다
 
 이력은 지우지 않는다: 철회도 행의 withdrawn_at으로 남기고, 현재 유효 여부는
 withdrawn_at이 비어 있는 행이 있는지로 판단한다. 동의 문구 버전(version)을 함께 저장해
@@ -20,7 +19,7 @@ from datetime import datetime, timezone
 from src.paths import DATA_DIR
 
 PRIVACY_DB = DATA_DIR / "privacy.db"
-PURPOSES = ("collect", "share_external", "incentive", "research", "notify", "profile", "v2g_discharge")
+PURPOSES = ("collect", "share_external", "research", "profile", "v2g_discharge")
 
 
 def _now() -> str:

@@ -1,13 +1,13 @@
-"""차량 등록자용 충전 시간·방전 안내와 수요 예측 요약 — 모바일 '충전 시간'·'예측' 탭과 EV Bot의 근거 데이터.
+"""EV별 AI 추천 충전 시간 추론·산출(계획서 4.1 라.) — 모바일 '충전 시간'·'예측' 탭과 EV Bot의 근거 데이터.
 
-한 차량의 "언제 충전하고(방전이 가능한 차량이면 언제 방전하면) 이득인가"를 계산한다. 기존 최적화 함수
+한 차량의 "언제 충전하고(방전이 가능한 차량이면 언제 방전하면) 이득인가"를 계산한다. 최적화 함수
 (`soc_planner.plan_single_vehicle`, 시간대별 잔량·효율·열화·방전 횟수 상한 반영)를 그대로 쓰고, 입력만 이 서비스에 맞게 만든다.
+서포터즈가 입력한 출발 예정 시각·목표/최소 보장 배터리를 반영해 차량 운행에 지장이 없는 범위에서 결과를 낸다.
 
 가격
-- 충전 단가(buy): 사이트 요금표(TOU)를 기본으로, 태양광이 풍부한 시간은 PV 공급 단가에 가깝게 섞는다.
-  (태양광 비중 s = clip(예상 PV 발전량 / (충전 최대 부하의 절반), 0, 1), buy = 요금표×(1-s) + PV단가×s — 간단한 가정)
+- 충전 단가(buy): 요금표(TOU, `config/tariffs.json`).
 - 방전 보상단가(sell): `config/compensation.json` 시나리오(보상 없음·SMP 연동·고정 계약). 국내에는 방전 보상 제도가 없어 가정이다.
-발전량은 평균 날씨(기후값) 기준 예상이라 실제와 다를 수 있다. 모든 금액은 가정값(verified=false)이다.
+방전은 실측이 아니라 추론이다(실증 차량·충전기에 양방향 방전 설비가 없음). 모든 금액은 가정값(verified=false)이다.
 
 차량 정보는 항상 세션의 본인 차량으로만 구한다: 앱 가입 차량은 등록한 차종(차종 목록), 시뮬레이션 차량은 시나리오의 차종·배터리·V2G 지원 여부.
 """
@@ -29,11 +29,11 @@ from src.advisory.safety_guard import verify_plan
 from src.optimizer.economics import EconomicsParams, breakeven_sell_price
 from src.optimizer.soc_planner import PlannerError, plan_single_vehicle
 from src.registry import options
-from src.solar import pv_model
-from src.solar.site import get_site
 from src.timeutil import kst_now as _kst_now
 
-DEFAULT_SITE_ID = "naju_solar_ev"
+DEFAULT_TARIFF_ID = "kepco_ev_example"
+DEFAULT_CHARGER_KW = 7.0           # 완속충전기 출력
+DEFAULT_DEPARTURE_HOUR = 8
 DEFAULT_COMPENSATION_ID = "contract_example"
 DEFAULT_BATTERY_KWH = 64.0
 RESERVE_SOC_PCT = 20.0
@@ -54,6 +54,7 @@ class GuideInputs:
     need_soc_pct: float = 80.0
     departure: datetime | None = None          # 현지시각(naive). 없으면 다음 08시
     compensation_id: str = DEFAULT_COMPENSATION_ID
+    min_soc_pct: float | None = None           # 서포터즈 최소 보장 배터리 — 예비 잔량(20%)보다 높으면 그 값을 하한으로 쓴다
 
 
 # ---------------------------------------------------------------- 차량 정보 --
@@ -112,11 +113,19 @@ def kst_now() -> datetime:
     return _kst_now().to_pydatetime()
 
 
-def default_departure(now: datetime) -> datetime:
-    nxt = pd.Timestamp(now).normalize() + pd.Timedelta(hours=8)
+def default_departure(now: datetime, hhmm: str | None = None) -> datetime:
+    """다음 출발 시각 — hhmm(서포터즈 평소 출발 시각, 'HH:MM')이 있으면 그 시각, 없으면 08시.
+    지금부터 최소 안내 시간 이내라면 다음 날로 넘긴다."""
+    hour, minute = (int(x) for x in hhmm.split(":")) if hhmm else (DEFAULT_DEPARTURE_HOUR, 0)
+    nxt = pd.Timestamp(now).normalize() + pd.Timedelta(hours=hour, minutes=minute)
     if nxt <= pd.Timestamp(now) + pd.Timedelta(hours=MIN_WINDOW_HOURS):
         nxt += pd.Timedelta(days=1)
     return nxt.to_pydatetime()
+
+
+def next_departure(hhmm: str | None, now: datetime | None = None) -> datetime | None:
+    """가입 때 입력한 평소 출발 시각으로 다음 출발 시각을 만든다. 입력이 없으면 None(기본 08시를 쓴다)."""
+    return default_departure(now or kst_now(), hhmm) if hhmm else None
 
 
 def _runs(hours: list[int]) -> list[tuple[int, int]]:
@@ -157,7 +166,7 @@ def _grid_signal_price(times: list[pd.Timestamp]) -> dict:
 
 
 def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None, economics: EconomicsParams | None = None,
-                site_id: str = DEFAULT_SITE_ID, participating: bool = True) -> dict:
+                tariff_id: str = DEFAULT_TARIFF_ID, participating: bool = True) -> dict:
     """participating=False(이용자가 방전 참여를 끔)이면 충전 시간만 조절한다."""
     now = now or kst_now()
     start = pd.Timestamp(now).floor("h") + pd.Timedelta(hours=1)
@@ -169,34 +178,31 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
         raise GuideError(f"출발 시각은 앞으로 {MAX_WINDOW_HOURS}시간 이내로 정해 주세요")
     if not 0 <= inputs.current_soc_pct <= 100 or not 20 <= inputs.need_soc_pct <= 100:
         raise GuideError("배터리 값은 현재 0~100%, 필요 20~100% 범위여야 해요")
+    reserve_pct = max(RESERVE_SOC_PCT, float(inputs.min_soc_pct or 0.0))
+    if reserve_pct >= inputs.need_soc_pct:
+        raise GuideError("최소 보장 배터리는 출발 시 필요한 배터리보다 낮아야 해요")
 
     economics = economics or EconomicsParams.load()
-    site = get_site(site_id)
     comp = get_compensation(inputs.compensation_id)
     times = list(pd.date_range(start, periods=n, freq="h"))
-    idx = pd.DatetimeIndex(times)
 
-    pv = pv_model.pv_power_kw(idx, site, sky_factor=pv_model.CLIMATOLOGY_SKY_FACTOR).to_numpy()
-    pm = build_price_model(times, _grid_signal_price(times), site.tariff_id, inputs.compensation_id)
-    tariff_buy = np.array([pm.buy_by_time[t] for t in times])
+    pm = build_price_model(times, _grid_signal_price(times), tariff_id, inputs.compensation_id)
+    buy = np.array([pm.buy_by_time[t] for t in times])
     sell = np.array([pm.sell_by_time[t] for t in times])
-    pv_share = np.clip(pv / (0.5 * site.max_ev_load_kw), 0.0, 1.0)
-    buy = tariff_buy * (1 - pv_share) + site.pv_price_krw_per_kwh * pv_share
-    buy_d = dict(zip(times, buy.tolist()))
-    sell_d = dict(zip(times, sell.tolist()))
 
     cap, soc0 = profile["battery_kwh"], float(inputs.current_soc_pct)
     need_soc = float(inputs.need_soc_pct)
     e0, target = soc0 / 100 * cap, need_soc / 100 * cap
     needed_kwh = max(target - e0, 0.0)                     # 배터리에 더 채워야 하는 에너지
-    kw = site.charger_kw
+    kw = DEFAULT_CHARGER_KW
     deliverable = n * kw * economics.charge_efficiency
     if needed_kwh > deliverable + 1e-9:
         raise GuideError(f"출발까지 시간이 부족해요(필요 {needed_kwh:.1f}kWh, 충전 가능 {deliverable:.1f}kWh)")
     in_band = SOC_BAND[0] <= soc0 <= SOC_BAND[1]
 
-    # 시간대별 잔량을 상태변수로 둔 최적화(FR-O03): 잔량 20~100%, 방전은 35~80%에서만, 충·방전 동시 금지, 하루 방전 횟수 상한
-    reserve_kwh, band_kwh = RESERVE_SOC_PCT / 100 * cap, (SOC_BAND[0] / 100 * cap, SOC_BAND[1] / 100 * cap)
+    # 시간대별 잔량을 상태변수로 둔 최적화(FR-O03): 잔량 (최소 보장)~100%, 방전은 35~80%에서만, 충·방전 동시 금지, 하루 방전 횟수 상한
+    reserve_kwh = reserve_pct / 100 * cap
+    band_kwh = (max(SOC_BAND[0], reserve_pct) / 100 * cap, SOC_BAND[1] / 100 * cap)
 
     def _solve(allow_discharge: bool):
         try:
@@ -246,7 +252,6 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
             "start": times[a].isoformat(), "end": (times[b] + pd.Timedelta(hours=1)).isoformat(),
             "label": f"{times[a].hour:02d}~{(times[b].hour + 1) % 24:02d}시",
             "avg_krw_per_kwh": round(float(buy[a:b + 1].mean()), 1),
-            "solar_share_pct": round(float(pv_share[a:b + 1].mean() * 100), 0),
         })
     windows.sort(key=lambda w: w["start"])
 
@@ -270,10 +275,10 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
     return {
         "vehicle": {k: profile[k] for k in ("label", "battery_kwh", "v2g_capable", "demo") if k in profile},
         "period": {"start": start.isoformat(), "departure": dep.isoformat(), "hours": n},
-        "inputs": {"current_soc_pct": soc0, "need_soc_pct": need_soc, "compensation_id": comp.compensation_id,
-                   "compensation_label": comp.label},
-        "prices": [{"time": t.isoformat(), "buy_krw": round(float(buy[i]), 1), "sell_krw": round(float(sell[i]), 1),
-                    "solar_share_pct": round(float(pv_share[i] * 100), 0)} for i, t in enumerate(times)],
+        "inputs": {"current_soc_pct": soc0, "need_soc_pct": need_soc, "min_soc_pct": reserve_pct,
+                   "compensation_id": comp.compensation_id, "compensation_label": comp.label},
+        "prices": [{"time": t.isoformat(), "buy_krw": round(float(buy[i]), 1), "sell_krw": round(float(sell[i]), 1)}
+                   for i, t in enumerate(times)],
         "windows": windows,
         "plan": {"charge": _intervals(times, charge, buy), "discharge": _intervals(times, discharge, sell),
                  "charge_kwh": round(float(charge.sum()), 1), "discharge_kwh": round(float(discharge.sum()), 1),
@@ -284,12 +289,13 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
         "v2g": {"capable": bool(profile["v2g_capable"]), "recommended": recommended, "reason": reason,
                 "breakeven_sell_krw_per_kwh": round(breakeven, 1), "max_sell_krw_per_kwh": round(max_sell, 1)},
         "safety": {**safety, "participating": bool(participating), "fallback": guard_fallback,
-                   "min_soc_at_departure_pct": need_soc, "reserve_soc_pct": RESERVE_SOC_PCT},
+                   "min_soc_at_departure_pct": need_soc, "reserve_soc_pct": reserve_pct},
         "verified": False,
+        "generation": "inferred",   # 실측이 아니라 AI 추론 결과(계획서 '수행 전제' — 실측·추론 구분 표기)
         "assumptions": {
-            "note": "요금표·방전 보상단가·태양광 단가·평균 날씨 기준 발전량은 모두 가정값이에요. 실제와 다를 수 있어요.",
-            "site": site.label, "tariff_id": site.tariff_id, "compensation": comp.label,
-            "pv_forecast": "평균 날씨(기후값) 기준 예상 발전량", "economics_verified": economics.verified,
+            "note": "요금표·방전 보상단가는 가정값이고, 방전은 실제 방전이 아닌 추론 결과예요. 실제와 다를 수 있어요.",
+            "tariff_id": tariff_id, "charger_kw": kw, "compensation": comp.label,
+            "economics_verified": economics.verified,
         },
     }
 
@@ -402,8 +408,8 @@ _EN_FIXED = {
         "The safety check did not pass, so we only shift charging times without discharging (V1G).",
     "이번 조건에서는 방전해도 이득이 크지 않아서 추천하지 않아요.":
         "Under these conditions discharging adds little benefit, so it is not recommended.",
-    "요금표·방전 보상단가·태양광 단가·평균 날씨 기준 발전량은 모두 가정값이에요. 실제와 다를 수 있어요.":
-        "Tariffs, discharge compensation, solar prices and average-weather generation are all assumed values and may differ from reality.",
+    "요금표·방전 보상단가는 가정값이고, 방전은 실제 방전이 아닌 추론 결과예요. 실제와 다를 수 있어요.":
+        "Tariffs and discharge compensation are assumed values, and discharging is an inferred result, not an actual discharge. Results may differ from reality.",
     "시뮬레이션 차량 전체 기준(내 차 한 대가 아님)": "Based on the whole simulated fleet (not your car alone)",
     "예측 모델은 모의(합성) 데이터로 학습돼 있어요. 실제 운행 데이터가 쌓이면 달라질 수 있어요.":
         "The forecast model is trained on simulated (synthetic) data and may change as real driving data accumulates.",
@@ -451,7 +457,7 @@ def bot_facts(profile: dict, now: datetime | None = None, forecast_fn=cached_dem
     facts = {
         "안내 조건": f"현재 배터리 {guide['inputs']['current_soc_pct']:.0f}%, 목표 {guide['inputs']['need_soc_pct']:.0f}%, "
                   f"{pd.Timestamp(guide['period']['departure']).strftime('%m/%d %H시')} 출발 가정(기본값)",
-        "요금이 낮은 시간대": [f"{w['label']}(평균 {w['avg_krw_per_kwh']:.0f}원/kWh, 태양광 비중 {w['solar_share_pct']:.0f}%)" for w in guide["windows"]],
+        "요금이 낮은 시간대": [f"{w['label']}(평균 {w['avg_krw_per_kwh']:.0f}원/kWh)" for w in guide["windows"]],
         "추천 충전": [f"{p['label']} {p['kwh']}kWh" for p in guide["plan"]["charge"]],
         "추천 방전": [f"{p['label']} {p['kwh']}kWh" for p in guide["plan"]["discharge"]] or "없음",
         "예상 절감(가정값)": f"{guide['cost']['saving_krw']}원({guide['cost']['saving_pct']}%)",

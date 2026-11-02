@@ -47,6 +47,11 @@ class SignupIn(BaseModel):
     sido: str = Field(..., max_length=20)
     sigungu: str = Field(..., max_length=30)
     consent: bool = Field(..., description="개인정보 수집·이용 동의(필수)")
+    # 계획서 4.1 서포터즈 입력(선택) — 최적화가 차량 운행에 지장 없는 범위에서 결과를 내는 기준
+    departure_time: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="평소 출발 시각(HH:MM)")
+    target_soc_pct: float | None = Field(None, ge=20, le=100, description="출발 시 목표 배터리(%)")
+    min_soc_pct: float | None = Field(None, ge=10, le=90, description="최소 보장 배터리(%)")
+    odometer_km: float | None = Field(None, ge=0, le=2_000_000, description="누적 주행거리(km)")
 
     @field_validator("username")
     @classmethod
@@ -80,13 +85,14 @@ def signup(body: SignupIn, request: Request) -> dict:
     try:
         # 계정을 만들기 전에 입력 검증을 먼저 끝낸다(실패 시 남는 계정이 없게)
         service.validate_profile(body.plate, body.vehicle_model, body.occupation, body.sido, body.sigungu)
+        operating = service.operating_inputs(body.departure_time, body.target_soc_pct, body.min_soc_pct, body.odometer_km)
         auth_store.create_user(body.username, body.password, "owner", created_by="signup", allow_unlinked_owner=True)
     except (service.RegistryError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         registration_id = service.submit(
             body.username, body.plate, body.vehicle_model, body.occupation, body.sido, body.sigungu,
-            options.CONSENT_VERSION)
+            options.CONSENT_VERSION, operating=operating)
     except service.RegistryError as exc:
         auth_store.delete_user(body.username)   # 등록에 실패하면 방금 만든 계정도 남기지 않는다
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -94,6 +100,7 @@ def signup(body: SignupIn, request: Request) -> dict:
         body.username, body.username, "signup",
         [("vehicle_model", None, body.vehicle_model), ("plate", None, body.plate), ("occupation", None, body.occupation),
          ("region_sido", None, body.sido), ("region_sigungu", None, body.sigungu),
+         *[(f, None, v) for f, v in operating.items() if v is not None],
          ("profile_consent", None, options.CONSENT_VERSION)],
         ip=client_ip(request), note=registration_id)
     request.session["username"] = body.username

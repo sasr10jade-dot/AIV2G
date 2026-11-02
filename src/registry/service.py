@@ -9,6 +9,8 @@
   plate 컬럼과 모든 응답에는 마스킹 값만 쓴다. 전체 번호판은 관리자가 사유를 입력해 `reveal_plate`를 호출할
   때만 복호화하며, 그때마다 접속기록(audit)에 남는다.
 - 승인 시 ev_id를 지정하면 기존 OBD 차량(EV-TORRES-01 등)과 연결하고, 비우면 EV-U0001 형식으로 새로 부여한다.
+- 운행 입력(평소 출발 시각·목표/최소 보장 배터리·누적 주행거리)은 계획서 4.1 '서포터즈 입력' 항목으로, 선택 입력이며
+  V2G 의사결정(최적화)의 기본값으로 쓴다.
 """
 from __future__ import annotations
 
@@ -37,7 +39,10 @@ def _now() -> str:
 
 
 _COLS = ("registration_id", "username", "plate", "vehicle_model", "occupation", "region_sido", "region_sigungu",
+         "departure_time", "target_soc_pct", "min_soc_pct", "odometer_km",
          "status", "ev_id", "consent_version", "consented_at", "created_at", "reviewed_by", "reviewed_at", "reject_reason")
+OPERATING_FIELDS = ("departure_time", "target_soc_pct", "min_soc_pct", "odometer_km")
+HHMM_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 def _row(r) -> dict:
@@ -73,9 +78,43 @@ def _check_field(field: str, value: str, catalog: options.VehicleModelCatalog) -
         value = " ".join((value or "").split())
         if not options.SIGUNGU_RE.match(value):
             raise RegistryError("시·군·구를 입력하세요(예: 북구, 수원시 영통구) — 읍·면·동과 상세주소는 입력하지 마세요")
+    elif field in OPERATING_FIELDS:
+        return _check_operating(field, value)
     else:
         raise RegistryError(f"수정할 수 없는 항목입니다: {field}")
     return value
+
+
+def _check_operating(field: str, value):
+    if value is None:
+        return None
+    if field == "departure_time":
+        value = str(value).strip()
+        if not HHMM_RE.match(value):
+            raise RegistryError("출발 시각은 HH:MM 형식으로 입력하세요(예: 08:00)")
+        return value
+    try:
+        num = float(value)
+    except (TypeError, ValueError) as exc:
+        raise RegistryError(f"숫자로 입력하세요: {field}") from exc
+    lo, hi = {"target_soc_pct": (20, 100), "min_soc_pct": (10, 90), "odometer_km": (0, 2_000_000)}[field]
+    if not lo <= num <= hi:
+        raise RegistryError(f"{field}는 {lo}~{hi} 범위로 입력하세요")
+    return num
+
+
+def operating_inputs(departure_time: str | None = None, target_soc_pct: float | None = None,
+                     min_soc_pct: float | None = None, odometer_km: float | None = None) -> dict:
+    """서포터즈 운행 입력을 검증해 돌려준다. 최소 보장 배터리는 목표 배터리보다 낮아야 한다."""
+    out = {f: _check_operating(f, v) for f, v in (("departure_time", departure_time), ("target_soc_pct", target_soc_pct),
+                                                  ("min_soc_pct", min_soc_pct), ("odometer_km", odometer_km))}
+    _check_soc_order(out.get("target_soc_pct"), out.get("min_soc_pct"))
+    return out
+
+
+def _check_soc_order(target, minimum) -> None:
+    if target is not None and minimum is not None and minimum >= target:
+        raise RegistryError("최소 보장 배터리는 목표 배터리보다 낮아야 합니다")
 
 
 def validate_profile(plate: str, vehicle_model: str, occupation: str, sido: str, sigungu: str,
@@ -94,11 +133,12 @@ def validate_profile(plate: str, vehicle_model: str, occupation: str, sido: str,
 
 
 def submit(username: str, plate: str, vehicle_model: str, occupation: str, sido: str, sigungu: str,
-           consent_version: str, con: sqlite3.Connection | None = None) -> str:
-    """차량·페르소나 정보를 신청(pending)으로 저장하고 registration_id를 돌려준다."""
+           consent_version: str, con: sqlite3.Connection | None = None, operating: dict | None = None) -> str:
+    """차량·페르소나 정보(와 선택 운행 입력)를 신청(pending)으로 저장하고 registration_id를 돌려준다."""
     if consent_version != options.CONSENT_VERSION:
         raise RegistryError("개인정보 수집·이용 동의가 필요합니다")
     p = validate_profile(plate, vehicle_model, occupation, sido, sigungu)
+    op = operating_inputs(**(operating or {}))
     registration_id = "REG-" + uuid.uuid4().hex[:12]
     plate_hash = vault.blind_index(p["plate"])
     own = con is None
@@ -114,10 +154,12 @@ def submit(username: str, plate: str, vehicle_model: str, occupation: str, sido:
         try:
             con.execute(
                 "INSERT INTO vehicle_registrations (registration_id, username, plate, plate_enc, plate_hash, "
-                "vehicle_model, occupation, region_sido, region_sigungu, status, consent_version, consented_at, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,'pending',?,?,?)",
+                "vehicle_model, occupation, region_sido, region_sigungu, departure_time, target_soc_pct, min_soc_pct, "
+                "odometer_km, status, consent_version, consented_at, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?,?)",
                 (registration_id, username, mask_plate(p["plate"]), vault.encrypt(p["plate"]), plate_hash,
                  p["vehicle_model"], p["occupation"], p["region_sido"], p["region_sigungu"],
+                 op["departure_time"], op["target_soc_pct"], op["min_soc_pct"], op["odometer_km"],
                  consent_version, now, now),
             )
             con.commit()
@@ -278,10 +320,11 @@ def profile_for_ev(ev_id: str, con: sqlite3.Connection | None = None) -> dict | 
         return None
     reg = _row(r)
     return {"ev_id": ev_id, "vehicle_model": reg["vehicle_model"], "occupation": reg["occupation"],
-            "region_sido": reg["region_sido"], "region_sigungu": reg["region_sigungu"]}
+            "region_sido": reg["region_sido"], "region_sigungu": reg["region_sigungu"],
+            **{f: reg[f] for f in OPERATING_FIELDS}}
 
 
-EDITABLE_FIELDS = ("vehicle_model", "occupation", "region_sido", "region_sigungu")   # 번호판은 정정 불가(재심사 필요)
+EDITABLE_FIELDS = ("vehicle_model", "occupation", "region_sido", "region_sigungu") + OPERATING_FIELDS   # 번호판은 정정 불가(재심사 필요)
 
 
 def active_for(username: str, con: sqlite3.Connection | None = None) -> dict | None:
@@ -299,7 +342,7 @@ def active_for(username: str, con: sqlite3.Connection | None = None) -> dict | N
 
 
 def update_profile(username: str, updates: dict, con: sqlite3.Connection | None = None) -> list[tuple]:
-    """정정 요청(차종·직업군·거주지). 바뀐 항목만 반영하고 (field, before, after) 목록을 돌려준다.
+    """정정 요청(차종·직업군·거주지·운행 입력). 바뀐 항목만 반영하고 (field, before, after) 목록을 돌려준다.
     번호판은 소유 확인이 필요해 여기서 바꿀 수 없다(관리자 재심사 경로)."""
     unknown = set(updates) - set(EDITABLE_FIELDS)
     if unknown:
@@ -325,6 +368,7 @@ def update_profile(username: str, updates: dict, con: sqlite3.Connection | None 
             merged = {**current, **{f: v for f, _b, v in changes}}   # 정정 후의 시·도와 시·군·구가 서로 맞는지 확인한다
             if not options.sigungu_allowed(merged["region_sido"], merged["region_sigungu"]):
                 raise RegistryError("선택한 시·도에 없는 시·군·구입니다")
+            _check_soc_order(merged["target_soc_pct"], merged["min_soc_pct"])
             con.execute(f"UPDATE vehicle_registrations SET {', '.join(sets)} WHERE registration_id=?",
                         (*args, current["registration_id"]))
             con.commit()

@@ -39,13 +39,13 @@ def run(cfg: SimConfig | None = None) -> dict:
         con.close()
 
     from src.kpi import summarize_kpi
-    kpi_records = summarize_kpi(ev_df, charger_df, grid_df).internal_records
+    kpi = summarize_kpi(ev_df, charger_df, grid_df)
     return {
         "quality_report_md": quality_md,
         "ev_weekly_report_rows": len(weekly_report),
         "charger_sessions_rows": len(charger_df),
-        "kpi_data_records": kpi_records,
-        "kpi_target": 5500,
+        "kpi_by_year": [y.__dict__ for y in kpi.by_year],
+        "kpi_scenario_records": kpi.scenario_records,
         "city_hourly_rows": len(city_hourly),
     }
 
@@ -53,4 +53,7 @@ def run(cfg: SimConfig | None = None) -> dict:
 if __name__ == "__main__":
     result = run()
     print(result["quality_report_md"])
-    print(f"\nKPI 내부 수집 건수(A 세션+B 차량-일+방전): {result['kpi_data_records']:,} / 목표 {result['kpi_target']:,}건 이상")
+    for y in result["kpi_by_year"]:
+        print(f"\nKPI {y['label']} 데이터: {y['records']:,} / 목표 {y['target']:,}건 이상 "
+              f"(충전 세션 {y['charger_sessions']:,} + 차량-일 {y['vehicle_days']:,})")
+    print(f"사업기간 구분 없이 센 전체 유효 건수(참고): {result['kpi_scenario_records']:,}")

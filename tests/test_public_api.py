@@ -1,4 +1,4 @@
-"""공공데이터 API 커넥터(설정 기반 파싱)와 전남 실측 발전량 기반 날씨 보정 — 실제 호출 없이 가짜 응답으로 검증."""
+"""공공데이터 API 커넥터(설정 기반 파싱) — 실제 호출 없이 가짜 응답으로 검증."""
 import json
 
 import numpy as np
@@ -9,12 +9,8 @@ from fastapi.testclient import TestClient
 from src.api import app
 from src.auth import store as auth_store
 from src.pipeline import public_api as api
-from src.solar import pv_model, regional
-from src.solar.emulator import EmulationError, run_emulation
-from src.solar.site import get_site
 
 client = TestClient(app)
-SITE = get_site("naju_solar_ev")
 SPEC = api.load_spec("kpx_solar_regional")
 FILLED = api.ApiSpec(**{**SPEC.__dict__, "endpoint": "https://example.test/solar"})   # 명세가 채워졌다고 가정
 
@@ -163,151 +159,3 @@ def test_http_errors_propagate():
             return Bad("{}")
     with pytest.raises(RuntimeError):
         api.fetch_day(FILLED, "2026-06-15", service_key="K", session=S())
-
-
-# --------------------------------------------------------------- 전남 발전량 --
-
-def _fake_fetcher(true_factor_by_day, k_mw=3000.0, other_region=True):
-    """정답 날씨 계수로 전남 발전량(MWh)을 만들어 주는 가짜 fetch_day."""
-    def fetch(spec, day, **kw):
-        d = pd.Timestamp(day).normalize()
-        idx = pd.date_range(d, periods=24, freq="h")
-        clear = pv_model.clear_sky_ghi(idx, SITE).to_numpy()
-        gen = k_mw * clear / 1000.0 * true_factor_by_day[d]
-        rows = [{"timestamp": t, "region": "전라남도", "value": float(g)} for t, g in zip(idx, gen)]
-        if other_region:
-            rows += [{"timestamp": t, "region": "경상북도", "value": 5000.0} for t in idx]
-        return pd.DataFrame(rows)
-    return fetch
-
-
-def _truth(days=10):
-    start = pd.Timestamp("2026-06-01")
-    # 절반은 맑은 날(0.95)이라 95퍼센타일이 맑은 날 기준과 일치한다
-    pattern = [0.95, 0.4, 0.95, 0.7, 0.95, 0.15, 0.95, 0.55, 0.95, 0.3]
-    return {start + pd.Timedelta(days=i): pattern[i % len(pattern)] for i in range(days)}
-
-
-def test_fetch_filters_to_jeonnam_and_sums_duplicates():
-    truth = _truth(2)
-    gen = regional.fetch_regional_generation("2026-06-01", "2026-06-02", fetcher=_fake_fetcher(truth))
-    assert gen.index.min() == pd.Timestamp("2026-06-01 00:00") and len(gen) == 48
-    assert gen.max() < 5000                                               # 경북(5000)이 섞이지 않았다
-
-
-def test_fetch_window_limits_and_no_data():
-    with pytest.raises(regional.CalibrationError, match="너무 깁니다"):
-        regional.fetch_regional_generation("2026-01-01", "2026-12-31", fetcher=_fake_fetcher({}))
-    with pytest.raises(regional.CalibrationError, match="빠릅니다"):
-        regional.fetch_regional_generation("2026-06-05", "2026-06-01", fetcher=_fake_fetcher({}))
-    with pytest.raises(regional.CalibrationError, match="없습니다"):
-        regional.fetch_regional_generation("2026-06-01", "2026-06-02", fetcher=lambda s, d, **k: pd.DataFrame(columns=["timestamp", "region", "value"]))
-
-
-def test_calibration_recovers_the_true_weather_from_regional_generation():
-    truth = _truth(10)
-    gen = regional.fetch_regional_generation("2026-06-01", "2026-06-10", fetcher=_fake_fetcher(truth))
-    idx = pd.date_range("2026-06-01", periods=24 * 10, freq="h")
-    factor = regional.calibrate_sky_factor(gen, idx, SITE)
-    clear = pv_model.clear_sky_ghi(idx, SITE).to_numpy()
-    expected = np.array([truth[t.normalize()] for t in idx])
-    mask = clear > 200
-    assert np.abs(factor.to_numpy()[mask] - expected[mask]).max() < 0.03   # 용량(3000MW)을 몰라도 날씨 영향을 복원한다
-
-
-def test_calibration_fills_gaps_with_day_mean_and_climatology():
-    truth = _truth(8)
-    gen = regional.fetch_regional_generation("2026-06-01", "2026-06-08", fetcher=_fake_fetcher(truth))
-    gen = gen.drop(gen.index[(gen.index >= "2026-06-03 11:00") & (gen.index <= "2026-06-03 13:00")])   # 한낮 3시간 결측
-    gen = gen[gen.index.normalize() != pd.Timestamp("2026-06-05")]                                       # 하루 전체 결측
-    idx = pd.date_range("2026-06-01", periods=24 * 8, freq="h")
-    f = regional.calibrate_sky_factor(gen, idx, SITE)
-    assert not f.isna().any() and f.between(0, 1).all()
-    assert f["2026-06-03 12:00"] == pytest.approx(0.95, abs=0.03)           # 그날 평균 계수로 보간(그날은 맑음)
-    assert f["2026-06-05"].eq(pv_model.CLIMATOLOGY_SKY_FACTOR).all()        # 관측이 전혀 없는 날은 평균 날씨
-
-
-def test_calibration_needs_enough_days_and_nonzero_data():
-    gen = regional.fetch_regional_generation("2026-06-01", "2026-06-03", fetcher=_fake_fetcher(_truth(3)))
-    with pytest.raises(regional.CalibrationError, match="부족"):
-        regional.calibrate_sky_factor(gen, pd.date_range("2026-06-01", periods=72, freq="h"), SITE)
-    zero = pd.Series(0.0, index=pd.date_range("2026-06-01", periods=24 * 10, freq="h"))
-    with pytest.raises(regional.CalibrationError):
-        regional.calibrate_sky_factor(zero, zero.index, SITE)
-
-
-def test_period_helper_extends_window_for_short_runs_and_rejects_future():
-    truth = {pd.Timestamp("2026-06-01") + pd.Timedelta(days=i): 0.95 if i % 2 == 0 else 0.5 for i in range(20)}
-    calls = []
-    base = _fake_fetcher(truth)
-
-    def fetcher(spec, day, **kw):
-        calls.append(pd.Timestamp(day).normalize())
-        return base(spec, day)
-    factor = regional.sky_factor_for_period("2026-06-10", 2, SITE, fetcher=fetcher, today="2026-06-20")
-    assert len(factor) == 2 * 24 + 14 and factor.index[0] == pd.Timestamp("2026-06-10")
-    assert min(calls) < pd.Timestamp("2026-06-10")                          # 맑은 날 기준용으로 앞쪽을 더 조회
-    with pytest.raises(regional.CalibrationError, match="어제까지"):
-        regional.sky_factor_for_period("2026-06-19", 2, SITE, fetcher=fetcher, today="2026-06-20")
-
-
-# --------------------------------------------------------------- 에뮬레이터 --
-
-def test_emulator_uses_injected_real_weather():
-    idx_len = 24 * 2 + 14
-    idx = pd.date_range("2026-06-15", periods=idx_len, freq="h")
-    cloudy = pd.Series(0.3, index=idx)
-    base = run_emulation(SITE, "2026-06-15", days=2, seed=1)
-    real = run_emulation(SITE, "2026-06-15", days=2, seed=1, sky_factor=cloudy, weather_source="kpx_regional")
-    assert real["weather_source"] == "kpx_regional" and base["weather_source"] == "model"
-    assert real["baseline"]["pv_generation_kwh"] < base["baseline"]["pv_generation_kwh"] * 0.6
-    assert real["daily"][0]["sky"] == "cloudy"
-    with pytest.raises(EmulationError, match="덮지"):
-        run_emulation(SITE, "2026-06-15", days=2, sky_factor=cloudy.iloc[:10])
-
-
-# ---------------------------------------------------------------------- API --
-
-@pytest.fixture
-def admin(tmp_path, monkeypatch):
-    monkeypatch.setattr(auth_store, "USERS_FILE", tmp_path / "users.json")
-    auth_store.create_user("opuser", "op-password-1", "admin")
-    client.post("/auth/login", json={"username": "opuser", "password": "op-password-1"})
-    yield
-    client.post("/auth/logout")
-
-
-def test_data_sources_endpoint_reports_readiness(admin, monkeypatch):
-    monkeypatch.delenv("KPX_SERVICE_KEY", raising=False)
-    s = client.get("/solar/data-sources").json()["sources"][0]
-    assert s["api_id"] == "kpx_solar_regional" and s["endpoint_configured"] is False and s["spec_verified"] is False
-
-
-def test_emulate_with_real_weather_without_setup_gives_a_clear_503(admin, monkeypatch):
-    monkeypatch.delenv("KPX_SERVICE_KEY", raising=False)
-    r = client.post("/solar/emulate", json={"start_date": "2026-06-01", "days": 2, "weather_source": "kpx_regional"})
-    assert r.status_code == 503 and ("KPX_SERVICE_KEY" in r.json()["detail"] or "엔드포인트" in r.json()["detail"])
-
-
-def test_emulate_with_real_weather_future_dates_rejected(admin):
-    r = client.post("/solar/emulate", json={"start_date": "2099-06-01", "days": 2, "weather_source": "kpx_regional"})
-    assert r.status_code == 422 and "어제까지" in r.json()["detail"]
-
-
-def test_emulate_with_real_weather_end_to_end(admin, monkeypatch):
-    truth = {pd.Timestamp("2026-06-01") + pd.Timedelta(days=i): 0.95 if i % 2 == 0 else 0.4 for i in range(30)}
-    original = regional.sky_factor_for_period
-    monkeypatch.setattr(
-        regional, "sky_factor_for_period",
-        lambda start, days, site, **kw: original(start, days, site, fetcher=_fake_fetcher(truth), today="2026-07-15"))
-    r = client.post("/solar/emulate", json={"start_date": "2026-06-10", "days": 3, "weather_source": "kpx_regional"})
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["weather_source"] == "kpx_regional" and body["verified"] is False
-    # 정답 날씨: 6/1부터 짝수번째 날=맑음(0.95), 홀수번째 날=흐림(0.4) → 6/10은 9번째라 흐림, 6/11 맑음, 6/12 흐림
-    assert [d["sky"] for d in body["daily"]] == ["cloudy", "clear", "cloudy"]
-    assert body["daily"][1]["pv_kwh"] > 1.8 * body["daily"][0]["pv_kwh"]
-
-
-def test_invalid_weather_source_rejected(admin):
-    assert client.post("/solar/emulate", json={"weather_source": "psychic"}).status_code == 422

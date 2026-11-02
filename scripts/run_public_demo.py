@@ -85,17 +85,6 @@ def main() -> int:
     args.creds.write_text(f"모바일(이용자): demo-owner / {owner_pw}\nPC·어드민(관리자): demo-admin / {admin_pw}\n최고관리자: demo-super / {super_pw}\n모바일 데모 링크 경로: /auth/demo-access?code={demo_code}\n", encoding="utf-8")
 
     from src.appadmin import service as appadmin
-    from src.notify import service as notify
-
-    consent.grant("EV-003", "notify", notify.NOTIFY_CONSENT_VERSION, recorded_by="public-demo-seed")
-    notify.create("EV-003", "price_window", "오늘 밤 충전이 가장 저렴해요(예측)",
-                  "00시~06시 구간 요금이 가장 낮아요. 출발 전까지 충전을 이 시간에 맞춰보세요.", dedupe_key="pd-1",
-                  payload={"en": {"title": "Tonight is the cheapest time to charge (forecast)",
-                                  "body": "The 00-06h window has the lowest rate. Plan your charging for that time before you leave."}})
-    notify.create("EV-003", "forecast", "내일 저녁 전력 수요가 높을 예정이에요(예측)",
-                  "18시~21시 수요가 높아질 것으로 예측돼요. 이 시간대 충전은 피하는 게 좋아요.", dedupe_key="pd-2",
-                  payload={"en": {"title": "Power demand is expected to be high tomorrow evening (forecast)",
-                                  "body": "Demand is forecast to rise between 18h and 21h. It is best to avoid charging then."}})
     appadmin.notice_create("시범 운영 안내", "AI-V2G 내 차 시범 운영 중이에요. 궁금한 점은 EV Bot에게 물어보세요.", True, True, "public-demo-seed",
                            "Pilot notice", "AI-V2G My Car is in a pilot run. Ask EV Bot if you have questions.")
     print(f"public demo store: {tmp} (계정 정보는 {args.creds} 에 저장)", flush=True)

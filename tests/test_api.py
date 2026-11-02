@@ -157,16 +157,6 @@ def test_dashboard_data_includes_renewable_summary():
         assert 0 <= view["renewable_share_pct"] <= 100
 
 
-def test_dashboard_data_includes_carbon_reduction():
-    r = client.get("/dashboard/data", params={"n_ev": 6, "n_chargers": 8, "weeks": 4})
-    assert r.status_code == 200
-    carbon = r.json()["carbon"]
-    assert carbon["optimization_co2_kg"] >= 0
-    assert carbon["renewable_co2_kg"] >= 0
-    assert carbon["total_co2_kg"] == round(carbon["optimization_co2_kg"] + carbon["renewable_co2_kg"], 1)
-    assert carbon["emission_factor_kg_per_kwh"] > 0
-
-
 def test_charging_efficiency_demo_scenario_recovers_efficiency():
     """데모(합성) 시나리오는 charger.py가 CHARGER_EFFICIENCY로 나눈 값을 쓰므로,
     ev_id가 연결된 세션이 존재하고 평균 효율이 합리적 범위로 나와야 한다."""
@@ -420,8 +410,7 @@ class TestIngestUploadFlow:
 
 class TestGridDrApi:
     def setup_method(self):
-        from src.grid import dr_emulator, dr_events
-        dr_emulator.stop_emulator()
+        from src.grid import dr_events
         dr_events.clear_dr_events()
 
     def teardown_method(self):
@@ -476,32 +465,15 @@ class TestGridDrApi:
         assert by_id[far_past_id]["overlapped"] is False
         assert by_id[far_past_id]["baseline_kwh"] == 0.0
 
-    def test_dr_emulator_start_stop_status(self):
-        """TestClient는 요청마다 별도 이벤트 루프를 쓸 수 있어(anyio 워커스레드 포함),
-        한 호출에서 시작한 백그라운드 태스크가 다음 호출에서도 "실행 중"으로 보인다는
-        보장이 없다 — 이건 실제 상시 구동 서버(uvicorn, 이벤트 루프 하나 고정)에는 없는
-        TestClient 특유의 제약이다(순수 asyncio.run() 기반 검증은 test_dr_emulator.py에
-        이미 있음). 그래서 여기서는 각 호출 자체의 응답만 검증한다."""
-        assert client.get("/grid/dr-emulator/status").json() == {"running": False, "config": None}
-
-        r = client.post("/grid/dr-emulator/start", params={"interval_sec": 30, "trigger_prob": 0.5})
-        assert r.status_code == 200
-        assert r.json()["running"] is True
-
-        r = client.post("/grid/dr-emulator/stop")
-        assert r.status_code == 200
-
-    def test_dr_emulator_start_rejects_invalid_params(self):
-        assert client.post("/grid/dr-emulator/start", params={"trigger_prob": 0}).status_code == 422
-        assert client.post("/grid/dr-emulator/start", params={"interval_sec": 1}).status_code == 422
-
 
 def test_dashboard_kpi_exposes_plan_targets_breakdown_and_degradation_assumption():
     kpi = client.get("/dashboard/data").json()
     k = kpi["kpi"]
-    assert k["targets"] == {"ev": 30, "ev_models": 2, "chargers": 150, "operators": 2, "discharge_events": 100}
-    assert k["data_records"] == sum(k["data_breakdown"].values())
-    assert k["external_target"] == 14000 and k["external_is_real"] in (True, False)
+    assert k["targets"]["records_by_year"] == {"Y1": 4000, "Y2": 4500}
+    assert (k["targets"]["ev"], k["targets"]["chargers"]) == (30, 150)
+    assert [y["year"] for y in k["data_by_year"]] == ["Y1", "Y2"]
+    assert sum(y["records"] for y in k["data_by_year"]) + k["data_out_of_period"] == k["data_scenario_records"]
+    assert k["data_is_real"] is False and "discharge_events" not in k["targets"]
     rev = kpi["revenue_comparison"]
     assert rev["degradation_cost_krw"] >= 0 and rev["assumptions"]["verified"] is False
     assert rev["savings_krw"] == pytest.approx(rev["savings_before_degradation_krw"] - rev["degradation_cost_krw"], abs=1)

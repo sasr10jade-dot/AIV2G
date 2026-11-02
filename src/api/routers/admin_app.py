@@ -1,9 +1,8 @@
-"""웹앱 관리 API(관리자) — 공지사항, 앱 문구(미션 안내 등), 상품권 교환·코드 등록.
+"""웹앱 관리 API(관리자) — 서포터즈 공지사항, 앱 안내 문구.
 
-이용자 모바일 앱은 `/owner/notices`·`/owner/app-content`·`/owner/coupons`로 읽는다. 상품권 코드는 암호화해 저장하고
-감사로그에는 코드 값을 남기지 않는다(신청 번호·처리자만).
+이용자 모바일 앱은 `/owner/notices`·`/owner/app-content`로 읽는다.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from src.appadmin import service
@@ -25,15 +24,6 @@ class NoticeIn(BaseModel):
 class ContentIn(BaseModel):
     ko: str | None = Field(None, max_length=service.MAX_TEXT)
     en: str | None = Field(None, max_length=service.MAX_TEXT)
-
-
-class FulfillIn(BaseModel):
-    code: str = Field(..., min_length=1, max_length=200)
-    label: str | None = Field(None, max_length=40)
-
-
-class RejectIn(BaseModel):
-    reason: str = Field(..., min_length=2, max_length=200)
 
 
 def _run(fn, *args):
@@ -86,22 +76,3 @@ def reset_content(key: str, user: dict = Depends(require_admin)) -> dict:
     _run(service.content_reset, key)
     audit.log(user["username"], "admin_content_reset", target=key)
     return {"status": "ok"}
-
-
-@router.get("/redemptions", summary="상품권 교환 신청 목록(코드 값은 싣지 않음)")
-def list_redemptions(status: str | None = Query(None, pattern="^(requested|fulfilled|rejected)$")) -> dict:
-    return {"redemptions": service.redemptions_admin(status), "config": service.reward_config()}
-
-
-@router.post("/redemptions/{rid}/fulfill", summary="상품권 코드 등록 — 이용자 쿠폰함으로 전달")
-def fulfill(rid: int, body: FulfillIn, user: dict = Depends(require_admin)) -> dict:
-    _run(service.redeem_fulfill, rid, body.code, body.label, user["username"])
-    audit.log(user["username"], "admin_redemption_fulfill", target=str(rid))   # 코드 값은 기록하지 않는다
-    return {"status": "fulfilled"}
-
-
-@router.post("/redemptions/{rid}/reject", summary="교환 신청 반려 — 차감한 포인트를 돌려준다")
-def reject(rid: int, body: RejectIn, user: dict = Depends(require_admin)) -> dict:
-    _run(service.redeem_reject, rid, body.reason, user["username"])
-    audit.log(user["username"], "admin_redemption_reject", target=str(rid))
-    return {"status": "rejected"}

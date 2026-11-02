@@ -33,7 +33,9 @@ ACTION_LABELS = {
 FIELD_LABELS = {
     "vehicle_model": "차종", "occupation": "직업군", "region_sido": "거주 시·도", "region_sigungu": "거주 시·군·구",
     "plate": "번호판", "password": "비밀번호", "status": "상태", "ev_id": "연결 차량",
-    "notify_consent": "알림 수신 동의", "v2g_discharge_consent": "방전(V2G) 참여", "incentive_consent": "시범 포인트 적립 동의", "profile_consent": "개인정보 수집·이용 동의",
+    "v2g_discharge_consent": "방전(V2G) 참여", "profile_consent": "개인정보 수집·이용 동의",
+    "departure_time": "평소 출발 시각", "target_soc_pct": "목표 배터리(%)", "min_soc_pct": "최소 보장 배터리(%)",
+    "odometer_km": "누적 주행거리(km)",
 }
 ALLOWED_FIELDS = frozenset(FIELD_LABELS)
 

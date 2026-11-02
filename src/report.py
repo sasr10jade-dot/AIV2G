@@ -37,7 +37,8 @@ def build_report(cfg: SimConfig | None = None) -> str:
     weekly_report = build_ev_weekly_report(ev_df, cfg)
     from src.kpi import summarize_kpi
     kpi = summarize_kpi(ev_df, charger_df, grid_df)
-    kpi_data_records = kpi.internal_records
+    kpi_lines = [f"- {y.label}: {y.records:,}건 / 목표 {y.target:,}건 이상 (충전 세션 {y.charger_sessions:,} + 차량-일 {y.vehicle_days:,})"
+                 for y in kpi.by_year]
 
     comparison = compare_baseline_vs_optimized(ev_df, grid_df, cfg)
     chart_path = plot_poc_comparison(comparison)
@@ -55,7 +56,9 @@ def build_report(cfg: SimConfig | None = None) -> str:
         "## 1. 데이터 품질",
         quality_md,
         "",
-        f"## 2. KPI: 데이터셋 구축 — {kpi_data_records:,}건 (목표 {kpi.internal_target:,}건 이상: A 세션 {kpi.a_sessions:,} + B 차량-일 {kpi.b_vehicle_days:,} + 방전 {kpi.b_discharge_events:,})",
+        "## 2. KPI: 실증 데이터셋 구축(연차별, 미중복)",
+        *kpi_lines,
+        f"- 사업기간 밖·공백기 {kpi.out_of_period_records:,}건은 어느 연차에도 넣지 않음, 전체 유효 건수(참고) {kpi.scenario_records:,}건",
         "",
         "## 3. AI-V2G 최적화 vs 일반충전 (PoC 비교)",
         f"- 무제어(baseline) 피크: {baseline_peak:.1f} kW",

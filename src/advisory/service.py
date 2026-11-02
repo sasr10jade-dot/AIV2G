@@ -1,8 +1,8 @@
 """어드바이저리(추천 안내) 기록 — 차주에게 낸 충·방전 추천과 차주의 응답을 남긴다.
 
-추천을 "보냈다"와 "따랐다"를 분리해 기록해야 수용률·실제 절감 효과를 평가할 수 있다
-(WP11 실험·인센티브 분석의 기초 데이터). 채널(dashboard/app/kakao/sms/api)은 전달 경로만 표시하며,
-실제 메신저 연동은 별도 어댑터가 `issue(channel=...)`로 기록한다.
+계획서 4.1 라. "EV별 AI 추천 충전 시간 추론 및 산출" 결과를 모바일앱·관리자 화면으로 제공한 기록이다.
+추천을 "보냈다"와 "따랐다"를 분리해 기록해 두면 2차년도 인센티브 모델 설계(4.3 라.)의 근거로 쓸 수 있다.
+채널(dashboard/app/api)은 전달 경로만 표시한다.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from src.pipeline import store
 
-CHANNELS = ("dashboard", "app", "kakao", "sms", "api")
+CHANNELS = ("dashboard", "app", "api")
 RESPONSES = ("accepted", "declined", "expired")
 
 
@@ -26,7 +26,7 @@ def _now() -> str:
 
 
 def issue(ev_id: str, plan: dict, channel: str = "api", inputs: dict | None = None,
-          group_id: str | None = None, con: sqlite3.Connection | None = None) -> str:
+          con: sqlite3.Connection | None = None) -> str:
     if channel not in CHANNELS:
         raise AdvisoryError(f"channel은 {CHANNELS} 중 하나여야 합니다: {channel}")
     advisory_id = "ADV-" + uuid.uuid4().hex[:12]
@@ -35,10 +35,10 @@ def issue(ev_id: str, plan: dict, channel: str = "api", inputs: dict | None = No
     con = con or store.get_connection()
     try:
         con.execute(
-            "INSERT INTO advisories (advisory_id, ev_id, created_at, channel, inputs, plan, net_krw, verified, group_id) "
-            "VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO advisories (advisory_id, ev_id, created_at, channel, inputs, plan, net_krw, verified) "
+            "VALUES (?,?,?,?,?,?,?,?)",
             (advisory_id, ev_id, _now(), channel, json.dumps(inputs or {}, ensure_ascii=False),
-             json.dumps(plan, ensure_ascii=False), plan.get("net_krw"), int(verified), group_id),
+             json.dumps(plan, ensure_ascii=False), plan.get("net_krw"), int(verified)),
         )
         con.commit()
     finally:
@@ -47,20 +47,24 @@ def issue(ev_id: str, plan: dict, channel: str = "api", inputs: dict | None = No
     return advisory_id
 
 
-def respond(advisory_id: str, status: str, con: sqlite3.Connection | None = None) -> None:
-    """발행(issued) 상태의 추천에만 응답할 수 있다 — 이미 응답한 건은 바꾸지 않는다."""
+def respond(advisory_id: str, status: str, ev_id: str | None = None, con: sqlite3.Connection | None = None) -> None:
+    """발행(issued) 상태의 추천에만 응답할 수 있다 — 이미 응답한 건은 바꾸지 않는다.
+    ev_id를 주면 그 차량의 추천에만 응답한다(이용자 본인 응답용) — 다른 차량의 추천은 '없는 추천'으로 본다."""
     if status not in RESPONSES:
         raise AdvisoryError(f"status는 {RESPONSES} 중 하나여야 합니다: {status}")
     own = con is None
     con = con or store.get_connection()
     try:
-        cur = con.execute(
-            "UPDATE advisories SET status=?, responded_at=? WHERE advisory_id=? AND status='issued'",
-            (status, _now(), advisory_id),
-        )
+        q, args = "UPDATE advisories SET status=?, responded_at=? WHERE advisory_id=? AND status='issued'", [status, _now(), advisory_id]
+        if ev_id is not None:
+            q += " AND ev_id=?"
+            args.append(ev_id)
+        cur = con.execute(q, args)
         con.commit()
         if cur.rowcount == 0:
-            exists = con.execute("SELECT status FROM advisories WHERE advisory_id=?", (advisory_id,)).fetchone()
+            exists = con.execute("SELECT status, ev_id FROM advisories WHERE advisory_id=?", (advisory_id,)).fetchone()
+            if exists and ev_id is not None and exists[1] != ev_id:
+                exists = None
             if not exists:
                 raise AdvisoryError(f"없는 추천입니다: {advisory_id}")
             raise AdvisoryError(f"이미 응답된 추천입니다({exists[0]})")
@@ -73,7 +77,7 @@ def list_advisories(ev_id: str | None = None, limit: int = 50, con: sqlite3.Conn
     own = con is None
     con = con or store.get_connection()
     try:
-        cols = ["advisory_id", "ev_id", "created_at", "channel", "net_krw", "verified", "status", "responded_at", "group_id"]
+        cols = ["advisory_id", "ev_id", "created_at", "channel", "net_krw", "verified", "status", "responded_at"]
         q = f"SELECT {', '.join(cols)} FROM advisories"
         args: list = []
         if ev_id:

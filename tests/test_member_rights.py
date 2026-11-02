@@ -8,7 +8,6 @@ from src.advisory import service as advisory
 from src.api import app
 from src.api.routers import signup as signup_router
 from src.auth import store as auth_store
-from src.notify import service as notify
 from src.pipeline import store
 from src.privacy import audit, consent, member_history
 
@@ -56,12 +55,11 @@ def _count(sql, *args):
 
 
 def _populated_member(ev_id=None):
-    """가입→승인→알림 동의→알림 1건→추천 1건까지 갖춘 회원. (ev_id, username) 반환."""
+    """가입→승인→방전 참여 동의→추천 1건까지 갖춘 회원. ev_id 반환."""
     _signup()
     ev = _approve(ev_id=ev_id)
     _login("newdriver", "driver-pass-1")
-    client.put("/owner/consent/notify", json={"granted": True})
-    assert notify.create(ev, "system", "안내", "내용") is not None
+    assert client.put("/owner/consent/v2g", json={"granted": True}).json() == {"v2g": True}
     advisory.issue(ev, {"net_krw": 100, "assumptions": {"verified": False}}, channel="app")
     return ev
 
@@ -73,18 +71,17 @@ def test_my_data_for_pending_member_has_no_vehicle_and_masked_plate():
     d = client.get("/owner/my-data").json()
     assert d["account"]["username"] == "newdriver" and d["vehicle"]["ev_id"] is None
     assert d["registration"]["plate"] == "43오**50" and d["registration"]["status"] == "pending"
-    assert d["consents"] == [] and d["notifications"] == {"total": 0, "unread": 0}
+    assert d["consents"] == [] and "notifications" not in d
     assert d["history_count"] == 1 and "43오3450" not in json.dumps(d, ensure_ascii=False)
     assert "password" not in json.dumps(d)
 
 
-def test_my_data_for_approved_member_lists_consents_and_notifications():
+def test_my_data_for_approved_member_lists_consents():
     ev = _populated_member()
     d = client.get("/owner/my-data").json()
     assert d["vehicle"]["ev_id"] == ev
     purposes = {c["purpose"] for c in d["consents"]}
-    assert {"profile", "notify"} <= purposes
-    assert d["notifications"] == {"total": 1, "unread": 1}
+    assert {"profile", "v2g_discharge"} <= purposes
     assert d["retention"]
 
 
@@ -106,6 +103,22 @@ def test_profile_update_changes_fields_and_records_history():
     assert top["action"] == "profile_update" and top["by"] == "본인"
     changes = {c["field"]: (c["before"], c["after"]) for c in top["changes"]}
     assert changes == {"occupation": ("office", "student"), "region_sigungu": ("북구", "광산구")}
+
+
+def test_signup_and_profile_update_keep_supporter_operating_inputs():
+    """계획서 4.1 서포터즈 입력(출발 예정 시각·목표/최소 보장 배터리·누적 주행거리)은 가입·정정 모두 받는다."""
+    _signup(departure_time="07:30", target_soc_pct=85, min_soc_pct=30, odometer_km=12000)
+    reg = client.get("/owner/registration").json()["registration"]
+    assert (reg["departure_time"], reg["target_soc_pct"], reg["min_soc_pct"], reg["odometer_km"]) == ("07:30", 85, 30, 12000)
+    r = client.patch("/owner/profile", json={"departure_time": "08:10", "odometer_km": 12500})
+    assert r.status_code == 200 and set(r.json()["changed"]) == {"departure_time", "odometer_km"}
+    assert client.patch("/owner/profile", json={"min_soc_pct": 90}).status_code == 422   # 최소 보장 ≥ 목표는 거부
+    assert client.patch("/owner/profile", json={"departure_time": "25:00"}).status_code == 422
+
+
+def test_signup_rejects_min_soc_not_below_target():
+    r = client.post("/signup", json={**PAYLOAD, "target_soc_pct": 50, "min_soc_pct": 60})
+    assert r.status_code == 422 and auth_store.get_user("newdriver") is None   # 계정도 남기지 않는다
 
 
 def test_profile_update_noop_leaves_no_history():
@@ -165,12 +178,11 @@ def test_withdraw_deletes_personal_data_for_app_registered_vehicle():
     r = client.post("/owner/account/withdraw", json={"password": "driver-pass-1", "confirm": True})
     assert r.status_code == 200
     deleted = r.json()["deleted"]
-    assert deleted["registrations"] == 1 and deleted["notifications"] == 1 and deleted["advisories"] == 1
+    assert deleted["registrations"] == 1 and deleted["advisories"] == 1
     assert deleted["consents_withdrawn"] >= 2
-    # 계정·등록·알림·추천이 모두 사라졌다
+    # 계정·등록·추천이 모두 사라졌다
     assert auth_store.get_user("newdriver") is None
     assert _count("SELECT COUNT(*) FROM vehicle_registrations WHERE username=?", "newdriver") == 0
-    assert _count("SELECT COUNT(*) FROM notifications WHERE ev_id=?", ev) == 0
     assert _count("SELECT COUNT(*) FROM advisories WHERE ev_id=?", ev) == 0
     # 세션이 끊기고 다시 로그인할 수 없다
     assert client.get("/auth/me").status_code == 401
@@ -178,7 +190,7 @@ def test_withdraw_deletes_personal_data_for_app_registered_vehicle():
     # 유효한 동의는 철회 처리, 동의 이력 행은 증빙으로 남는다
     rows = consent.list_consents(ev)
     assert rows and all(c["withdrawn_at"] for c in rows)
-    assert not consent.has_consent(ev, "notify")
+    assert not consent.has_consent(ev, "v2g_discharge")
 
 
 def test_withdraw_keeps_access_log_and_records_withdrawal():
@@ -199,7 +211,6 @@ def test_withdraw_keeps_linked_obd_vehicle_data_but_unlinks_person():
     assert ev == "EV-TORRES-01"
     client.post("/owner/account/withdraw", json={"password": "driver-pass-1", "confirm": True})
     assert _count("SELECT COUNT(*) FROM advisories WHERE ev_id=?", ev) == 1      # 실증 데이터 유지
-    assert _count("SELECT COUNT(*) FROM notifications WHERE ev_id=?", ev) == 0   # 회원 전용 알림은 삭제
     assert _count("SELECT COUNT(*) FROM vehicle_registrations WHERE ev_id=?", ev) == 0
     assert all(u["owned_ev_id"] != ev for u in auth_store.list_users() if u["role"] == "owner")
 
@@ -223,15 +234,15 @@ def test_withdraw_does_not_touch_other_members():
     _signup(username="second1", plate="12가3456", sigungu="광산구")
     _approve()
     _login("second1", "driver-pass-1")
-    client.put("/owner/consent/notify", json={"granted": True})
+    client.put("/owner/consent/v2g", json={"granted": True})
     ev2 = client.get("/owner/me").json()["ev_id"]
-    notify.create(ev2, "system", "둘째 알림", "내용")
+    advisory.issue(ev2, {"net_krw": 50, "assumptions": {"verified": False}}, channel="app")
     _login("newdriver", "driver-pass-1")
     client.post("/owner/account/withdraw", json={"password": "driver-pass-1", "confirm": True})
     assert auth_store.get_user("second1") is not None
     assert _count("SELECT COUNT(*) FROM vehicle_registrations WHERE username=?", "second1") == 1
-    assert _count("SELECT COUNT(*) FROM notifications WHERE ev_id=?", ev2) == 1
-    assert consent.has_consent(ev2, "notify")
+    assert _count("SELECT COUNT(*) FROM advisories WHERE ev_id=?", ev2) == 1
+    assert consent.has_consent(ev2, "v2g_discharge")
 
 
 def test_withdraw_is_owner_only():
@@ -245,40 +256,3 @@ def test_member_history_helper_still_scoped_after_withdrawal():
     _signup()
     client.post("/owner/account/withdraw", json={"password": "driver-pass-1", "confirm": True})
     assert [i["action"] for i in member_history.timeline("newdriver")][0] == "withdraw"
-
-
-def test_withdraw_also_deletes_points_coupons_and_recommended_windows():
-    from src.appadmin import service as appadmin
-    from src.rewards import service as rewards
-
-    ev = _populated_member()
-    con = rewards._connect()
-    try:
-        con.execute("INSERT INTO point_ledger (ev_id, mission_id, period_key, points, created_at) VALUES (?,?,?,?,?)",
-                    (ev, "test_grant", "p1", 1000, "2026-10-23T00:00:00+00:00"))
-        con.commit()
-    finally:
-        con.close()
-    rid = appadmin.redeem_request(ev)                                   # 1,000P 차감 + 교환 신청
-    appadmin.redeem_fulfill(rid, "SECRET-GIFT-CODE", None, "opuser")     # 암호화된 코드 보관
-    rewards.record_plan(ev, {"plan": {"charge": [{"start": "2026-10-24T01:00:00", "end": "2026-10-24T03:00:00", "kwh": 5.0}]},
-                              "period": {"departure": "2026-10-24T08:00:00"}})
-    other_ev = "EV-OTHER-1"                                             # 다른 회원 데이터는 그대로
-    con = rewards._connect()
-    try:
-        con.execute("INSERT INTO point_ledger (ev_id, mission_id, period_key, points, created_at) VALUES (?,?,?,?,?)",
-                    (other_ev, "test_grant", "p1", 50, "2026-10-23T00:00:00+00:00"))
-        con.commit()
-    finally:
-        con.close()
-
-    r = client.post("/owner/account/withdraw", json={"password": "driver-pass-1", "confirm": True})
-    assert r.status_code == 200 and r.json()["deleted"]["rewards"] >= 3
-
-    con = consent.connect()
-    try:
-        left = {t: con.execute(f"SELECT COUNT(*) FROM {t} WHERE ev_id=?", (ev,)).fetchone()[0] for t in ("point_ledger", "redemptions", "guide_plans")}
-        others = con.execute("SELECT COUNT(*) FROM point_ledger WHERE ev_id=?", (other_ev,)).fetchone()[0]
-    finally:
-        con.close()
-    assert left == {"point_ledger": 0, "redemptions": 0, "guide_plans": 0} and others == 1

@@ -12,18 +12,13 @@ OWNER_ALLOWED = {
     ("GET", "/"), ("GET", "/login"), ("GET", "/health"),
     ("POST", "/auth/login"), ("POST", "/auth/quick-login"), ("POST", "/auth/logout"),
     ("GET", "/auth/me"), ("GET", "/owner/me"), ("GET", "/auth/quick-login/available"),
-    # owner 전용 알림함·동의 — 모두 세션의 차량으로만 동작한다(tests/test_notify.py에서 범위 검증)
+    # owner 전용 경로 — 모두 세션의 차량으로만 동작한다
     ("GET", "/signup/options"), ("GET", "/owner/registration"), ("GET", "/owner/history"),
     ("GET", "/owner/my-data"), ("PATCH", "/owner/profile"), ("POST", "/owner/password"),
     ("POST", "/owner/account/withdraw"), ("POST", "/owner/ask"),   # 마이페이지 — 본인 정보만(빈 본문은 422로 막힘)   # 가입 선택지(공개)·내 승인 상태(승인 전에도 가능)
     ("GET", "/owner/charging-guide"), ("GET", "/owner/demand-forecast"),   # 본인 차량·집계 예측만
-    ("GET", "/owner/consent"), ("PUT", "/owner/consent/notify"),
     ("GET", "/owner/consent/v2g"), ("PUT", "/owner/consent/v2g"),   # 방전 참여 켜기·즉시 중지(본인 차량만)
-    ("GET", "/owner/consent/incentive"), ("PUT", "/owner/consent/incentive"),   # 시범 포인트 동의(본인 차량만)
-    ("GET", "/owner/missions"), ("GET", "/owner/points"),                       # 본인 미션·포인트만
-    ("GET", "/owner/notices"), ("GET", "/owner/app-content"), ("GET", "/owner/coupons"), ("POST", "/owner/points/redeem"),   # 공지·문구(공통)·본인 쿠폰만
-    ("GET", "/owner/notifications"), ("POST", "/owner/notifications/read-all"),
-    ("POST", "/owner/notifications/{notification_id}/read"),
+    ("GET", "/owner/notices"), ("GET", "/owner/app-content"),       # 공지·문구(공통)
 }
 
 

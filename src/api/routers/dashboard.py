@@ -20,11 +20,9 @@ from src.automation.model_registry import ModelRegistry
 from src.closed_loop import run_closed_loop_cycle
 from src.datagen.config import SimConfig
 from src.grid import dr_events
-from src import kpi as kpi_targets
 from src.kpi import summarize_kpi
 from src.model.charging_efficiency import NoLinkedSessionsError, compute_charging_efficiency
 from src.model.demand_forecast import train_forecast_model
-from src.optimizer.carbon import compute_carbon_reduction
 from src.optimizer.economics import EconomicsParams
 from src.optimizer.poc_compare import (
     compare_baseline_vs_optimized,
@@ -212,14 +210,7 @@ def build_dashboard_payload(
         validate(grid_df, "grid_signal", GRID_SIGNAL_SCHEMA, dedup_keys=["timestamp"]),
     ]
     weekly_report = build_ev_weekly_report(ev_df, cfg)
-    _con = get_connection()
-    try:
-        real_discharges = kpi_targets.count_discharge_events(_con)
-        emulated_discharges = kpi_targets.count_discharge_events(_con, emulated=True)
-    finally:
-        _con.close()
-    kpi_summary = summarize_kpi(ev_df, charger_df, grid_df, grid_is_real=is_real, discharge_events=real_discharges)
-    kpi_data_records = kpi_summary.internal_records
+    kpi_summary = summarize_kpi(ev_df, charger_df, grid_df, is_real=is_real, grid_is_real=is_real)
 
     charger_utilization = build_charger_utilization_hourly(charger_df)
     fleet_hourly_util = (
@@ -272,21 +263,16 @@ def build_dashboard_payload(
             "ev_count": int(ev_df["ev_id"].nunique()),
             "charger_count": int(charger_df["charger_id"].nunique()) if "charger_id" in charger_df.columns else cfg.n_chargers,
             "weeks": cfg.weeks,
-            "data_records": kpi_data_records,
-            "data_target": kpi_summary.internal_target,
-            "data_breakdown": {"a_sessions": kpi_summary.a_sessions, "b_vehicle_days": kpi_summary.b_vehicle_days,
-                               "b_discharge_events": kpi_summary.b_discharge_events},
-            "external_records": kpi_summary.external_records,
-            "emulated_discharge_events": emulated_discharges,  # 에뮬레이터 기록 — 공식 건수에 합산하지 않음
-            "external_is_real": kpi_summary.external_is_real,
+            # 계획서 v1.0 성과지표 — 연차별(1차 4,000 / 2차 4,500, 미중복) 데이터 건수. 합성 데이터면 is_real=False(실적 아님)
+            "data_by_year": [y.__dict__ for y in kpi_summary.by_year],
+            "data_out_of_period": kpi_summary.out_of_period_records,
+            "data_scenario_records": kpi_summary.scenario_records,
+            "data_is_real": kpi_summary.is_real,
+            "public_reference_records": kpi_summary.public_reference_records,   # 공개 데이터 참고 건수(성과 미포함)
             "operator_count": kpi_summary.operator_count,
             "ev_model_count": kpi_summary.ev_model_count,
-            "targets": {
-                "ev": kpi_targets.TARGET_EV, "ev_models": kpi_targets.TARGET_EV_MODELS,
-                "chargers": kpi_targets.TARGET_CHARGERS, "operators": kpi_targets.TARGET_OPERATORS,
-                "discharge_events": kpi_targets.TARGET_DISCHARGE_EVENTS,
-            },
-            "external_target": kpi_summary.external_target,
+            "charger_type_count": kpi_summary.charger_type_count,
+            "targets": kpi_summary.targets,
             "charger_utilization_avg_pct": avg_utilization_pct,
             "charger_utilization_peak_pct": peak_utilization_pct,
             "charger_utilization_peak_at": peak_utilization_at,
@@ -315,7 +301,6 @@ def build_dashboard_payload(
         "models": models,
         "vehicle_status": build_vehicle_status_table(ev_df),
         "renewable": build_renewable_summary(grid_df, window_days=CHART_WINDOW_DAYS),
-        "carbon": compute_carbon_reduction(comparison, grid_df),
     }
 
 

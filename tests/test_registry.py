@@ -89,7 +89,7 @@ def test_signup_creates_pending_registration_without_vehicle_access():
     # 가입 직후 로그인 상태지만 차량 데이터에는 접근할 수 없다
     assert client.get("/auth/me").json()["role"] == "owner"
     assert client.get("/owner/me").status_code == 403
-    assert client.get("/owner/notifications").status_code == 403
+    assert client.get("/owner/charging-guide").status_code == 403
     st = client.get("/owner/registration").json()
     assert st["linked"] is False and st["registration"]["status"] == "pending"
 

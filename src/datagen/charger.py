@@ -1,4 +1,4 @@
-"""충전기 150기 실증 인프라의 세션(이용) 로그 합성 생성.
+"""충전기 150기(완속·급속 2종, 충전서비스 사업자 3사) 실증 인프라의 세션(이용) 로그 합성 생성.
 
 산출근거(150기 × 147일 × 0.2 ≈ 4,410건)를 그대로 세션 발생률로 사용해,
 생성 건수가 성과지표 목표치와 자연히 정합하도록 한다.
@@ -10,6 +10,9 @@ from .config import SimConfig
 
 SESSION_KW = 7.0  # 완속충전기 평균 출력
 AVG_SESSION_HOURS = 2.5
+FAST_KW = 50.0    # 급속충전기 출력
+AVG_FAST_SESSION_HOURS = 0.6
+FAST_EVERY = 5    # 충전기 5기 중 1기를 급속으로 둔다 — 계획서 "충전기 2종 이상" 구성
 
 # 충전기 계측(AC) 대비 배터리 실충전(DC) 비율 — 실제 완속충전기 스펙값이 아니라,
 # "차량-충전기 데이터를 비교해 효율을 추정할 수 있는가"(충전 효율 예측 기능)를
@@ -19,12 +22,29 @@ AVG_SESSION_HOURS = 2.5
 CHARGER_EFFICIENCY = 0.92
 
 
-# 충전사업자는 협의 중이라 실명 대신 코드(CPO-A/B)로 배정한다 — 확정 시 config로 교체.
-OPERATOR_IDS = ("CPO-A", "CPO-B")
+# 참여의향서를 낸 충전서비스 사업자 3사 — 데이터 제공 용역 체결 전이라 실명 대신 코드로 배정한다.
+OPERATOR_IDS = ("CPO-A", "CPO-B", "CPO-C")
+
+# 충전기 종류: (charger_type, connector_type, 최대 출력 kW)
+CHARGER_TYPES = {"AC_SLOW": ("AC_SLOW", "AC_TYPE1", SESSION_KW), "DC_FAST": ("DC_FAST", "DC_COMBO1", FAST_KW)}
 
 
 def operator_for_charger(charger_idx: int) -> str:
     return OPERATOR_IDS[charger_idx % len(OPERATOR_IDS)]
+
+
+def charger_type_for(charger_idx: int) -> tuple[str, str, float]:
+    return CHARGER_TYPES["DC_FAST" if charger_idx % FAST_EVERY == FAST_EVERY - 1 else "AC_SLOW"]
+
+
+def _stop_reason(session_no: int) -> tuple[str, str | None]:
+    """종료 사유·오류 코드(OCPP StopTransaction reason / StatusNotification errorCode 표기를 따른다).
+    합성 데이터는 소수 세션만 비정상 종료로 둔다."""
+    if session_no % 97 == 0:
+        return "PowerLoss", "PowerMeterFailure"
+    if session_no % 31 == 0:
+        return "Remote", None
+    return "EVDisconnected", None
 
 
 def _build_ev_charging_lookup(ev_df: pd.DataFrame) -> dict[tuple, list[tuple]]:
@@ -59,12 +79,15 @@ def generate_charger_sessions(
         charger_id = f"CHG-{charger_idx + 1:04d}"
         zone = int(rng.integers(0, cfg.n_zones))
         operator_id = operator_for_charger(charger_idx)
+        charger_type, connector_type, max_kw = charger_type_for(charger_idx)
+        fast = charger_type == "DC_FAST"
         for day in range(cfg.charger_days):
             n_sessions_today = rng.poisson(cfg.charger_avg_sessions_per_day)
             for _ in range(n_sessions_today):
                 start_hour = rng.uniform(0, 24)
                 start_ts = ts_start + pd.Timedelta(days=day, hours=start_hour)
-                duration_h = max(rng.normal(AVG_SESSION_HOURS, 0.8), 0.3)
+                duration_h = (max(rng.normal(AVG_FAST_SESSION_HOURS, 0.2), 0.15) if fast
+                              else max(rng.normal(AVG_SESSION_HOURS, 0.8), 0.3))
 
                 candidates = ev_lookup.get((zone, start_ts.floor("h")))
                 if candidates:
@@ -72,12 +95,15 @@ def generate_charger_sessions(
                     energy_kwh = round(float(ev_charging_kw) * duration_h / CHARGER_EFFICIENCY, 2)
                 else:
                     ev_id = None
-                    energy_kwh = round(SESSION_KW * duration_h * rng.uniform(0.7, 1.0), 2)
+                    energy_kwh = round(max_kw * duration_h * rng.uniform(0.7, 1.0), 2)
 
+                stop_reason, error_code = _stop_reason(session_id)
                 rows.append(
                     (
                         f"SESS-{session_id:06d}", charger_id, zone,
                         start_ts, round(duration_h, 2), energy_kwh, ev_id, operator_id, "synthetic",
+                        start_ts + pd.Timedelta(hours=duration_h), charger_type, connector_type,
+                        round(min(energy_kwh / duration_h, max_kw), 2), stop_reason, error_code,
                     )
                 )
                 session_id += 1
@@ -85,7 +111,8 @@ def generate_charger_sessions(
     df = pd.DataFrame(
         rows,
         columns=["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id",
-                 "operator_id", "source"],
+                 "operator_id", "source", "end_ts", "charger_type", "connector_type", "avg_power_kw",
+                 "stop_reason", "error_code"],
     )
     return df.sort_values("start_ts").reset_index(drop=True)
 
@@ -97,8 +124,9 @@ def build_charger_registry(cfg: SimConfig, charger_df: pd.DataFrame) -> pd.DataF
     zone_of = charger_df.drop_duplicates("charger_id").set_index("charger_id")["zone"].to_dict() if not charger_df.empty else {}
     for idx in range(cfg.n_chargers):
         cid = f"CHG-{idx + 1:04d}"
-        rows.append((cid, operator_for_charger(idx), None, None, int(zone_of.get(cid, 0)), "AC7", SESSION_KW, 0, 1))
+        charger_type, connector_type, max_kw = charger_type_for(idx)
+        rows.append((cid, operator_for_charger(idx), None, None, int(zone_of.get(cid, 0)), charger_type, connector_type, max_kw, 0, 1))
     return pd.DataFrame(rows, columns=[
         "charger_id", "operator_id", "operator_name", "site_id", "zone",
-        "connector_type", "max_kw", "v2g_capable", "active",
+        "charger_type", "connector_type", "max_kw", "v2g_capable", "active",
     ])

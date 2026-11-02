@@ -36,6 +36,14 @@ CHARGER_SESSION_SCHEMA = [
     # 충전사업자(CPO) 식별자·수집 경로(cpo_api/ocpp/manual) — 사업자별 연계 실적 집계용(선택).
     ColumnSpec("operator_id", "str", required=False),
     ColumnSpec("source", "str", required=False),
+    # 계획서 4.1 충전기 수집 항목(충전 시작·종료 시각, 충전량, 충전기·커넥터 상태, 오류·종료 사유) — 사업자 제공 범위가
+    # 데이터 제공 용역으로 확정되기 전이라 선택 컬럼으로 둔다.
+    ColumnSpec("end_ts", "datetime", required=False),
+    ColumnSpec("charger_type", "str", required=False),      # AC_SLOW | DC_FAST 등 — "충전기 2종 이상" 집계
+    ColumnSpec("connector_type", "str", required=False),
+    ColumnSpec("avg_power_kw", "float", min_value=0, required=False),
+    ColumnSpec("stop_reason", "str", required=False),
+    ColumnSpec("error_code", "str", required=False),
 ]
 
 GRID_SIGNAL_SCHEMA = [

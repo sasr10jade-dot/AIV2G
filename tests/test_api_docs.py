@@ -30,7 +30,7 @@ def test_roles_match_real_dependencies():
     assert roles[("GET", "/privacy/audit")] == "최고관리자"
     assert roles[("GET", "/admin/notices")].startswith("관리자")
     assert roles[("GET", "/registrations")].startswith("관리자")
-    assert roles[("GET", "/owner/missions")].startswith("이용자")
+    assert roles[("GET", "/owner/charging-guide")].startswith("이용자")
     assert roles[("GET", "/owner/registration")].startswith("이용자 계정")
 
 

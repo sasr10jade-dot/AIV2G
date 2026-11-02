@@ -1,37 +1,63 @@
-"""사업수행계획서 v1.0 성과지표(KPI) 산식 — 데이터 건수·인프라 규모의 단일 정의.
+"""사업수행계획서 v1.0(2026-10-31) 성과지표(KPI) 산식 — 데이터 건수·인프라 규모의 단일 정의.
 
 대시보드·보고서가 각자 다른 산식을 쓰지 않도록 이 모듈 하나에서 계산한다.
 
-v1.0 정의 (EV 30대 · 충전기 150기 · 3종 데이터)
-- 내부 수집 건수 = A 충전세션(참여 차량 연결 세션) + B 차량-일 배터리 프로파일 + B 방전 이벤트
-    · 설계값: A 30대 × 주 4회 × 21주 = 2,520 / B 30대 × 100일 = 3,000 / 방전 100 → 5,620 (목표 5,500건 이상)
-- 외부 연계 건수 = 전력·기상 등 외부 데이터의 시간단위 실데이터 레코드(합성 데이터는 제외).
-    목표 14,000건 이상 — 5,500건 산정에는 포함하지 않는다.
-- 이전 산식(EV 주간리포트 건수 + 충전기 세션 건수)은 폐기한다.
+계획서 성과지표
+- 실증 인프라 : EV 2종 이상 30대, 충전기 2종 이상 150기(2차년도는 1차년도 유지)
+- 실증 데이터 : 1차년도 4,000건 이상, 2차년도 4,500건 이상 — 연차별 확보 데이터 미중복
+- AI 기반 최적 V2G 예측모델 1건(1차) / 고도화 1건(2차), BM 모델 제안 1건·MOU 1건(2차)은 문서 성과라 여기서 세지 않는다.
 
-"차량-일 프로파일"은 그 날짜에 주행·충전·연결 중 하나라도 관측된 (ev_id, 날짜)이다.
-방전 이벤트(V2G/V2L)는 `discharge_events` 테이블(WP2)에 기록되며, 호출 측이
-`count_discharge_events(con)` 결과를 `discharge_events` 인자로 넘긴다(TEST 종류 제외).
+데이터 1건의 정의(계획서 "수집·정제된 유효 데이터의 최종 누적 건수")
+- 충전 세션 : 연계 충전기의 유효 충전 세션 1건(충전량 > 0, 시작 시각 기준 연차 배정)
+- 차량-일 프로파일 : 그 날짜에 주행·충전·연결 중 하나라도 관측된 (ev_id, 날짜) 1건
+- 전력수요·기상 등 공개 데이터는 참고 건수로만 따로 보여주고 성과 건수에는 넣지 않는다(관리기관 협의 전 보수적 기준).
+- 방전은 실측이 아니라 AI 추론이므로(계획서 '수행 전제') 건수에 넣지 않는다.
+
+연차는 사업기간으로 나눈다. 1·2차년도 사이 공백기(2027-04-16~04-30)와 사업기간 밖 데이터는 어느 연차에도 넣지 않는다.
+합성(모의) 데이터는 실적이 아니므로 `is_real=False`로 표시해 화면이 '모의'로 구분하게 한다.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
+from datetime import date
 
 import pandas as pd
 
 # ---- 계획서 v1.0 목표치 --------------------------------------------------------
 TARGET_EV = 30
 TARGET_EV_MODELS = 2          # 차종 2종 이상
-TARGET_EV_PER_MODEL = 10      # 차종당 10대 이상
 TARGET_CHARGERS = 150
-TARGET_OPERATORS = 2          # 충전사업자 2개사 이상
-TARGET_INTERNAL_RECORDS = 5500
-TARGET_EXTERNAL_RECORDS = 14000
-TARGET_DISCHARGE_EVENTS = 100
+TARGET_CHARGER_TYPES = 2      # 충전기 2종 이상
+TARGET_OPERATORS = 3          # 참여의향서 확보 충전서비스 사업자(이브이시스·플러그링크·나이스인프라)
 
-DESIGN_A_SESSIONS = TARGET_EV * 4 * 21       # 2,520
-DESIGN_B_VEHICLE_DAYS = TARGET_EV * 100      # 3,000
-DESIGN_INTERNAL_RECORDS = DESIGN_A_SESSIONS + DESIGN_B_VEHICLE_DAYS + TARGET_DISCHARGE_EVENTS  # 5,620
+# 연차별 사업기간과 데이터 목표(연차별 미중복)
+PROJECT_YEARS = {
+    "Y1": {"label": "1차년도", "start": date(2026, 11, 1), "end": date(2027, 4, 15), "target": 4000},
+    "Y2": {"label": "2차년도", "start": date(2027, 5, 1), "end": date(2027, 11, 30), "target": 4500},
+}
+TARGET_TOTAL_RECORDS = sum(y["target"] for y in PROJECT_YEARS.values())   # 8,500
+
+
+def project_year_of(d) -> str | None:
+    """날짜가 속한 연차('Y1'/'Y2'). 공백기·사업기간 밖이면 None."""
+    if d is None or (isinstance(d, float) and pd.isna(d)):
+        return None
+    d = pd.Timestamp(d).date()
+    for key, y in PROJECT_YEARS.items():
+        if y["start"] <= d <= y["end"]:
+            return key
+    return None
+
+
+@dataclass(frozen=True)
+class YearCount:
+    year: str
+    label: str
+    charger_sessions: int
+    vehicle_days: int
+    records: int
+    target: int
+    achieved_pct: float
 
 
 @dataclass(frozen=True)
@@ -39,84 +65,98 @@ class KpiSummary:
     ev_count: int
     ev_model_count: int
     charger_count: int
+    charger_type_count: int | None    # 충전기 종류 컬럼이 없으면 None(미집계)
     operator_count: int | None        # 사업자 컬럼이 없으면 None(미집계)
-    a_sessions: int
-    b_vehicle_days: int
-    b_discharge_events: int
-    internal_records: int
-    internal_target: int
-    internal_design: int
-    external_records: int
-    external_target: int
-    external_is_real: bool
+    by_year: list[YearCount]
+    out_of_period_records: int        # 공백기·사업기간 밖(어느 연차에도 넣지 않음)
+    scenario_records: int             # 기간 구분 없이 센 전체 유효 건수(참고)
+    public_reference_records: int     # 공개 데이터 참고 건수(성과 미포함)
+    is_real: bool
+    targets: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return asdict(self)
 
 
-def count_a_sessions(charger_df: pd.DataFrame) -> int:
-    """A 충전세션: 참여 차량(ev_id)과 연결된 세션만. ev_id가 아직 없는 데이터는 0."""
-    if "ev_id" not in charger_df.columns:
-        return 0
-    return int(charger_df["ev_id"].notna().sum())
+def _session_dates(charger_df: pd.DataFrame) -> pd.Series:
+    if charger_df is None or charger_df.empty or "start_ts" not in charger_df.columns:
+        return pd.Series([], dtype="object")
+    energy = pd.to_numeric(charger_df["energy_kwh"], errors="coerce").fillna(0) if "energy_kwh" in charger_df.columns else 1
+    valid = charger_df[energy > 0]
+    return pd.to_datetime(valid["start_ts"], errors="coerce").dropna().dt.date.reset_index(drop=True)
 
 
-def count_b_vehicle_days(ev_df: pd.DataFrame) -> int:
-    """B 차량-일: 주행·충전·연결 중 하나라도 관측된 (ev_id, 날짜) 수."""
-    if ev_df.empty:
-        return 0
+def _vehicle_days(ev_df: pd.DataFrame) -> pd.DataFrame:
+    """(ev_id, 날짜) 활성 프로파일 목록."""
+    if ev_df is None or ev_df.empty:
+        return pd.DataFrame(columns=["ev_id", "_day"])
     active = ev_df[
         ev_df["driving"].astype(bool) | ev_df["connected"].astype(bool) | (ev_df["charging_kw"] > 0)
     ]
     if active.empty:
-        return 0
+        return pd.DataFrame(columns=["ev_id", "_day"])
     days = active.assign(_day=pd.to_datetime(active["timestamp"]).dt.date)
-    return int(days.groupby(["ev_id", "_day"]).ngroups)
+    return days[["ev_id", "_day"]].drop_duplicates().reset_index(drop=True)
 
 
-EMULATOR_SOURCE = "emulator"
+def count_charger_sessions(charger_df: pd.DataFrame) -> int:
+    """유효 충전 세션 수(충전량 0 이하 제외)."""
+    return int(len(_session_dates(charger_df)))
 
 
-def count_discharge_events(con, emulated: bool = False) -> int:
-    """discharge_events 테이블의 방전(V2G/V2L) 기록 수. TEST 종류는 실적에서 제외한다.
-    emulated=False(기본)는 실측 기록만, True는 에뮬레이터(source='emulator')가 만든 기록만 센다 —
-    에뮬레이션 값이 공식 실적(5,500건 산정)에 섞이지 않도록 항상 분리해서 센다."""
-    op = "=" if emulated else "<>"
-    try:
-        return int(con.execute(
-            "SELECT COUNT(*) FROM discharge_events WHERE kind IN ('V2G','V2L') "
-            f"AND COALESCE(source,'') {op} ?", (EMULATOR_SOURCE,)).fetchone()[0])
-    except Exception:
-        return 0
+def count_vehicle_days(ev_df: pd.DataFrame) -> int:
+    """차량-일: 주행·충전·연결 중 하나라도 관측된 (ev_id, 날짜) 수."""
+    return int(len(_vehicle_days(ev_df)))
+
+
+def count_by_year(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> tuple[list[YearCount], int]:
+    """연차별 건수와 어느 연차에도 속하지 않는 건수."""
+    sess_years = _session_dates(charger_df).map(project_year_of)
+    vd = _vehicle_days(ev_df)
+    vd_years = vd["_day"].map(project_year_of) if not vd.empty else pd.Series([], dtype="object")
+    rows = []
+    for key, y in PROJECT_YEARS.items():
+        s = int((sess_years == key).sum())
+        v = int((vd_years == key).sum())
+        rec = s + v
+        rows.append(YearCount(key, y["label"], s, v, rec, y["target"], round(rec / y["target"] * 100, 1)))
+    out = int(sess_years.isna().sum() + vd_years.isna().sum())
+    return rows, out
+
+
+def plan_targets() -> dict:
+    return {
+        "ev": TARGET_EV, "ev_models": TARGET_EV_MODELS,
+        "chargers": TARGET_CHARGERS, "charger_types": TARGET_CHARGER_TYPES, "operators": TARGET_OPERATORS,
+        "records_by_year": {k: y["target"] for k, y in PROJECT_YEARS.items()},
+        "records_total": TARGET_TOTAL_RECORDS,
+    }
 
 
 def summarize_kpi(
     ev_df: pd.DataFrame,
     charger_df: pd.DataFrame,
     grid_df: pd.DataFrame | None = None,
+    is_real: bool = False,
     grid_is_real: bool = False,
-    discharge_events: int = 0,
 ) -> KpiSummary:
-    a = count_a_sessions(charger_df)
-    b = count_b_vehicle_days(ev_df)
-    internal = a + b + int(discharge_events)
+    by_year, out = count_by_year(ev_df, charger_df)
+    # 공개 데이터 참고 건수: 전력수요·재생에너지·SMP·기상 4종 × 시간단위 행 수, 실데이터일 때만
+    public_ref = (len(grid_df) * 4) if (grid_df is not None and grid_is_real) else 0
 
-    # 외부 연계: 합성 데이터는 "수집 실적"이 아니므로 실데이터일 때만 센다.
-    # 전력수요·재생E·SMP·기상 4종 × 행 수(시간단위)
-    external = (len(grid_df) * 4) if (grid_df is not None and grid_is_real) else 0
+    def has(df, col):
+        return df is not None and col in df.columns
 
     return KpiSummary(
         ev_count=int(ev_df["ev_id"].nunique()) if not ev_df.empty else 0,
-        ev_model_count=int(ev_df["vehicle_model"].nunique()) if "vehicle_model" in ev_df.columns else 0,
-        charger_count=int(charger_df["charger_id"].nunique()) if "charger_id" in charger_df.columns else 0,
-        operator_count=int(charger_df["operator_id"].nunique()) if "operator_id" in charger_df.columns else None,
-        a_sessions=a,
-        b_vehicle_days=b,
-        b_discharge_events=int(discharge_events),
-        internal_records=internal,
-        internal_target=TARGET_INTERNAL_RECORDS,
-        internal_design=DESIGN_INTERNAL_RECORDS,
-        external_records=external,
-        external_target=TARGET_EXTERNAL_RECORDS,
-        external_is_real=bool(grid_is_real),
+        ev_model_count=int(ev_df["vehicle_model"].nunique()) if has(ev_df, "vehicle_model") else 0,
+        charger_count=int(charger_df["charger_id"].nunique()) if has(charger_df, "charger_id") else 0,
+        charger_type_count=int(charger_df["charger_type"].nunique()) if has(charger_df, "charger_type") else None,
+        operator_count=int(charger_df["operator_id"].nunique()) if has(charger_df, "operator_id") else None,
+        by_year=by_year,
+        out_of_period_records=out,
+        scenario_records=count_charger_sessions(charger_df) + count_vehicle_days(ev_df),
+        public_reference_records=public_ref,
+        is_real=bool(is_real),
+        targets=plan_targets(),
     )
