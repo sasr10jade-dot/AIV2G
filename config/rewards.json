@@ -1,0 +1,7 @@
+{
+  "_comment": "상품권 교환 설정 — 협의 전 예시값(verified=false). redeem_enabled=false로 두면 교환 신청을 받지 않는다. 문화상품권 지급은 사업계획서의 \"실금 정산 아님\" 문구와 충돌할 수 있어 지자체·사업 담당 협의와 세금(원천징수) 확인이 필요하다.",
+  "verified": false,
+  "redeem_enabled": true,
+  "threshold_points": 1000,
+  "label": "문화상품권"
+}

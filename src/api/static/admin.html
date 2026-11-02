@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>웹앱 관리 · AI-V2G 실증 대시보드</title>
+<script>
+(function () {
+  var t;
+  try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+})();
+</script>
+<style>
+  :root {
+    --surface-page: #f9f9f7; --surface-card: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --text-muted: #898781; --border: rgba(11, 11, 11, 0.10); --teal: #00897B; --bad: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    --surface-page: #0d0d0d; --surface-card: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+    --text-muted: #898781; --border: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-page); color: var(--text-primary);
+         font-family: -apple-system, "Malgun Gothic", "Segoe UI", sans-serif; padding: 24px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  a.nav, button { border: 1px solid var(--border); background: var(--surface-card); color: var(--text-primary);
+                  border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; text-decoration: none; }
+  button.ok { background: var(--teal); border-color: var(--teal); color: #fff; }
+  button.no { color: var(--bad); }
+  button:disabled { opacity: .5; cursor: default; }
+  .links { display: flex; gap: 8px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-page); }
+  .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; }
+  .row { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 180px; }
+  .name { font-weight: 600; }
+  .muted { font-size: 12.5px; color: var(--text-muted); }
+  label.f { display: block; font-size: 12px; color: var(--text-secondary); margin: 10px 0 4px; }
+  input[type=text], textarea { width: 100%; background: var(--surface-page); border: 1px solid var(--border); border-radius: 6px;
+                               color: var(--text-primary); padding: 8px 10px; font-size: 13px; font-family: inherit; }
+  textarea { min-height: 90px; resize: vertical; }
+  .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); }
+  .tag.on { color: var(--teal); } .tag.off { color: var(--text-muted); } .tag.bad { color: var(--bad); }
+  .empty { padding: 36px; text-align: center; color: var(--text-muted); }
+  .msg { font-size: 13px; min-height: 20px; margin-bottom: 10px; }
+  .msg.err { color: var(--bad); }
+  .body-text { white-space: pre-wrap; font-size: 13.5px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>웹앱 관리</h1>
+      <div class="sub">모바일 앱(내 차)에 보이는 공지사항·문구와 상품권 교환을 관리합니다.</div>
+    </div>
+    <div class="links"><a class="nav" href="/approvals">가입 승인</a><a class="nav" href="/dashboard">← 대시보드</a></div>
+  </header>
+  <div class="tabs" role="group" aria-label="메뉴">
+    <button type="button" data-tab="notices" aria-pressed="true">공지사항</button>
+    <button type="button" data-tab="redeem" aria-pressed="false">상품권 교환 <span id="redeemCount"></span></button>
+    <button type="button" data-tab="content" aria-pressed="false">앱 문구(미션 안내)</button>
+    <button type="button" data-tab="kpi" aria-pressed="false">AI 운영 지표</button>
+  </div>
+  <div id="msg" class="msg" role="status"></div>
+  <div id="panel"></div>
+</div>
+<script>
+(function () {
+  var panel = document.getElementById('panel'), msgEl = document.getElementById('msg');
+  var tab = 'notices', busy = false, editing = null;
+
+  async function api(path, opts) {
+    var res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}));
+    var body = null;
+    try { body = await res.json(); } catch (e) { body = null; }
+    return { ok: res.ok, status: res.status, body: body };
+  }
+  function el(tag, props, children) {
+    var n = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = props[k];
+      else if (k === 'class') n.className = props[k];
+      else n.setAttribute(k, props[k]);
+    });
+    (children || []).forEach(function (c) { n.appendChild(c); });
+    return n;
+  }
+  function say(t, err) { msgEl.textContent = t || ''; msgEl.className = 'msg' + (err ? ' err' : ''); }
+  function detail(r, fb) { var d = r.body && r.body.detail; return (typeof d === 'string' && d) || (Array.isArray(d) && d[0] && d[0].msg) || fb; }
+  function fmt(iso) { try { return new Date(iso).toLocaleString('ko-KR', { hour12: false }); } catch (e) { return iso || ''; } }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  async function act(btn, fn, doneText) {
+    if (busy) return;
+    busy = true; btn.disabled = true; say('');
+    try {
+      var r = await fn();
+      if (!r.ok) { say(detail(r, '처리에 실패했습니다.'), true); return; }
+      say(doneText, false);
+      await render();
+    } catch (e) { say('네트워크 오류입니다.', true); }
+    finally { busy = false; btn.disabled = false; }
+  }
+  function send(method, path, body) { return api(path, { method: method, body: body ? JSON.stringify(body) : undefined }); }
+
+  // ---------------------------------------------------------------- 공지사항
+  async function renderNotices() {
+    var r = await api('/admin/notices');
+    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
+    var title = el('input', { type: 'text', id: 'nt', maxlength: '80', placeholder: '제목(80자 이하)' });
+    var body = el('textarea', { id: 'nb', maxlength: '2000', placeholder: '내용(2,000자 이하)' });
+    var tEn = el('input', { type: 'text', id: 'nte', maxlength: '80', placeholder: 'English title (optional)' });
+    var bEn = el('textarea', { id: 'nbe', maxlength: '2000', placeholder: 'English body (optional — title and body together)' });
+    var pinned = el('input', { type: 'checkbox', id: 'np' }), pub = el('input', { type: 'checkbox', id: 'nu' });
+    pub.checked = true;
+    if (editing) { title.value = editing.title; body.value = editing.body; tEn.value = editing.title_en || ''; bEn.value = editing.body_en || ''; pinned.checked = editing.pinned; pub.checked = editing.published; }
+    var save = el('button', { type: 'button', class: 'ok', text: editing ? '수정 저장' : '공지 등록' });
+    save.addEventListener('click', function () {
+      var payload = { title: title.value, body: body.value, title_en: tEn.value, body_en: bEn.value, pinned: pinned.checked, published: pub.checked };
+      var wasEditing = editing;
+      act(save, async function () {
+        var res = await (wasEditing ? send('PUT', '/admin/notices/' + wasEditing.id, payload) : send('POST', '/admin/notices', payload));
+        if (res.ok) editing = null;   // 성공했을 때만 편집 상태를 끝낸다(실패하면 입력을 유지)
+        return res;
+      }, wasEditing ? '공지를 수정했습니다.' : '공지를 등록했습니다.');
+    });
+    var cancel = el('button', { type: 'button', text: '취소' });
+    cancel.addEventListener('click', function () { editing = null; render(); });
+    panel.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'name', text: editing ? '공지 수정' : '새 공지' }),
+      el('label', { class: 'f', for: 'nt', text: '제목' }), title,
+      el('label', { class: 'f', for: 'nb', text: '내용' }), body,
+      el('label', { class: 'f', for: 'nte', text: '영어 제목·내용(선택) — 영어 앱에서 보입니다' }), tEn, bEn,
+      el('div', { class: 'row', style: 'margin-top:10px' }, [
+        el('label', { class: 'muted' }, [pinned, document.createTextNode(' 맨 위에 고정')]),
+        el('label', { class: 'muted' }, [pub, document.createTextNode(' 앱에 공개')]),
+        el('span', { class: 'grow' }), editing ? cancel : el('span', {}), save]),
+    ]));
+    if (!r.body.notices.length) { panel.appendChild(el('div', { class: 'empty', text: '등록된 공지가 없습니다.' })); return; }
+    r.body.notices.forEach(function (n) {
+      var edit = el('button', { type: 'button', text: '수정' });
+      edit.addEventListener('click', function () { editing = n; render(); window.scrollTo(0, 0); });
+      var toggle = el('button', { type: 'button', text: n.published ? '비공개로' : '공개로' });
+      toggle.addEventListener('click', function () { act(toggle, function () { return send('PUT', '/admin/notices/' + n.id, { title: n.title, body: n.body, title_en: n.title_en, body_en: n.body_en, pinned: n.pinned, published: !n.published }); }, '변경했습니다.'); });
+      var del = el('button', { type: 'button', class: 'no', text: '삭제' });
+      del.addEventListener('click', function () {
+        if (del.dataset.arm !== '1') { del.dataset.arm = '1'; del.textContent = '한 번 더 누르면 삭제'; return; }
+        act(del, function () { return send('DELETE', '/admin/notices/' + n.id); }, '삭제했습니다.');
+      });
+      panel.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'name grow', text: n.title }),
+          n.title_en ? el('span', { class: 'tag off', text: 'EN' }) : el('span', {}),
+          n.pinned ? el('span', { class: 'tag on', text: '고정' }) : el('span', {}),
+          el('span', { class: 'tag ' + (n.published ? 'on' : 'off'), text: n.published ? '공개' : '비공개' }),
+          el('span', { class: 'muted', text: fmt(n.updated_at) + ' · ' + (n.created_by || '') })]),
+        el('div', { class: 'body-text', text: n.body }),
+        el('div', { class: 'row', style: 'margin-top:10px' }, [edit, toggle, del]),
+      ]));
+    });
+  }
+
+  // ---------------------------------------------------------------- 상품권 교환
+  async function renderRedeem() {
+    var r = await api('/admin/redemptions');
+    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
+    var cfg = r.body.config, list = r.body.redemptions;
+    var pending = list.filter(function (x) { return x.status === 'requested'; });
+    document.getElementById('redeemCount').textContent = pending.length ? '(' + pending.length + ')' : '';
+    panel.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'name', text: '교환 기준' }),
+      el('div', { class: 'muted', text: cfg.label + ' · ' + Number(cfg.threshold_points).toLocaleString('ko-KR') + '포인트 · ' + (cfg.redeem_enabled ? '신청 받는 중' : '신청 중지') +
+        ' — 기준·중지는 config/rewards.json에서 바꿉니다(협의 전 예시값).' })]));
+    if (!list.length) { panel.appendChild(el('div', { class: 'empty', text: '교환 신청이 없습니다.' })); return; }
+    list.forEach(function (x) {
+      var acts = el('div', { class: 'row', style: 'margin-top:10px' });
+      if (x.status === 'requested') {
+        var code = el('input', { type: 'text', class: 'grow', placeholder: '상품권 코드 입력', 'aria-label': '상품권 코드', maxlength: '200', autocomplete: 'off' });
+        var lab = el('input', { type: 'text', placeholder: cfg.label, 'aria-label': '상품권 이름', maxlength: '40', style: 'width:140px' });
+        var ok = el('button', { type: 'button', class: 'ok', text: '코드 등록' });
+        ok.addEventListener('click', function () {
+          if (!code.value.trim()) { say('상품권 코드를 입력하세요.', true); code.focus(); return; }
+          act(ok, function () { return send('POST', '/admin/redemptions/' + x.id + '/fulfill', { code: code.value, label: lab.value || null }); }, '코드를 등록했습니다. 이용자 쿠폰함에 나타납니다.');
+        });
+        var reason = el('input', { type: 'text', placeholder: '반려 사유', 'aria-label': '반려 사유', maxlength: '200', style: 'width:160px' });
+        var no = el('button', { type: 'button', class: 'no', text: '반려' });
+        no.addEventListener('click', function () {
+          if (reason.value.trim().length < 2) { say('반려 사유를 2자 이상 입력하세요.', true); reason.focus(); return; }
+          act(no, function () { return send('POST', '/admin/redemptions/' + x.id + '/reject', { reason: reason.value }); }, '반려했습니다. 포인트는 돌려줍니다.');
+        });
+        [code, lab, ok, reason, no].forEach(function (n) { acts.appendChild(n); });
+      } else {
+        acts.appendChild(el('span', { class: 'tag ' + (x.status === 'fulfilled' ? 'on' : 'bad'), text: x.status === 'fulfilled' ? '발급됨' : '반려됨' }));
+        acts.appendChild(el('span', { class: 'muted', text: (x.handled_by || '') + ' · ' + fmt(x.handled_at) + (x.reason ? ' · ' + x.reason : '') }));
+      }
+      panel.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'name grow', text: '신청 #' + x.id + ' · 차량 ' + x.ev_id }),
+          el('span', { class: 'muted', text: Number(x.points).toLocaleString('ko-KR') + 'P · ' + fmt(x.requested_at) })]),
+        acts]));
+    });
+  }
+
+  // ---------------------------------------------------------------- 앱 문구
+  async function renderContent() {
+    var r = await api('/admin/app-content');
+    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'muted', text: '비워 두면 앱 기본 문구를 씁니다. 저장하면 이용자 앱에 바로 반영됩니다(다시 열 때). 한국어·영어 중 하나만 적으면 그 언어만 바뀝니다.' })]));
+    Object.keys(r.body.editable).forEach(function (key) {
+      var cur = r.body.overrides[key] || {};
+      var ko = el('textarea', { maxlength: '600', 'aria-label': r.body.editable[key] + ' 한국어', placeholder: '(앱 기본 문구 사용)' });
+      var en = el('textarea', { maxlength: '600', 'aria-label': r.body.editable[key] + ' 영어', placeholder: '(use app default)' });
+      ko.value = cur.ko || ''; en.value = cur.en || '';
+      var save = el('button', { type: 'button', class: 'ok', text: '저장' });
+      save.addEventListener('click', function () { act(save, function () { return send('PUT', '/admin/app-content/' + key, { ko: ko.value, en: en.value }); }, '저장했습니다.'); });
+      var reset = el('button', { type: 'button', text: '기본값으로' });
+      reset.addEventListener('click', function () { act(reset, function () { return send('DELETE', '/admin/app-content/' + key); }, '기본 문구로 되돌렸습니다.'); });
+      panel.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'name grow', text: r.body.editable[key] }), cur.ko || cur.en ? el('span', { class: 'tag on', text: '수정됨' }) : el('span', { class: 'tag off', text: '기본' })]),
+        el('label', { class: 'f', text: '한국어' }), ko, el('label', { class: 'f', text: 'English' }), en,
+        el('div', { class: 'row', style: 'margin-top:10px' }, [save, reset])]));
+    });
+  }
+
+  // ---------------------------------------------------------------- AI 운영 지표(감사로그·동의 이력 집계)
+  function pct(v) { return v == null ? '-' : (Math.round(v * 1000) / 10) + '%'; }
+  function stat(label, value, sub) {
+    return el('div', { class: 'card', style: 'flex:1; min-width:200px; margin:0' }, [
+      el('div', { class: 'muted', text: label }), el('div', { class: 'name', style: 'font-size:26px; margin:6px 0', text: String(value) }), el('div', { class: 'muted', text: sub || '' })]);
+  }
+  async function renderKpi() {
+    var r = await api('/advisory/ai-ops-kpi');
+    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
+    var k = r.body, rec = k.recommendations, v2g = k.v2g_participation;
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'muted', text: k.note })]));
+    panel.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' }, [
+      stat('충전 안내 발급', rec.issued + '건', '이용자가 안내를 받은 횟수'),
+      stat('안전 검증 통과율', pct(rec.safety_pass_rate), '실패 시 방전 없는 계획으로 복귀 ' + rec.safety_fallback_count + '건'),
+      stat('추천 수용률', pct(rec.acceptance_rate), '응답 ' + (rec.accepted + rec.declined) + '건 중 추천대로 ' + rec.accepted + '건'),
+      stat('방전 추천 비율', pct(rec.v2g_recommended_rate), '방전 참여 중 안내 ' + pct(rec.participating_rate))]));
+    panel.appendChild(el('div', { class: 'row' }, [
+      stat('방전 참여 동의', v2g.granted_total + '건', '현재 유지 ' + v2g.active + '건 · 철회 ' + v2g.withdrawn + '건'),
+      stat('방전 참여 철회율', pct(v2g.withdrawal_rate), '철회 ÷ 동의'),
+      stat('EV Bot 호출', k.ev_bot.calls + '회', '질문·답변 본문은 저장하지 않음')]));
+    var failed = Object.keys(rec.failed_checks || {});
+    if (failed.length) panel.appendChild(el('div', { class: 'card', style: 'margin-top:10px' }, [el('div', { class: 'name', text: '실패한 안전 검증 항목' }),
+      el('div', { class: 'muted', text: failed.map(function (f) { return f + ' ' + rec.failed_checks[f] + '건'; }).join(' · ') })]));
+  }
+
+  async function render() {
+    clear(panel);
+    if (tab === 'notices') await renderNotices();
+    else if (tab === 'redeem') await renderRedeem();
+    else if (tab === 'kpi') await renderKpi();
+    else await renderContent();
+  }
+  document.querySelector('.tabs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-tab]');
+    if (!b) return;
+    tab = b.getAttribute('data-tab'); editing = null; say('');
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    render();
+  });
+  (async function boot() {
+    var me;
+    try { me = await api('/auth/me'); } catch (e) { me = null; }
+    if (!me || !me.ok) { location.href = '/login?next=/admin'; return; }
+    if (me.body.role === 'owner') { location.href = '/login?next=/admin&reason=owner'; return; }
+    render();
+    api('/admin/redemptions?status=requested').then(function (r) {
+      if (r.ok) { var n = r.body.redemptions.length; document.getElementById('redeemCount').textContent = n ? '(' + n + ')' : ''; }
+    });
+  })();
+})();
+</script>
+</body>
+</html>

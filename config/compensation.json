@@ -1,0 +1,24 @@
+{
+  "_comment": "V2G 방전 보상단가 시나리오(FR-P02). 국내에는 V2G 방전 보상 제도가 아직 없으므로 하나의 값으로 확정할 수 없다 — 시나리오로 두고 결과마다 어떤 시나리오인지 함께 표기한다. kind: zero(보상 없음) | grid_signal(grid_signal의 price_krw_per_kwh, 실데이터면 KPX SMP) | flat(rate 원/kWh 고정). apply_dr=true면 DR 이벤트 시간대에 심각도별 프리미엄을 보상단가에 곱한다.",
+  "compensations": {
+    "none": {
+      "label": "보상 없음(현행 제도)",
+      "kind": "zero",
+      "apply_dr": false,
+      "verified": true
+    },
+    "smp": {
+      "label": "SMP 연동(가정)",
+      "kind": "grid_signal",
+      "apply_dr": true,
+      "verified": false
+    },
+    "contract_example": {
+      "label": "고정 계약단가(예시)",
+      "kind": "flat",
+      "rate": 300,
+      "apply_dr": true,
+      "verified": false
+    }
+  }
+}

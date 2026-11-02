@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>개발용 진입 · AI-V2G</title>
+<script>
+(function () {
+  var t;
+  try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'light');
+})();
+</script>
+<style>
+  :root {
+    --bg: #ffffff; --card: #ffffff; --text: #0f1b3d; --muted: #6b7690; --blue: #2f5bff; --line: #dfe6ff;
+    --pastel-a: #e6edff; --pastel-b: #e3f6ee; --pastel-c: #fdeee3; --border: #e6e9f2;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1220; --card: #151a2e; --text: #eef1fb; --muted: #97a1bd; --blue: #8fb0ff; --line: #26305a;
+    --pastel-a: #1b2548; --pastel-b: #14302a; --pastel-c: #3a2a1e; --border: #242b45;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: 40px 20px 60px;
+         font-family: -apple-system, "Malgun Gothic", "Segoe UI", sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .08em; color: var(--blue);
+           background: var(--pastel-a); border-radius: 999px; padding: 5px 12px; }
+  h1 { font-size: 30px; margin: 14px 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { border: 1px solid var(--border); border-radius: 16px; padding: 22px; background: var(--card); display: flex; flex-direction: column; gap: 10px; }
+  .card.a { border-top: 6px solid var(--pastel-a); }
+  .card.b { border-top: 6px solid var(--pastel-b); }
+  .card.c { border-top: 6px solid var(--pastel-c); }
+  .card h2 { margin: 0; font-size: 20px; }
+  .card .path { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--blue); }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; flex: 1; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  a.btn, button.btn { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px;
+                      padding: 9px 14px; font-size: 14px; cursor: pointer; text-decoration: none; }
+  a.btn.primary, button.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  :root[data-theme="dark"] a.btn.primary, :root[data-theme="dark"] button.btn.primary { color: #0b1220; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0 18px; }
+  .more { display: flex; flex-wrap: wrap; gap: 8px 10px; }
+  .status { font-size: 13px; color: var(--muted); margin-top: 22px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9cedd; margin-right: 6px; }
+  .dot.ok { background: #2fb67c; } .dot.bad { background: #d9534f; }
+  .err { color: #d9534f; font-size: 13px; min-height: 18px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">DEV</span>
+  <h1>AI-V2G 개발용 진입</h1>
+  <p class="lead">모바일 앱, PC 대시보드, 어드민으로 바로 들어가는 개발용 페이지입니다. 간편 로그인은 서버에 개발용 계정이 설정된 경우에만 나타납니다.</p>
+
+  <div class="grid">
+    <section class="card a">
+      <h2>모바일</h2>
+      <div class="path">/app</div>
+      <p>차량 등록자용 모바일웹(PWA). 알림·충전 시간·예측·미션, EV Bot, 한국어/영어.</p>
+      <div class="actions">
+        <a class="btn primary" href="/app">열기</a>
+        <button class="btn" type="button" id="qOwner" hidden>간편 로그인으로 열기</button>
+      </div>
+    </section>
+    <section class="card b">
+      <h2>PC 대시보드</h2>
+      <div class="path">/dashboard</div>
+      <p>운영 대시보드. KPI, 최적화 비교, 예측, DR, 충전기 에뮬레이터, EV Bot, 이용 가이드.</p>
+      <div class="actions">
+        <a class="btn primary" href="/dashboard">열기</a>
+        <button class="btn" type="button" id="qAdmin" hidden>간편 로그인으로 열기</button>
+      </div>
+    </section>
+    <section class="card c">
+      <h2>어드민</h2>
+      <div class="path">/admin</div>
+      <p>웹앱 관리. 공지사항, 앱 문구(미션 안내), 상품권 교환·코드 등록. 가입 승인은 별도 화면입니다.</p>
+      <div class="actions">
+        <a class="btn primary" href="/admin">열기</a>
+        <button class="btn" type="button" id="qAdmin2" hidden>간편 로그인으로 열기</button>
+      </div>
+    </section>
+  </div>
+
+  <hr />
+  <div class="more">
+    <a class="btn" href="/approvals">가입 승인</a>
+    <a class="btn" href="/login">로그인</a>
+    <a class="btn" href="/docs" target="_blank" rel="noopener">API 문서</a>
+    <a class="btn" href="/privacy-policy" target="_blank" rel="noopener">개인정보 처리방침</a>
+    <a class="btn" href="/health" target="_blank" rel="noopener">상태 확인</a>
+  </div>
+  <div class="err" id="err" role="alert"></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="st">서버 확인 중…</span></div>
+  <div class="status" id="who" hidden>현재 로그인: <b id="whoName"></b> <button class="btn" type="button" id="logout" style="margin-left:8px; padding:4px 10px">로그아웃</button></div>
+</div>
+<script>
+(function () {
+  var err = document.getElementById('err');
+  async function api(path, opts) {
+    var res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}));
+    var body = null;
+    try { body = await res.json(); } catch (e) { body = null; }
+    return { ok: res.ok, body: body };
+  }
+  async function quick(role, dest, btn) {
+    err.textContent = ''; btn.disabled = true;
+    try {
+      var r = await api('/auth/quick-login', { method: 'POST', body: JSON.stringify({ role: role }) });
+      if (r.ok) { location.href = dest; return; }
+      err.textContent = (r.body && typeof r.body.detail === 'string' && r.body.detail) || '간편 로그인에 실패했습니다.';
+    } catch (e) { err.textContent = '네트워크 오류입니다.'; }
+    btn.disabled = false;
+  }
+  var ROLE_LABEL = { owner: '이용자', admin: '관리자', super_admin: '최고관리자' };
+  async function showWho() {
+    try {
+      var me = await api('/auth/me');
+      var box = document.getElementById('who');
+      if (me.ok && me.body && me.body.username) {
+        document.getElementById('whoName').textContent = me.body.username + ' (' + (ROLE_LABEL[me.body.role] || me.body.role) + ')';
+        box.hidden = false;
+      } else { box.hidden = true; }
+    } catch (e) { /* 상태를 못 읽어도 링크는 쓸 수 있다 */ }
+  }
+  document.getElementById('logout').addEventListener('click', async function () {
+    await api('/auth/logout', { method: 'POST' });
+    showWho();
+  });
+  (async function () {
+    showWho();
+    try {
+      var h = await api('/health');
+      document.getElementById('dot').className = 'dot ' + (h.ok ? 'ok' : 'bad');
+      document.getElementById('st').textContent = h.ok ? '서버 정상' : '서버 응답 이상';
+    } catch (e) {
+      document.getElementById('dot').className = 'dot bad';
+      document.getElementById('st').textContent = '서버에 연결할 수 없습니다';
+    }
+    try {
+      var a = await api('/auth/quick-login/available');
+      if (a.ok && a.body) {
+        var map = [['qOwner', a.body.owner, 'owner', '/app'], ['qAdmin', a.body.admin, 'admin', '/dashboard'], ['qAdmin2', a.body.admin, 'admin', '/admin']];
+        map.forEach(function (m) {
+          if (!m[1]) return;
+          var b = document.getElementById(m[0]); b.hidden = false;
+          b.addEventListener('click', function () { quick(m[2], m[3], b); });
+        });
+      }
+    } catch (e) { /* 간편 로그인 정보를 못 읽어도 링크는 쓸 수 있다 */ }
+  })();
+})();
+</script>
+</body>
+</html>

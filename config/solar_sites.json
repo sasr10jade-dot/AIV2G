@@ -1,0 +1,30 @@
+{
+  "_comment": "태양광 연계 충전소 에뮬레이션 사이트(FR-S01). 나주 태양광 발전 지역에 태양광 전용 충전기를 설치했다고 '가정'한 모델이며, 아래 설비 용량·충전기 수·성능비·단가·수요 패턴은 모두 임의 가정값(verified=false)이다 — 실제 설비 제원·계통 계약·측정값으로 교체하기 전에는 결과를 '가정값(모의)'으로 표기한다. lat/lon은 나주시청 부근 근사 좌표. pv.performance_ratio는 인버터·배선·오염 손실 포함, poa_gain은 경사 설치로 수평면 일사량보다 얻는 이득의 연평균 근사.",
+  "sites": {
+    "naju_solar_ev": {
+      "label": "나주 태양광 연계 충전소(가정)",
+      "verified": false,
+      "lat": 35.0158,
+      "lon": 126.7108,
+      "tz_offset_h": 9,
+      "pv": {
+        "kwp": 100.0,
+        "performance_ratio": 0.80,
+        "temp_coeff_per_c": -0.004,
+        "poa_gain": 1.08
+      },
+      "chargers": {"count": 10, "kw": 7.0},
+      "grid_import_limit_kw": 100.0,
+      "tariff_id": "kepco_ev_example",
+      "pv_price_krw_per_kwh": 100.0,
+      "demand": {
+        "sessions_weekday": 24,
+        "sessions_weekend": 14,
+        "mean_kwh": 14.0,
+        "sd_kwh": 6.0,
+        "min_kwh": 3.0,
+        "max_kwh": 40.0
+      }
+    }
+  }
+}

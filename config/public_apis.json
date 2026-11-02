@@ -1,0 +1,24 @@
+{
+  "_comment": "공공데이터 API 연동 설정. 요청 주소·파라미터·응답 필드는 공공데이터포털 '활용신청' 후 받는 명세(참고문서)로 확인해 채운다 — 공개 페이지에는 없어 확인되지 않은 값은 null/추정으로 두고 spec_verified=false로 표시한다. endpoint가 null이면 호출하지 않고 '명세 확인 필요'를 알려 준다. 인증키는 이 파일에 쓰지 않고 key_env에 적힌 환경변수(.env)로만 읽는다.",
+  "apis": {
+    "kpx_solar_regional": {
+      "label": "한국전력거래소 지역별 시간별 태양광 발전량 정보",
+      "dataset_url": "https://www.data.go.kr/data/15103243/openapi.do",
+      "provider": "한국전력거래소",
+      "format": "json",
+      "granularity": "광역시·도(시·군 단위 아님) — 나주가 아니라 전남 전체",
+      "unit": "MWh",
+      "coverage_note": "전력시장에 등록된 태양광 사업자의 발전량. 소규모 자가·개인 설비는 빠졌을 수 있음(확인 필요)",
+      "traffic": "개발계정 100회/일(공식 페이지 기준), 운영 단계는 심사 후 증량",
+      "key_env": "KPX_SERVICE_KEY",
+      "endpoint": null,
+      "params": {"key": "serviceKey", "date": "date", "page": "pageNo", "rows": "numOfRows", "format": "dataType"},
+      "items_path": ["response", "body", "items", "item"],
+      "code_path": ["response", "header", "resultCode"],
+      "ok_codes": ["00"],
+      "fields": {"date": "date", "hour": "hour", "region": "region", "mwh": "mwh"},
+      "hour_base": 1,
+      "spec_verified": false
+    }
+  }
+}

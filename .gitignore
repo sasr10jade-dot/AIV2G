@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+data/
+output/
+.venv/
+.pytest_cache/
+.env
+
+# 실차 OBD 원본(차량번호 포함, 대용량) — 버전관리 제외
+OBDData/
+# Office 임시 잠금 파일, 수동 백업 폴더(git 이력으로 대체)
+~$*
+Report/_backup_*/

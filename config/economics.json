@@ -1,0 +1,11 @@
+{
+  "_comment": "수익 계산 가정값. verified=false인 동안 모든 금액은 '가정값'으로 표기한다. degradation_krw_per_kwh를 직접 넣거나, 비워 두고 pack_cost_krw_per_kwh/cycle_life/usable_dod로 산정한다(팩단가/(사이클x DoD)). 아래 값은 근거 확정 전 예시다.",
+  "charge_efficiency": 0.92,
+  "discharge_efficiency": 0.92,
+  "degradation_krw_per_kwh": null,
+  "pack_cost_krw_per_kwh": 140000,
+  "cycle_life": 3000,
+  "usable_dod": 1.0,
+  "max_discharge_events_per_day": 2,
+  "verified": false
+}

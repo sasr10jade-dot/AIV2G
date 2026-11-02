@@ -1,0 +1,31 @@
+{
+  "_comment": "OBD 파일명의 번호판 → 플랫폼 차량 매핑. 신규 실증 차량은 여기에 추가한다. vehicle_model은 src/datagen/ev.py의 VEHICLE_MODELS 키여야 한다. active=false면 일일 도착 대조표(미도착 알림)에서 제외한다.",
+  "43오3450": {
+    "ev_id": "EV-TORRES-01",
+    "vehicle_model": "차종B(SUV)",
+    "zone": 1,
+    "active": true,
+    "_note": "토레스 EVX — 차종 매핑은 업체 확인 후 확정"
+  },
+  "05하6942": {
+    "ev_id": "EV-TORRES-02",
+    "vehicle_model": "차종B(SUV)",
+    "zone": 1,
+    "active": true,
+    "_note": "토레스 EVX — 2026-10-02 실증 차량 등록. 차종·구역 매핑은 업체 확인 후 확정"
+  },
+  "05하6943": {
+    "ev_id": "EV-TORRES-03",
+    "vehicle_model": "차종B(SUV)",
+    "zone": 1,
+    "active": true,
+    "_note": "토레스 EVX — 2026-10-02 실증 차량 등록. 차종·구역 매핑은 업체 확인 후 확정"
+  },
+  "05하7584": {
+    "ev_id": "EV-TORRES-04",
+    "vehicle_model": "차종B(SUV)",
+    "zone": 1,
+    "active": true,
+    "_note": "토레스 EVX — 2026-10-02 실증 차량 등록. 차종·구역 매핑은 업체 확인 후 확정"
+  }
+}

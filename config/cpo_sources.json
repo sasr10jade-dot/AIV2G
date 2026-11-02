@@ -1,0 +1,16 @@
+{
+  "_comment": "충전사업자(CPO) 연계 설정. 사업자·연계 방식이 확정되면 enabled를 true로 바꾼다. type: csv(파일 전달) | mock(검증용). csv는 column_map에 {표준컬럼: 사업자 CSV 컬럼명}을 적는다. 표준컬럼: session_id, charger_id, start_ts, duration_h, energy_kwh, (선택) zone, ev_id. energy_unit은 kwh 또는 wh.",
+  "sources": [
+    {
+      "operator_id": "CPO-A",
+      "type": "csv",
+      "enabled": false,
+      "path": "data/cpo/cpo_a.csv",
+      "column_map": {"session_id": "txn_id", "charger_id": "charger_id", "start_ts": "start_time", "duration_h": "duration_h", "energy_kwh": "energy_kwh"},
+      "time_format": null,
+      "energy_unit": "kwh",
+      "_note": "협의 중 — 실제 컬럼명은 사업자 샘플 수령 후 확정"
+    },
+    {"operator_id": "CPO-B", "type": "mock", "enabled": false, "n_chargers": 5, "days": 7, "seed": 1}
+  ]
+}

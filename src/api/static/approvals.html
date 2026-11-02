@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>가입 승인 · AI-V2G 실증 대시보드</title>
+<script>
+(function () {
+  var t;
+  try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+})();
+</script>
+<style>
+  :root {
+    --surface-page: #f9f9f7; --surface-card: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --text-muted: #898781; --border: rgba(11, 11, 11, 0.10); --teal: #00897B; --bad: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    --surface-page: #0d0d0d; --surface-card: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+    --text-muted: #898781; --border: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-page); color: var(--text-primary);
+         font-family: -apple-system, "Malgun Gothic", "Segoe UI", sans-serif; padding: 24px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  a.back, button { border: 1px solid var(--border); background: var(--surface-card); color: var(--text-primary);
+                   border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; text-decoration: none; }
+  button.ok { background: var(--teal); border-color: var(--teal); color: #fff; }
+  button.no { color: var(--bad); }
+  button:disabled { opacity: .5; cursor: default; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-page); }
+  .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px;
+          display: grid; grid-template-columns: 1.1fr 1.6fr 1.3fr auto; gap: 8px 18px; align-items: center; }
+  .name { font-weight: 600; }
+  .muted { font-size: 12.5px; color: var(--text-muted); }
+  .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  input { background: var(--surface-page); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);
+          padding: 7px 10px; font-size: 13px; width: 150px; }
+  .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); }
+  .tag.approved { color: var(--teal); } .tag.rejected { color: var(--bad); }
+  .empty { padding: 40px; text-align: center; color: var(--text-muted); }
+  .msg { font-size: 13px; min-height: 20px; margin-bottom: 10px; }
+  .msg.err { color: var(--bad); }
+  @media (max-width: 800px) { .card { grid-template-columns: 1fr; } .acts { justify-content: flex-start; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>모바일 가입 승인</h1>
+      <div class="sub">승인하면 가입자 계정에 차량이 연결되어 모바일에서 알림·충전 안내가 열립니다. 번호판은 가려서 보입니다.</div>
+    </div>
+    <a class="back" href="/dashboard">← 대시보드</a>
+  </header>
+  <div class="tabs" role="group" aria-label="상태">
+    <button type="button" data-status="pending" aria-pressed="true">승인 대기 <span id="pendingCount"></span></button>
+    <button type="button" data-status="" aria-pressed="false">전체</button>
+  </div>
+  <div id="msg" class="msg" role="status"></div>
+  <div id="list"></div>
+</div>
+<script>
+(function () {
+  var listEl = document.getElementById('list');
+  var msgEl = document.getElementById('msg');
+  var status = 'pending';
+  var busy = false;
+
+  async function api(path, opts) {
+    var res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}));
+    var body = null;
+    try { body = await res.json(); } catch (e) { body = null; }
+    return { ok: res.ok, status: res.status, body: body };
+  }
+  function el(tag, props, children) {
+    var n = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = props[k];
+      else if (k === 'class') n.className = props[k];
+      else n.setAttribute(k, props[k]);
+    });
+    (children || []).forEach(function (c) { n.appendChild(c); });
+    return n;
+  }
+  function say(text, isErr) { msgEl.textContent = text || ''; msgEl.className = 'msg' + (isErr ? ' err' : ''); }
+  function detail(r, fallback) {
+    var d = r.body && r.body.detail;
+    return (typeof d === 'string' && d) || (Array.isArray(d) && d[0] && d[0].msg) || fallback;
+  }
+  function fmt(iso) { try { return new Date(iso).toLocaleString('ko-KR', { hour12: false }); } catch (e) { return iso || ''; } }
+
+  function row(r) {
+    var tag = r.status === 'pending' ? null : el('span', { class: 'tag ' + r.status, text: r.status === 'approved' ? '승인됨 · ' + (r.ev_id || '') : '반려됨' });
+    var acts = el('div', { class: 'acts' });
+    if (r.status === 'pending') {
+      var ev = el('input', { type: 'text', placeholder: '차량 ID(비우면 자동)', 'aria-label': '연결할 차량 ID', maxlength: '40' });
+      var approve = el('button', { type: 'button', class: 'ok', text: '승인' });
+      var reason = el('input', { type: 'text', placeholder: '반려 사유', 'aria-label': '반려 사유', maxlength: '200' });
+      var reject = el('button', { type: 'button', class: 'no', text: '반려' });
+      approve.addEventListener('click', function () { act(approve, '/registrations/' + encodeURIComponent(r.registration_id) + '/approve',
+        { ev_id: ev.value.trim() || null }, r.username + ' 승인 완료'); });
+      reject.addEventListener('click', function () {
+        if (reason.value.trim().length < 2) { say('반려 사유를 2자 이상 입력하세요.', true); reason.focus(); return; }
+        act(reject, '/registrations/' + encodeURIComponent(r.registration_id) + '/reject', { reason: reason.value.trim() }, r.username + ' 반려 완료');
+      });
+      acts.appendChild(ev); acts.appendChild(approve); acts.appendChild(reason); acts.appendChild(reject);
+    } else {
+      acts.appendChild(tag);
+      if (r.reject_reason) acts.appendChild(el('span', { class: 'muted', text: r.reject_reason }));
+    }
+    return el('div', { class: 'card' }, [
+      el('div', {}, [el('div', { class: 'name', text: r.username }), el('div', { class: 'muted', text: fmt(r.created_at) })]),
+      el('div', {}, [el('div', { text: (r.vehicle_label || r.vehicle_model) + ' · ' + r.plate }),
+                     el('div', { class: 'muted', text: (r.occupation_label || '') + ' · ' + (r.region || '') })]),
+      el('div', { class: 'muted', text: r.status === 'pending' ? '승인 대기' : (r.reviewed_by ? '처리 ' + r.reviewed_by + ' · ' + fmt(r.reviewed_at) : '') }),
+      acts,
+    ]);
+  }
+
+  async function act(btn, path, payload, doneText) {
+    if (busy) return;
+    busy = true; btn.disabled = true; say('');
+    try {
+      var r = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+      if (!r.ok) { say(detail(r, '처리에 실패했습니다.'), true); return; }
+      say(doneText, false);
+      await load(true);
+    } catch (e) { say('네트워크 오류입니다.', true); }
+    finally { busy = false; btn.disabled = false; }
+  }
+
+  async function load(keepMsg) {
+    if (!keepMsg) say('');
+    var r;
+    try { r = await api('/registrations' + (status ? '?status=' + status : '')); } catch (e) { say('네트워크 오류입니다.', true); return; }
+    if (r.status === 401 || r.status === 403) { location.href = '/login?next=/approvals'; return; }
+    if (!r.ok) { say(detail(r, '목록을 불러오지 못했습니다.'), true); return; }
+    document.getElementById('pendingCount').textContent = r.body.pending_count ? '(' + r.body.pending_count + ')' : '';
+    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+    if (!r.body.registrations.length) listEl.appendChild(el('div', { class: 'empty', text: status ? '승인 대기 중인 신청이 없습니다.' : '신청 내역이 없습니다.' }));
+    r.body.registrations.forEach(function (x) { listEl.appendChild(row(x)); });
+  }
+
+  document.querySelector('.tabs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-status]');
+    if (!b) return;
+    status = b.getAttribute('data-status');
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    load();
+  });
+
+  (async function boot() {
+    var me;
+    try { me = await api('/auth/me'); } catch (e) { me = null; }
+    if (!me || !me.ok) { location.href = '/login?next=/approvals'; return; }
+    if (me.body.role === 'owner') { location.href = '/login?next=/approvals&reason=owner'; return; }
+    load();
+    setInterval(function () { if (!busy && document.visibilityState === 'visible' && !document.activeElement.matches('input')) load(true); }, 10000);
+  })();
+})();
+</script>
+</body>
+</html>

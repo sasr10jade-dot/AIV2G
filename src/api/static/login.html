@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>로그인 · AI-V2G 실증 대시보드</title>
+<script>
+(function () {
+  var t;
+  try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+  var l;
+  try { l = localStorage.getItem('ai-v2g-lang'); } catch (e) { l = null; }
+  document.documentElement.setAttribute('lang', (l === 'en') ? 'en' : 'ko');
+})();
+</script>
+<style>
+  :root {
+    --surface-page: #f9f9f7;
+    --surface-card: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11, 11, 11, 0.10);
+    --teal: #00897B;
+    --status-critical: #d03b3b;
+  }
+  :root[data-theme="dark"] {
+    --surface-page: #0d0d0d;
+    --surface-card: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --border: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: -apple-system, "Malgun Gothic", "Segoe UI", sans-serif;
+    padding: 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 28px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 24px; }
+  label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  input {
+    width: 100%;
+    background: var(--surface-page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 10px 12px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  button {
+    width: 100%;
+    border: none;
+    background: var(--teal);
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #info { font-size: 13px; color: var(--text-secondary); background: color-mix(in srgb, var(--teal) 10%, transparent); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; }
+  #error {
+    display: none;
+    color: var(--status-critical);
+    font-size: 12.5px;
+    margin-bottom: 14px;
+  }
+  .quick-login-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .quick-login-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .quick-login-btn:hover { background: color-mix(in srgb, var(--text-secondary) 8%, transparent); }
+  .quick-login-btn:disabled { opacity: 0.5; cursor: default; }
+  .divider-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; }
+  .divider-row .line { flex: 1; height: 1px; background: var(--border); }
+  .divider-row span { font-size: 11px; color: var(--text-muted); }
+  .top-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+  #lang-toggle {
+    width: 34px; height: 34px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+    padding: 0; font-size: 16px; border-radius: 6px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top-row"><button type="button" id="lang-toggle" aria-label="Language"></button></div>
+  <h1 data-i18n>AI-V2G 실증 대시보드</h1>
+  <div class="subtitle" data-i18n>로그인 후 이용할 수 있습니다</div>
+  <div id="info" hidden></div>
+  <div id="error"></div>
+  <div class="quick-login-row">
+    <button type="button" class="quick-login-btn" id="quick-super-admin" data-i18n>⚡ 최고관리자로 빠른 로그인</button>
+    <button type="button" class="quick-login-btn" id="quick-admin" data-i18n>⚡ 관리자로 빠른 로그인</button>
+    <button type="button" class="quick-login-btn" id="quick-owner" data-i18n>⚡ 이용자(모바일)로 빠른 로그인</button>
+  </div>
+  <div class="divider-row"><div class="line"></div><span data-i18n>또는 직접 입력</span><div class="line"></div></div>
+  <form id="login-form">
+    <label for="username" data-i18n>아이디</label>
+    <input type="text" id="username" autocomplete="username" required />
+    <label for="password" data-i18n>비밀번호</label>
+    <input type="password" id="password" autocomplete="current-password" required />
+    <button type="submit" id="submit-btn" data-i18n>로그인</button>
+  </form>
+</div>
+<script>
+let LANG = 'ko';
+try { LANG = (localStorage.getItem('ai-v2g-lang') === 'en') ? 'en' : 'ko'; } catch (e) { /* 프라이빗 모드 등 */ }
+document.documentElement.setAttribute('lang', LANG);
+
+const I18N_EN = {
+  'AI-V2G 실증 대시보드': 'AI-V2G Field Test Dashboard',
+  '로그인 후 이용할 수 있습니다': 'Please log in to continue',
+  '⚡ 최고관리자로 빠른 로그인': '⚡ Quick login as Super Admin',
+  '⚡ 관리자로 빠른 로그인': '⚡ Quick login as Admin',
+  '또는 직접 입력': 'or enter manually',
+  '아이디': 'Username',
+  '비밀번호': 'Password',
+  '로그인': 'Log in',
+  '로그인 중...': 'Logging in...',
+  '로그인 실패': 'Login failed',
+  '빠른 로그인 실패': 'Quick login failed',
+  '⚡ 이용자(모바일)로 빠른 로그인': '⚡ Quick login as User (mobile)',
+  '이용자 계정으로 로그인돼 있어요. 관리자 화면은 관리자 계정이 필요하니, 관리자 계정으로 로그인해 주세요.': 'You are signed in with a user account. This screen needs an administrator account — please sign in as an administrator.',
+};
+function t(ko) { return LANG === 'en' ? (I18N_EN[ko] ?? ko) : ko; }
+const ORIG_HTML = new WeakMap();
+function updateLangButton() {
+  const btn = document.getElementById('lang-toggle');
+  btn.textContent = LANG === 'en' ? '🇺🇸' : '🇰🇷';
+  btn.title = LANG === 'en' ? '한국어로 전환' : 'Switch to English';
+}
+function applyLangToStaticDom() {
+  updateLangButton();
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    if (!ORIG_HTML.has(el)) ORIG_HTML.set(el, el.innerHTML);
+    el.innerHTML = ORIG_HTML.get(el);
+  });
+  if (LANG === 'en') {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.textContent.trim();
+      if (I18N_EN[key] != null) el.innerHTML = I18N_EN[key];
+    });
+  }
+}
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  LANG = LANG === 'en' ? 'ko' : 'en';
+  try { localStorage.setItem('ai-v2g-lang', LANG); } catch (e) { /* 프라이빗 모드 등 */ }
+  document.documentElement.setAttribute('lang', LANG);
+  applyLangToStaticDom();
+});
+applyLangToStaticDom();
+
+const form = document.getElementById('login-form');
+const errBox = document.getElementById('error');
+// 이용자 계정으로 관리자 화면을 열었다면 왜 여기로 왔는지 알려 준다
+if (new URLSearchParams(location.search).get('reason') === 'owner') {
+  const info = document.getElementById('info');
+  info.textContent = t('이용자 계정으로 로그인돼 있어요. 관리자 화면은 관리자 계정이 필요하니, 관리자 계정으로 로그인해 주세요.');
+  info.hidden = false;
+}
+const submitBtn = document.getElementById('submit-btn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errBox.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = t('로그인 중...');
+  try {
+    const res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail || `${t('로그인 실패')} (${res.status})`);
+    }
+    const login = await res.json().catch(() => null);
+    // 차량 등록자(owner)는 운영 대시보드 권한이 없으므로 사용자 모바일웹으로 보낸다
+    window.location.href = login?.role === 'owner' ? '/app' : nextAfterLogin();
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = t('로그인');
+  }
+});
+
+// 로그인 뒤 돌아갈 곳 — 어드민·가입 승인에서 로그인 화면으로 왔다면 그 화면으로 돌려보낸다(허용 목록의 내부 경로만)
+function nextAfterLogin() {
+  const next = new URLSearchParams(location.search).get('next');
+  return ['/dashboard', '/admin', '/approvals'].includes(next) ? next : '/dashboard';
+}
+
+async function quickLogin(role, btn) {
+  errBox.style.display = 'none';
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = t('로그인 중...');
+  try {
+    const res = await fetch('/auth/quick-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail || `${t('빠른 로그인 실패')} (${res.status})`);
+    }
+    window.location.href = role === 'owner' ? '/app' : nextAfterLogin();   // 이용자는 모바일로
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+document.getElementById('quick-super-admin').addEventListener('click', (e) => quickLogin('super_admin', e.target));
+document.getElementById('quick-admin').addEventListener('click', (e) => quickLogin('admin', e.target));
+document.getElementById('quick-owner').addEventListener('click', (e) => quickLogin('owner', e.target));
+
+// 서버에 설정된 빠른 로그인만 보여 준다 — 설정이 없는 환경(외부 공개 서버 등)에서 눌러 봐야 오류만 나는 버튼을 숨긴다
+(async () => {
+  const row = document.querySelector('.quick-login-row');
+  const divider = document.querySelector('.divider-row');
+  try {
+    const res = await fetch('/auth/quick-login/available');
+    const avail = res.ok ? await res.json() : {};
+    const sup = document.getElementById('quick-super-admin');
+    const adm = document.getElementById('quick-admin');
+    const own = document.getElementById('quick-owner');
+    sup.hidden = !avail.super_admin;
+    adm.hidden = !avail.admin;
+    own.hidden = !avail.owner;
+    if (sup.hidden && adm.hidden && own.hidden) { row.hidden = true; if (divider) divider.hidden = true; }
+  } catch (e) {
+    row.hidden = true; if (divider) divider.hidden = true;   // 확인하지 못하면 숨기고 직접 입력만 쓰게 한다
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "_comment": "개인정보·접속기록 보유기간(일). verified=false인 동안은 법무 확인 전 값이다. access_log_days는 접속기록 법정 보관 기간(검색 결과에서 1년/2년이 엇갈려 안전하게 2년으로 둠 — 안전성 확보조치 기준 원문 확인 후 확정). rejected_registration_days는 반려된 가입 신청(암호화 번호판 포함)을 보관하는 기간으로, 재신청 문의 대응을 위한 짧은 값이다. 값을 줄이려면 법정 보관 기간보다 짧아지지 않는지 먼저 확인할 것.",
+  "access_log_days": 730,
+  "rejected_registration_days": 30,
+  "verified": false
+}

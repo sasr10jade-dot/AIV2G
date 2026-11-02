@@ -1,0 +1,19 @@
+{
+  "_comment": "가입 화면의 차종 선택지(FR 가입·페르소나). 배터리 용량(kWh)은 제조사 공개 제원을 수기 입력한 근사값이라 verified=false이며, 확정 전까지 화면·보고서에는 '가정값'으로 표기한다(데이터 정의 OD-11). v2g_capable은 계통으로 방전(V2G)이 가능한지 — 사업계획서 기준으로 실증에 쓸 수 있는 차량 중 계통 방전 가능 차량이 확인되지 않아 모두 false로 두었다(V2L은 별개). 차종별로 확인되면 true로 바꾼다. 'v2g_demo'는 방전 기능을 시연·검증하기 위한 가정 차종(demo=true)이며 실제 차량이 아니다. 차종을 추가·수정하려면 이 파일만 고친다.",
+  "verified": false,
+  "models": {
+    "ioniq5":   {"label": "현대 아이오닉 5",       "maker": "현대", "battery_kwh": 77.4, "v2g_capable": false},
+    "ioniq6":   {"label": "현대 아이오닉 6",       "maker": "현대", "battery_kwh": 77.4, "v2g_capable": false},
+    "kona_ev":  {"label": "현대 코나 일렉트릭",     "maker": "현대", "battery_kwh": 64.8, "v2g_capable": false},
+    "ev6":      {"label": "기아 EV6",              "maker": "기아", "battery_kwh": 77.4, "v2g_capable": false},
+    "ev9":      {"label": "기아 EV9",              "maker": "기아", "battery_kwh": 99.8, "v2g_capable": false},
+    "ev3":      {"label": "기아 EV3",              "maker": "기아", "battery_kwh": 81.4, "v2g_capable": false},
+    "niro_ev":  {"label": "기아 니로 EV",          "maker": "기아", "battery_kwh": 64.8, "v2g_capable": false},
+    "ray_ev":   {"label": "기아 레이 EV",          "maker": "기아", "battery_kwh": 35.2, "v2g_capable": false},
+    "torres_evx": {"label": "KGM 토레스 EVX",      "maker": "KGM", "battery_kwh": 73.4, "v2g_capable": false},
+    "tesla_m3": {"label": "테슬라 모델 3",          "maker": "테슬라", "battery_kwh": null, "v2g_capable": false},
+    "tesla_my": {"label": "테슬라 모델 Y",          "maker": "테슬라", "battery_kwh": null, "v2g_capable": false},
+    "v2g_demo": {"label": "V2G 시연 차량(가정)",     "maker": "시연", "battery_kwh": 77.4, "v2g_capable": true, "demo": true},
+    "other":    {"label": "기타(관리자가 확인)",     "maker": "기타", "battery_kwh": null, "v2g_capable": false}
+  }
+}
