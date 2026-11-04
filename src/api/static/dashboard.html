@@ -85,14 +85,14 @@
   }
 
   /* 헤더 버튼은 theme.css의 .ax-icon-btn 모양을 따른다 */
-  #refresh, #live-demo-toggle, #guide-btn, #theme-toggle, #lang-toggle, #account-mgmt-btn, #logout-btn {
+  #refresh, #live-demo-toggle, #guide-btn, #lang-toggle, #account-mgmt-btn, #logout-btn {
     min-width: 36px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border);
     background: var(--card); color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer;
   }
-  #refresh:hover, #live-demo-toggle:hover, #guide-btn:hover, #theme-toggle:hover, #lang-toggle:hover,
+  #refresh:hover, #live-demo-toggle:hover, #guide-btn:hover, #lang-toggle:hover,
   #account-mgmt-btn:hover, #logout-btn:hover { background: var(--surface-2); }
   #refresh:disabled { opacity: 0.5; cursor: default; }
-  #theme-toggle, #lang-toggle { padding: 0; width: 36px; }
+  #lang-toggle { padding: 0; width: 36px; }
   #live-demo-toggle.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
   #user-badge { font-size: 12px; color: var(--muted); }
   #updated { color: var(--muted); font-size: 12px; }
@@ -430,7 +430,7 @@
         <button id="refresh" data-i18n>새로고침</button>
         <button id="live-demo-toggle" data-i18n data-i18n-title title="5초마다 화면을 다시 불러옵니다 — 데이터는 전일 수집분의 익일 배치 기준이며 실시간 수집이 아닙니다">▶ 자동 새로고침</button>
         <button id="guide-btn" data-i18n>이용 가이드</button>
-        <button id="theme-toggle" aria-label="테마 전환" title="테마 전환">◐</button>
+        <button id="theme-toggle" class="ax-switch" type="button" role="switch" aria-checked="false" aria-label="다크 모드"><span class="ax-switch-track" aria-hidden="true"><span class="ax-switch-knob"></span></span><span class="ax-switch-label">다크 모드</span></button>
         <button id="lang-toggle" aria-label="Language"></button>
         <span id="user-badge"></span>
         <button id="account-mgmt-btn" hidden data-i18n>계정관리</button>
@@ -804,6 +804,8 @@
 </div>
 
 <script>
+// 차트 글자도 화면과 같은 글꼴(Noto Sans KR) — 차트는 CSS가 아니라 캔버스에 그리므로 따로 지정한다
+if (window.Chart) { Chart.defaults.font.family = "'Noto Sans KR', 'Noto Sans', 'Malgun Gothic', sans-serif"; }
 const COPPER = getComputedStyle(document.documentElement).getPropertyValue('--copper').trim() || '#D2691E';
 const TEAL = getComputedStyle(document.documentElement).getPropertyValue('--teal').trim() || '#00897B';
 
@@ -2255,8 +2257,9 @@ const THEME_KEY = 'ai-v2g-theme';
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   const btn = document.getElementById('theme-toggle');
-  btn.textContent = theme === 'dark' ? '☀︎' : '◐';
+  btn.setAttribute('aria-checked', String(theme === 'dark'));
   btn.title = theme === 'dark' ? t('일반모드로 전환') : t('다크모드로 전환');
+  btn.querySelector('.ax-switch-label').textContent = LANG === 'en' ? 'Dark mode' : '다크 모드';
 }
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';

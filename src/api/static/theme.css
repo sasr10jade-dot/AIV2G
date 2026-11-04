@@ -1,6 +1,6 @@
 /* AI-V2G 서비스 디자인 시스템 — 모든 화면(대시보드·관리·승인·로그인·진입·모바일·처리방침)이 공유하는 톤앤매너.
  *
- * 기준: AIV2GAPP(V2G 서포터즈 앱 B.O·F.O 시안) — Pretendard, 연한 블루그레이 바탕(#F3F6FB) + 블루(#1F5EDB)·네이비(#0F2A5C),
+ * 기준: AIV2GAPP(V2G 서포터즈 앱 B.O·F.O 시안) — 글꼴은 Noto Sans(한글 Noto Sans KR), 연한 블루그레이 바탕(#F3F6FB) + 블루(#1F5EDB)·네이비(#0F2A5C),
  * 그림자 없는 선 테두리 카드, 알약형 칩, 굵은 숫자.
  *   - 운영 화면(B.O: 대시보드·웹앱 관리·가입 승인·개발용 진입) : 왼쪽 네이비 메뉴 + 흰 카드(반경 14px)
  *   - 서포터즈 앱(F.O: /app, <body class="fo">) : 반경 20px 카드, 네이비 강조 카드, 아래 탭
@@ -9,7 +9,7 @@
  * 각 화면의 <style> 뒤에 불러오므로, 같은 이름의 변수·공통 클래스는 이 파일 값이 적용된다.
  * 예전 화면이 쓰던 변수 이름(--surface-page, --teal, --charge …)은 아래 '호환 이름'에서 새 값으로 연결한다.
  */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=Noto+Sans+Mono:wght@400;600&display=swap');
 
 :root {
   /* AIV2GAPP 원본 이름 */
@@ -23,8 +23,8 @@
   --ok: #1F5EDB; --good: #1E8E5A; --warn: #B7791F; --bad: #C62828;
   --actual: var(--navy);        /* 실측 계열(실선) */
   --inferred: #1F5EDB;          /* 예측·추론 계열(점선) */
-  --font: 'Pretendard', 'Pretendard Variable', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
-  --mono: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif;
+  --font: 'Noto Sans KR', 'Noto Sans', 'Malgun Gothic', system-ui, sans-serif;
+  --mono: 'Noto Sans Mono', 'Noto Sans KR', monospace;
   --side-w: 220px;
 }
 :root[data-theme="dark"] {
@@ -48,8 +48,9 @@
 
 /* ---- 기본 */
 html, body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
-button, input, select, textarea { font-family: inherit; }
-.mono, code, pre { font-family: var(--mono); }
+body *, button, input, select, textarea { font-family: inherit; }
+.mono, code, pre, .path { font-family: var(--mono); }
+svg text { font-family: var(--font); }
 
 /* ---- 공통 컴포넌트 */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: none; }
@@ -220,3 +221,15 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
     background: var(--bg); box-shadow: 0 10px 40px rgba(15, 42, 92, .18); }
   body.fo .tabs { border-radius: 0 0 28px 28px; }
 }
+
+/* ---- 일반/다크 모드 토글 스위치 — <button class="ax-switch" role="switch" aria-checked="true|false"> */
+.ax-switch { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 6px; cursor: pointer;
+  color: inherit; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ax-switch-track { position: relative; width: 44px; height: 24px; border-radius: 999px; background: var(--tint2); transition: background .2s; flex: none; }
+.ax-switch-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 27, 51, .3); transition: left .2s; display: grid; place-items: center; font-size: 11px; line-height: 1; color: #B7791F; }
+.ax-switch-knob::before { content: "☀"; }
+.ax-switch[aria-checked="true"] .ax-switch-track { background: var(--accent); }
+.ax-switch[aria-checked="true"] .ax-switch-knob { left: 23px; color: var(--navy); }
+.ax-switch[aria-checked="true"] .ax-switch-knob::before { content: "☾"; }
+.ax-header .ax-switch, .ax-header .ax-switch:hover { border: 0; background: transparent; padding: 4px 6px; color: #fff; }

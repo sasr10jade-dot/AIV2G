@@ -27,7 +27,7 @@
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg); color: var(--text);
-  font: 16px/1.5 "Inter", "Helvetica Neue", Helvetica, "Pretendard", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+  font: 16px/1.5 "Noto Sans KR", "Noto Sans", "Malgun Gothic", sans-serif;
   -webkit-text-size-adjust: 100%; overscroll-behavior-y: contain; -webkit-font-smoothing: antialiased;
   word-break: keep-all; /* 한글을 어절 단위로 줄바꿈 */
 }
@@ -153,7 +153,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
         <button type="button" data-lang="ko" aria-pressed="true">KR</button>
         <button type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
-      <button class="iconbtn" id="themeBtn" type="button" data-i18n-aria="theme" aria-label="테마 전환"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg></button>
+      <button class="ax-switch" id="themeBtn" type="button" role="switch" aria-checked="false" data-i18n-aria="theme" aria-label="다크 모드"><span class="ax-switch-track" aria-hidden="true"><span class="ax-switch-knob"></span></span><span class="ax-switch-label"></span></button>
       <button class="iconbtn" id="meBtn" type="button" data-i18n="me_btn" hidden>내 정보</button>
       <button class="iconbtn" id="logoutBtn" type="button" data-i18n="logout" hidden>로그아웃</button>
     </div>
@@ -1432,11 +1432,15 @@ label.check input { width: 22px; height: 22px; flex: none; }
   });
 
   // ---------------------------------------------------------------- 테마
-  document.getElementById('themeBtn').addEventListener('click', function () {
+  var themeBtn = document.getElementById('themeBtn');
+  function syncThemeSwitch() { themeBtn.setAttribute('aria-checked', String(document.documentElement.getAttribute('data-theme') === 'dark')); }
+  themeBtn.addEventListener('click', function () {
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
+    syncThemeSwitch();
     try { localStorage.setItem('ai-v2g-theme', next); } catch (e) { /* 저장 불가여도 이번 화면에는 적용 */ }
   });
+  syncThemeSwitch();
 
   // ---------------------------------------------------------------- 오프라인 표시
   var offlineBanner = document.getElementById('offlineBanner');
