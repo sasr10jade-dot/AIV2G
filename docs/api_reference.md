@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 0.4.0 · 엔드포인트 80개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 0.4.0 · 엔드포인트 82개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -187,8 +187,10 @@ AI 최적 V2G 의사결정 (WS3/WS4) — 일반충전 vs 최적화 PoC 비교.
 |---|---|---|---|
 | GET | `/acryl/exports` | 관리자 이상(관리자·최고관리자) | 학습 데이터 제공 이력 |
 | POST | `/acryl/exports` | 관리자 이상(관리자·최고관리자) | 학습용 정제 데이터 제공 묶음 생성(가명처리·SHA-256 manifest) |
+| POST | `/acryl/exports/{export_id}/destruction` | 관리자 이상(관리자·최고관리자) | 제공 묶음 파기 확인 기록(참여기관 파기 확인서 수령 시) |
 | GET | `/acryl/forecasts/status` | 관리자 이상(관리자·최고관리자) | 예측 결과 수신 현황(대상별 마지막 배치·모델 버전) |
 | GET | `/acryl/forecasts/{target}/evaluation` | 관리자 이상(관리자·최고관리자) | 수신 예측 vs 실측 오차(MAE·예측률) |
 | GET | `/partner/acryl/exports` | 참여기관 연계 토큰(㈜아크릴) | [참여기관] 제공 묶음 목록 |
+| POST | `/partner/acryl/exports/{export_id}/destruction` | 참여기관 연계 토큰(㈜아크릴) | [참여기관] 제공 묶음 파기 완료 알림 |
 | GET | `/partner/acryl/exports/{export_id}/{name}` | 참여기관 연계 토큰(㈜아크릴) | [참여기관] 제공 묶음 파일 내려받기(manifest.json·CSV) |
 | POST | `/partner/acryl/forecasts` | 참여기관 연계 토큰(㈜아크릴) | [참여기관] 예측 추론 결과 배치 수신(일 배치) |

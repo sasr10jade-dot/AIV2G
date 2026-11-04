@@ -14,7 +14,7 @@ from src.pipeline import migrations as m
 
 def test_fresh_db_gets_all_tables_and_version():
     con = sqlite3.connect(":memory:")
-    assert m.migrate(con) == [1, 2, 3, 4, 5, 6]
+    assert m.migrate(con) == [1, 2, 3, 4, 5, 6, 7]
     names = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"charger_registry", "advisories", "vehicle_registrations", "dataset_exports", "external_forecasts",
             "schema_migrations"} <= names

@@ -7,6 +7,7 @@
   (이후 `write_table`이 새 컬럼을 포함해 만든다).
 
 사업수행계획서 v1.0 기준으로 새로 시작한 저장소라 v1~v4가 기준 스키마다.
+v7  dataset_exports 파기 확인(destroyed_at·destroyed_by·destruction_note) — 계획서 6장 "참여기관은 사업 종료 시 파기"
 v6  odometer_logs(서포터즈 누적 주행거리 입력 이력 — 주간 주행·전비·1km당 요금 계산)
 v5  charger_sessions.site_id(실증 참여 장소 — 계획서 "도시형 참여 장소 3곳 이상" 집계)
 v4  AI 예측모델(㈜아크릴) 연계 — 학습 데이터 제공 이력(dataset_exports), 예측 결과 수신(external_forecasts)
@@ -176,9 +177,17 @@ def _v6(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_odo_user ON odometer_logs (username, recorded_at)")
 
 
+def _v7(con: sqlite3.Connection) -> None:
+    existing = _columns(con, "dataset_exports")
+    for name in ("destroyed_at", "destroyed_by", "destruction_note"):
+        if existing and name not in existing:
+            con.execute(f"ALTER TABLE dataset_exports ADD COLUMN {name} TEXT")
+
+
 MIGRATIONS = [
     (1, "ops_structure", _v1), (2, "advisories", _v2), (3, "vehicle_registrations", _v3),
     (4, "acryl_forecast_link", _v4), (5, "charger_site", _v5), (6, "odometer_logs", _v6),
+    (7, "export_destruction", _v7),
 ]
 LATEST_VERSION = MIGRATIONS[-1][0]
 

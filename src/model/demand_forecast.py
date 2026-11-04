@@ -27,6 +27,7 @@ class ForecastResult:
     n_test: int
     test_df: pd.DataFrame  # timestamp, y_true, y_pred
     wape: float = 0.0  # 가중 절대 오차율(%) = sum|오차| / sum|실제| — 규모가 다른 구간을 공정하게 비교
+    data_range: dict | None = None  # 학습·검증 구간(시작~끝 시각) — 계획서 6장 "학습 데이터 범위를 기록해 재현"
 
 
 def wape(y_true, y_pred) -> float:
@@ -83,4 +84,10 @@ def train_forecast_model(city_hourly: pd.DataFrame, target_col: str) -> Forecast
         n_test=len(test_df),
         test_df=result_df,
         wape=round(wape(y_true, y_pred), 2),
+        data_range={
+            "train_start": pd.Timestamp(train_df["timestamp"].min()).isoformat(),
+            "train_end": pd.Timestamp(train_df["timestamp"].max()).isoformat(),
+            "test_start": pd.Timestamp(test_df["timestamp"].min()).isoformat(),
+            "test_end": pd.Timestamp(test_df["timestamp"].max()).isoformat(),
+        },
     )

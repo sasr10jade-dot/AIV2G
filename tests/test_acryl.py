@@ -151,3 +151,20 @@ def test_admin_creates_export_and_partner_downloads_it():
     r = client.get(f"/partner/acryl/exports/{m['export_id']}/city_hourly.csv", headers=h)
     assert r.status_code == 200 and r.text.startswith("timestamp,")
     assert client.get(f"/partner/acryl/exports/{m['export_id']}/..%2Fx", headers=h).status_code == 404
+
+
+
+def test_destruction_record_blocks_further_downloads():
+    m = link.export_training_dataset("op", cfg=SMALL)
+    eid = m["export_id"]
+    assert link.export_file(eid, "manifest.json").exists()
+    with pytest.raises(link.LinkError):
+        link.record_destruction(eid, "op", "x")                                       # 근거가 너무 짧다
+    r = link.record_destruction(eid, "op", "2027-11-30 아크릴 파기 확인서 수령")
+    assert r["destroyed_by"] == "op" and r["destroyed_at"]
+    row = next(x for x in link.list_exports() if x["export_id"] == eid)
+    assert row["destruction_note"].startswith("2027-11-30") and row["destroyed_at"]
+    with pytest.raises(link.LinkError, match="내려받을 수 없습니다"):
+        link.export_file(eid, "manifest.json")
+    with pytest.raises(link.LinkError, match="이미"):
+        link.record_destruction(eid, "op", "다시 기록")

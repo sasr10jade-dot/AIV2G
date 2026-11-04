@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import joblib
+import pandas as pd
 
 from src.paths import MODEL_REGISTRY_DIR
 
@@ -31,7 +32,9 @@ class ModelRegistry:
     def active_version(self) -> int | None:
         return self._read_meta()["active_version"]
 
-    def register(self, model, feature_cols: list[str], weeks: int, holdout_mae: float, holdout_rmse: float, n_train: int) -> int:
+    def register(self, model, feature_cols: list[str], weeks: int, holdout_mae: float, holdout_rmse: float, n_train: int,
+                 data_range: dict | None = None, data_source: str | None = None) -> int:
+        """data_range: 학습·검증 구간(시작~끝 시각), data_source: 'synthetic'|'measured' — 같은 조건으로 재현하기 위한 기록."""
         self.dir.mkdir(parents=True, exist_ok=True)
         meta = self._read_meta()
         version = max((int(v) for v in meta["versions"]), default=0) + 1
@@ -43,6 +46,10 @@ class ModelRegistry:
             "holdout_mae": holdout_mae,
             "holdout_rmse": holdout_rmse,
             "n_train": n_train,
+            "data_range": data_range,
+            "data_source": data_source,
+            "feature_count": len(feature_cols),
+            "registered_at": pd.Timestamp.now(tz="Asia/Seoul").isoformat(timespec="seconds"),
         }
         meta["active_version"] = version
         self._write_meta(meta)

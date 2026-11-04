@@ -38,6 +38,10 @@ def require_partner(request: Request) -> str:
     return "partner:acryl"
 
 
+class DestructionIn(BaseModel):
+    note: str = Field(..., min_length=2, max_length=300, description="파기 근거 — 일자·방법·확인서 등")
+
+
 class ExportIn(BaseModel):
     period_start: str | None = Field(None, description="제공 기간 시작일(YYYY-MM-DD, 비우면 처음부터)")
     period_end: str | None = Field(None, description="제공 기간 종료일(YYYY-MM-DD, 비우면 끝까지)")
@@ -82,6 +86,16 @@ def list_exports_admin() -> dict:
     return {"exports": link.list_exports()}
 
 
+@router.post("/acryl/exports/{export_id}/destruction", summary="제공 묶음 파기 확인 기록(참여기관 파기 확인서 수령 시)")
+def record_destruction_admin(export_id: str, body: DestructionIn, user: dict = Depends(require_admin)) -> dict:
+    try:
+        result = link.record_destruction(export_id, user["username"], body.note)
+    except link.LinkError as exc:
+        _err(exc, 409 if "이미" in str(exc) else 422)
+    audit.log(user["username"], "acryl_export_destroyed", target=export_id, detail={"note": result["destruction_note"]})
+    return result
+
+
 @router.get("/acryl/forecasts/status", summary="예측 결과 수신 현황(대상별 마지막 배치·모델 버전)",
             dependencies=[Depends(require_admin)])
 def forecast_status() -> dict:
@@ -115,6 +129,16 @@ def partner_download(export_id: str, name: str, request: Request, actor: str = D
         _err(exc, 404)
     audit.log(actor, "acryl_export_download", target=f"{export_id}/{name}", detail={"ip": client_ip(request)})
     return FileResponse(path, filename=name)
+
+
+@router.post("/partner/acryl/exports/{export_id}/destruction", summary="[참여기관] 제공 묶음 파기 완료 알림")
+def partner_record_destruction(export_id: str, body: DestructionIn, request: Request, actor: str = Depends(require_partner)) -> dict:
+    try:
+        result = link.record_destruction(export_id, actor, body.note)
+    except link.LinkError as exc:
+        _err(exc, 409 if "이미" in str(exc) else 422)
+    audit.log(actor, "acryl_export_destroyed", target=export_id, detail={"note": result["destruction_note"], "ip": client_ip(request)})
+    return result
 
 
 @router.post("/partner/acryl/forecasts", summary="[참여기관] 예측 추론 결과 배치 수신(일 배치)")

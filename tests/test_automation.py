@@ -16,6 +16,10 @@ def test_bootstrap_registers_first_active_version(tmp_path, medium_cfg):
     _model, _features, info = registry.load()
     assert info["version"] == 1
     assert np.isfinite(info["holdout_mae"])
+    # 계획서 6장 — 같은 조건으로 재현할 수 있게 학습·검증 구간과 데이터 출처를 남긴다
+    rng = info["data_range"]
+    assert rng["train_start"] < rng["train_end"] < rng["test_start"] <= rng["test_end"]
+    assert info["data_source"] == "synthetic" and info["feature_count"] == len(_features) and info["registered_at"]
 
 
 def test_bootstrap_is_idempotent(tmp_path, medium_cfg):

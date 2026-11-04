@@ -35,7 +35,8 @@ def bootstrap(registry: ModelRegistry, base_cfg: SimConfig, target_col: str) -> 
         generate_ev_telemetry(base_cfg, rng), generate_grid_signal(base_cfg, rng), base_cfg
     )
     result = train_forecast_model(city_hourly, target_col)
-    registry.register(result.model, result.feature_cols, base_cfg.weeks, result.mae, result.rmse, result.n_train)
+    registry.register(result.model, result.feature_cols, base_cfg.weeks, result.mae, result.rmse, result.n_train,
+                      data_range=result.data_range, data_source="synthetic")
 
 
 def run_cycle(
@@ -74,7 +75,8 @@ def run_cycle(
 
     if improvement_pct >= MIN_IMPROVEMENT_TO_PROMOTE_PCT:
         version = registry.register(
-            candidate.model, candidate.feature_cols, cfg_new.weeks, candidate.mae, candidate.rmse, candidate.n_train
+            candidate.model, candidate.feature_cols, cfg_new.weeks, candidate.mae, candidate.rmse, candidate.n_train,
+            data_range=candidate.data_range, data_source="synthetic",
         )
         cycle["action"] = "PROMOTED"
         cycle["active_version_after"] = version

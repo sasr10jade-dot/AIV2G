@@ -160,11 +160,36 @@ def export_training_dataset(actor: str, period_start: str | None = None, period_
 def list_exports(limit: int = 50) -> list[dict]:
     con = store.get_connection()
     try:
-        cols = ["export_id", "created_at", "created_by", "period_start", "period_end", "row_counts", "sha256"]
+        cols = ["export_id", "created_at", "created_by", "period_start", "period_end", "row_counts", "sha256",
+                "destroyed_at", "destroyed_by", "destruction_note"]
         rows = con.execute(f"SELECT {', '.join(cols)} FROM dataset_exports ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
     finally:
         con.close()
     return [{**dict(zip(cols, r)), "row_counts": json.loads(r[5])} for r in rows]
+
+
+def record_destruction(export_id: str, actor: str, note: str) -> dict:
+    """참여기관이 제공 묶음을 파기했음을 기록한다(계획서 6장: 사업 목적 범위 내 이용 후 파기). 기록한 뒤에는 더 내려받을 수 없다.
+    note에는 파기 일자·방법·확인서 등 근거를 적는다. 이미 기록된 묶음은 다시 기록하지 않는다."""
+    note = " ".join((note or "").split())
+    if not _ID_RE.match(export_id or ""):
+        raise LinkError("제공 묶음을 찾을 수 없습니다")
+    if len(note) < 2 or len(note) > 300:
+        raise LinkError("파기 근거(일자·방법·확인서 등)를 2~300자로 적어 주세요")
+    con = store.get_connection()
+    try:
+        row = con.execute("SELECT destroyed_at FROM dataset_exports WHERE export_id=?", (export_id,)).fetchone()
+        if not row:
+            raise LinkError("제공 묶음을 찾을 수 없습니다")
+        if row[0]:
+            raise LinkError("이미 파기 확인이 기록된 묶음입니다")
+        at = _now()
+        con.execute("UPDATE dataset_exports SET destroyed_at=?, destroyed_by=?, destruction_note=? WHERE export_id=?",
+                    (at, actor, note, export_id))
+        con.commit()
+    finally:
+        con.close()
+    return {"export_id": export_id, "destroyed_at": at, "destroyed_by": actor, "destruction_note": note}
 
 
 def export_file(export_id: str, name: str) -> Path:
@@ -173,11 +198,13 @@ def export_file(export_id: str, name: str) -> Path:
         raise LinkError("제공 묶음을 찾을 수 없습니다")
     con = store.get_connection()
     try:
-        row = con.execute("SELECT path FROM dataset_exports WHERE export_id=?", (export_id,)).fetchone()
+        row = con.execute("SELECT path, destroyed_at FROM dataset_exports WHERE export_id=?", (export_id,)).fetchone()
     finally:
         con.close()
     if not row:
         raise LinkError("제공 묶음을 찾을 수 없습니다")
+    if row[1]:
+        raise LinkError("파기 확인이 기록된 묶음은 더 내려받을 수 없습니다")
     folder = Path(row[0])
     allowed = {"manifest.json"}
     manifest_path = folder / "manifest.json"

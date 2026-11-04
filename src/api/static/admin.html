@@ -165,6 +165,22 @@
   }
 
   // ---------------------------------------------------------------- ㈜아크릴 연계(계획서 5.2 기관 간 인터페이스)
+  // 제공 묶음 파기 확인(계획서 6장: 참여기관은 사업 목적 범위 내 이용 후 파기) — 기록하면 더 내려받을 수 없다
+  function destructionRow(x) {
+    if (x.destroyed_at) {
+      return el('div', { class: 'row', style: 'margin-top:8px' }, [el('span', { class: 'tag', text: '파기 확인' }),
+        el('span', { class: 'muted', text: fmt(x.destroyed_at) + ' · ' + (x.destroyed_by || '') + ' · ' + (x.destruction_note || '') })]);
+    }
+    var note = el('input', { type: 'text', maxlength: '300', placeholder: '파기 근거(예: 2027-11-30 아크릴 파기 확인서 수령)', 'aria-label': '파기 근거' });
+    note.style.flex = '1';
+    var btn = el('button', { type: 'button', text: '파기 확인 기록' });
+    btn.addEventListener('click', function () {
+      act(btn, function () { return send('POST', '/acryl/exports/' + encodeURIComponent(x.export_id) + '/destruction', { note: note.value.trim() }); },
+        '파기 확인을 기록했습니다. 이 묶음은 더 내려받을 수 없습니다.');
+    });
+    return el('div', { class: 'row', style: 'margin-top:8px; gap:8px' }, [el('span', { class: 'tag off', text: '이용 중' }), note, btn]);
+  }
+
   async function renderAcryl() {
     var rs = await Promise.all([api('/acryl/exports'), api('/acryl/forecasts/status')]);
     if (!rs[0].ok || !rs[1].ok) { say(detail(rs[0].ok ? rs[1] : rs[0], '불러오지 못했습니다.'), true); return; }
@@ -186,7 +202,8 @@
         el('div', { class: 'row' }, [el('span', { class: 'name grow', text: x.export_id }),
           el('span', { class: 'muted', text: fmt(x.created_at) + ' · ' + (x.created_by || '') })]),
         el('div', { class: 'muted', text: '기간 ' + (x.period_start || '처음') + ' ~ ' + (x.period_end || '끝') + ' · ' + rows }),
-        el('div', { class: 'muted', text: 'SHA-256 ' + x.sha256 })]));
+        el('div', { class: 'muted', text: 'SHA-256 ' + x.sha256 }),
+        destructionRow(x)]));
     });
     panel.appendChild(el('div', { class: 'card', style: 'margin-top:18px' }, [
       el('div', { class: 'name', text: '예측 추론 결과 수신(아크릴 → 아우토크립트, 일 배치)' }),
