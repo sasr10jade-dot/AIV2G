@@ -21,7 +21,7 @@ from src.pipeline.kpx_ingest import KpxApiError, KpxNotConfigured, fetch_smp_hou
 from src.datagen.obd_emulator import generate_synthetic_obd_day
 from src.pipeline.obd_ingest import ObdColumnsMissingError, aggregate_obd_day_to_hourly, merge_hourly_rows_into_source
 from src.pipeline.quality import summarize, validate
-from src.pipeline import weather_holiday
+from src.pipeline import public_csv, weather_holiday
 from src.pipeline.public_api import ApiNotConfigured, ApiResponseError
 
 router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_admin)])
@@ -270,6 +270,37 @@ def sync_weather_holiday(start: str, end: str, station: str = weather_holiday.DE
     else:
         note = "EV 실증 데이터가 아직 없어 grid_signal에 저장만 했습니다(대시보드 반영은 /ingest/upload-obd 이후)."
     return {"status": "ok", "station": station, "fetched_hours": len(temp), **stats, "note": note}
+
+
+@router.post("/public-csv/{kind}", summary="공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable)")
+async def upload_public_csv(kind: str, file: UploadFile = File(..., description="공공데이터포털에서 받은 시간별 CSV(가로형 1~24시 또는 세로형)"),
+                            region: str | None = Form(None, description="세로형에 지역 열이 있으면 거를 지역(예: 전남)")) -> dict:
+    """계획서 4.1 가 '시간대별 전력수요·재생에너지 공개 데이터'를 grid_signal에 반영한다. 시각이 맞는 행만 덮어쓰고 나머지는 그대로 둔다.
+    값의 단위는 바꾸지 않는다(전국 수요라면 도시 규모보다 크다 — 피크 시간대는 날짜별 상위 25%라 규모와 무관)."""
+    column = public_csv.KINDS.get(kind)
+    if column is None:
+        raise HTTPException(status_code=404, detail="kind는 power-demand 또는 renewable 입니다")
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="20MB 이하 파일만 올릴 수 있습니다")
+    try:
+        series = public_csv.parse_hourly(content, region=(region or "").strip() or None)
+    except public_csv.CsvFormatError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if source.GRID_CSV.exists():
+        grid_df = pd.read_csv(source.GRID_CSV, parse_dates=["timestamp"])
+    else:
+        rng = np.random.default_rng(SimConfig().random_seed)
+        grid_df = generate_grid_signal(SimConfig(), rng)
+    merged, n = public_csv.merge_into_grid(grid_df, series, column)
+    merged.to_csv(source.GRID_CSV, index=False)
+    if source.EV_CSV.exists():
+        source.mark_source("uploaded")
+    note = ("반영할 시각이 겹치지 않았습니다 — CSV 기간이 실증 데이터 기간과 같은지 확인해 주세요." if n == 0 else
+            "반영 완료 — 이후 /dashboard, /forecast가 이 값을 사용합니다." if source.EV_CSV.exists() else
+            "EV 실증 데이터가 아직 없어 grid_signal에 저장만 했습니다(대시보드 반영은 /ingest/upload-obd 이후).")
+    return {"status": "ok", "column": column, "rows_in_file": len(series), "rows_applied": n,
+            "period": [series["timestamp"].min().isoformat(), series["timestamp"].max().isoformat()], "note": note}
 
 
 @router.delete("/upload", summary="업로드된 데이터 삭제 → 데모 모드로 복귀")

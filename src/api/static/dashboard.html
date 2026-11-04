@@ -498,6 +498,7 @@
         <ul>
           <li><code>POST /ingest/upload</code> — 차량·충전 세션·계통 CSV 업로드 / <code>POST /ingest/upload-obd</code> — OBD 원본 로그</li>
           <li><code>POST /ingest/sync-weather-holiday</code> — 기상청 기온·공휴일 공개 데이터 반영(공공데이터포털 인증키 필요)</li>
+          <li><code>POST /ingest/public-csv/power-demand</code> · <code>/renewable</code> — 공공데이터포털에서 받은 시간별 전력수요·재생에너지 CSV 반영(가로형 1~24시·세로형 모두 가능)</li>
           <li><code>DELETE /ingest/upload</code> — 올린 데이터를 지우고 데모(합성) 데이터로 돌아가기</li>
         </ul>
       </div>
@@ -535,6 +536,7 @@
         <ul>
           <li><code>POST /ingest/upload</code> — vehicle, charging-session and grid CSVs / <code>POST /ingest/upload-obd</code> — raw OBD logs</li>
           <li><code>POST /ingest/sync-weather-holiday</code> — KMA temperature and public holidays (needs a data.go.kr service key)</li>
+          <li><code>POST /ingest/public-csv/power-demand</code> · <code>/renewable</code> — hourly power demand / renewable generation CSVs from data.go.kr (wide 1–24h or long format)</li>
           <li><code>DELETE /ingest/upload</code> — delete uploaded data and return to demo (synthetic) data</li>
         </ul>
       </div>

@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 0.4.0 · 엔드포인트 84개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 0.4.0 · 엔드포인트 85개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -133,6 +133,7 @@
 | POST | `/ingest/generate` | 관리자 이상(관리자·최고관리자) | 합성 데모 데이터 생성 |
 | POST | `/ingest/obd-emulator/run` | 관리자 이상(관리자·최고관리자) | 가상 실증차량 OBD 배치를 합성해 실제 파이프라인으로 흘려보냄 |
 | GET | `/ingest/public-apis/status` | 관리자 이상(관리자·최고관리자) | 공개 데이터(기상·공휴일) 연동 준비 상태 — 키·명세 여부만, 값은 노출하지 않음 |
+| POST | `/ingest/public-csv/{kind}` | 관리자 이상(관리자·최고관리자) | 공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable) |
 | POST | `/ingest/run` | 관리자 이상(관리자·최고관리자) | raw → curated 파이프라인 실행 |
 | GET | `/ingest/status` | 관리자 이상(관리자·최고관리자) | 현재 데이터 소스 모드 확인 (데모/실증) |
 | POST | `/ingest/sync-kpx-smp` | 관리자 이상(관리자·최고관리자) | 한국전력거래소(KPX) 실시간 SMP를 grid_signal.price_krw_per_kwh에 반영 |
