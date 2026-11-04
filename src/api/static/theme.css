@@ -214,8 +214,8 @@ body.fo .ins b { display: block; font-size: 14px; font-weight: 700; }
 body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-height: 1.55; }
 /* PC에서는 AIV2GAPP처럼 휴대폰 크기 틀 안에 보인다(아래 탭이 화면 바닥에 붙도록 overflow는 clip) */
 @media (min-width: 600px) {
-  body.fo { background: #DDE5F1; }
-  :root[data-theme="dark"] body.fo { background: #050B1C; }
+  html:has(body.fo), body.fo { background: #DDE5F1; }
+  :root[data-theme="dark"]:has(body.fo), :root[data-theme="dark"] body.fo { background: #050B1C; }
   body.fo .app { max-width: 430px; margin: 16px auto; min-height: calc(100% - 32px); border-radius: 28px; overflow: clip;
     background: var(--bg); box-shadow: 0 10px 40px rgba(15, 42, 92, .18); }
   body.fo .tabs { border-radius: 0 0 28px 28px; }

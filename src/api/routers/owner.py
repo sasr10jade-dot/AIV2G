@@ -320,7 +320,7 @@ def record_odometer(body: OdometerIn, request: Request, user: dict = Depends(req
 
 
 @router.get("/report", summary="내 충전 리포트 — 최근 4주 충전·주행 지표, 다른 실증 차량과 비교, 최소 보장 배터리 제안")
-def my_report(user: dict = Depends(require_owner)) -> dict:
+def my_report(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = Depends(require_owner)) -> dict:
     from src.advisory import owner_report
     from src.pipeline import source
     ev_df, _ch, grid_df, _real = source.load_scenario()
@@ -328,7 +328,7 @@ def my_report(user: dict = Depends(require_owner)) -> dict:
     profile = owner_guide.vehicle_profile(user["username"], user["owned_ev_id"])
     report = owner_report.build_report(user["owned_ev_id"], ev_df, grid_df, profile["battery_kwh"],
                                        odometer=registry.odometer_history(user["username"]),
-                                       min_soc_pct=reg.get("min_soc_pct"), target_soc_pct=reg.get("target_soc_pct"))
+                                       min_soc_pct=reg.get("min_soc_pct"), target_soc_pct=reg.get("target_soc_pct"), lang=lang)
     report["odometer"] = registry.odometer_history(user["username"])[-5:]
     report["is_real_data"] = bool(_real)
     return report

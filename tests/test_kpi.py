@@ -137,7 +137,8 @@ def test_collection_status_projects_year_end_and_warns():
     assert p["year"] == "Y1" and p["per_day"] == 2.0 and p["counted"] == 28
     assert p["remaining_days"] == (pd.Timestamp("2027-04-15") - pd.Timestamp("2026-12-14")).days
     assert p["expected"] == 28 + 2 * p["remaining_days"] and p["expected"] < 4000
-    assert any("미달 예상" in w for w in out["warnings"]) and any("활동 차량 1대" in w for w in out["warnings"])
+    codes = {w["code"]: w for w in out["warnings"]}
+    assert codes["pace_short"]["expected"] == p["expected"] and codes["few_active"] == {"code": "few_active", "active": 1, "target": 30}
     assert len(out["daily"]) == 14 and out["daily"][-1] == {"date": "2026-12-14", "charger_sessions": 1, "vehicle_days": 1}
     r = out["roster"][0]
     assert r["ev_id"] == "E1" and r["active"] is True and r["last_soc_pct"] == 50.0

@@ -188,4 +188,4 @@ def test_every_screen_uses_the_shared_ax_v2g_theme():
     assert 'class="ax-header"' in dash and 'class="ax-notice"' in dash and 'data-kind="inferred"' in dash
     app_html = client.get("/app").text
     assert '<body class="fo">' in app_html                     # 서포터즈 앱(F.O) 모양
-    assert "/owner/ask" not in app_html                         # 서버에서 삭제된 EV Bot을 부르지 않는다
+    assert "/owner/ask" not in app_html                         # 삭제된 질문 응답 API를 부르지 않는다

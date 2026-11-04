@@ -67,3 +67,14 @@ def test_report_and_odometer_endpoints_are_owner_only(tmp_path, monkeypatch):
     assert rep["has_data"] is False and [o["odometer_km"] for o in rep["odometer"]] == [1000.0, 1250.0]   # 앱 가입 차량은 아직 기록 없음
     assert c.get("/owner/me").json()                                                       # 세션 유지
     c.post("/auth/logout")
+
+
+def test_report_text_in_english():
+    ev = pd.concat([_ev("ME", {1, 2}), _ev("P1", {19, 20})])
+    ko = build_report("ME", ev, _grid(), 60.0, min_soc_pct=30, target_soc_pct=80)
+    en = build_report("ME", ev, _grid(), 60.0, min_soc_pct=30, target_soc_pct=80, lang="en")
+    assert [i["title"] for i in en["insights"]][:2] == ["Charging habit", "Charging at peak hours"]
+    assert len(en["insights"]) == len(ko["insights"]) and en["metrics"] == ko["metrics"]
+    hangul = lambda s: any("\uac00" <= ch <= "\ud7a3" for ch in s)
+    assert not any(hangul(i["title"] + i["text"]) for i in en["insights"])      # 영어 문장에 한글이 섞이지 않는다
+    assert "simulated" in en["note"] and build_report("X", ev, _grid(), 60.0, lang="en")["message"].startswith("There are no")

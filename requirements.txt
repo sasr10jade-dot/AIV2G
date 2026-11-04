@@ -8,7 +8,6 @@ uvicorn
 pydantic
 python-multipart
 requests
-google-genai
 python-dotenv
 websockets
 python-docx

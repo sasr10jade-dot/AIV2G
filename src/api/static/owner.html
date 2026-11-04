@@ -1105,7 +1105,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   }
   async function renderReport(box) {
     box.appendChild(el('p', { class: 'muted', text: t('loading') }));
-    var r = await api('/owner/report');
+    var r = await api('/owner/report?lang=' + lang);
     if (state.tab !== 'report' || !box.isConnected) return;
     clear(box);
     if (!r.ok) { box.appendChild(emptyTab('trend', t('rp_wait'), (r.body && r.body.detail) || '')); return; }

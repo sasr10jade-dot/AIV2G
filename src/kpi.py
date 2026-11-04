@@ -216,7 +216,7 @@ def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, site_registry: d
     sites = group("site_id", "site_id")
     for row in sites:
         meta = (site_registry or {}).get(row["site_id"], {})
-        row.update({k: meta.get(k) for k in ("name", "type", "address", "confirmed")})
+        row.update({k: meta.get(k) for k in ("name", "name_en", "type", "address", "address_en", "confirmed")})
     operators = group("operator_id", "operator_id")
 
     vehicles = {"total": 0, "active": 0, "active_window_days": ACTIVE_WINDOW_DAYS, "as_of": None, "by_model": {}}
@@ -274,7 +274,8 @@ def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessi
                            "expected_pct": round(expected / y["target"] * 100, 1),
                            "per_day_needed": round(max(0, y["target"] - counted) / remaining, 1) if remaining else None}
             if expected < y["target"]:
-                out["warnings"].append(f"현재 수집 속도(하루 {per_day:.0f}건)로는 {y['label']} 종료 시 {expected:,}건 — 목표 {y['target']:,}건 미달 예상")
+                out["warnings"].append({"code": "pace_short", "per_day": round(per_day), "label": y["label"],
+                                        "expected": expected, "target": y["target"]})
 
     # 차량별 최근 4주 현황(출처와 무관하게 — 운영 점검용)
     if ev_df is not None and not ev_df.empty and "ev_id" in ev_df.columns:
@@ -301,5 +302,5 @@ def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessi
             })
         n_active = sum(r["active"] for r in out["roster"])
         if n_active < TARGET_EV:
-            out["warnings"].append(f"활동 차량 {n_active}대 — 계획서 기준 {TARGET_EV}대 미달(예비 참여자 대체 검토)")
+            out["warnings"].append({"code": "few_active", "active": n_active, "target": TARGET_EV})
     return out
