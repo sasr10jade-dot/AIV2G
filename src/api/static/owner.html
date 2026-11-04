@@ -193,6 +193,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       offline: '오프라인입니다. 연결되면 최신 정보를 불러옵니다.',
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
       install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.', install_how: '설치 방법',
+      resv_title: '예비 참여자로 등록됐어요', resv_desc: '지금은 실증 차량 정원이 차 있어요. 참여 차량에 빈자리가 생기면 순서대로 승인해 연락드릴게요.',
       premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트',
       rp_title: '최근 4주 내 충전', rp_ai: 'AI 충전 분석', rp_odo: '누적 주행거리 기록', rp_odo_btn: '기록하기',
       rp_odo_hint: '계기판의 누적 주행거리(ODO)를 적어 주세요. 2번 이상 기록하면 주간 주행거리·전비·1km당 요금을 계산해요.',
@@ -266,6 +267,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       offline: 'You are offline. Latest data loads once you reconnect.',
       install_hint: 'Add to your home screen to use it like an app.',
       install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.', install_how: 'How to install',
+      resv_title: 'You are on the reserve list', resv_desc: 'The pilot is currently full. When a spot opens up, we will approve reserve participants in order and let you know.',
       premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast', tab_report: 'Report',
       rp_title: 'My charging, last 4 weeks', rp_ai: 'AI charging analysis', rp_odo: 'Log odometer', rp_odo_btn: 'Save',
       rp_odo_hint: 'Enter the odometer reading. With two or more entries we calculate weekly distance, efficiency and cost per km.',
@@ -573,8 +575,8 @@ label.check input { width: 22px; height: 22px; flex: none; }
       rows.push(el('div', { class: 'muted', text: t('pend_region') + ' · ' + (reg.region || '') }));
     }
     var card = el('div', { class: 'card' }, [
-      el('div', { class: 'big', text: rejected ? t('rej_title') : t('pend_title') }),
-      el('p', { class: 'muted', text: rejected ? t('rej_help') : t('pend_desc') }),
+      el('div', { class: 'big', text: rejected ? t('rej_title') : (reg && reg.reserve ? t('resv_title') : t('pend_title')) }),
+      el('p', { class: 'muted', text: rejected ? t('rej_help') : (reg && reg.reserve ? t('resv_desc') : t('pend_desc')) }),
     ].concat(rows));
     if (rejected && reg.reject_reason) card.appendChild(el('p', { class: 'error', text: t('rej_reason') + ' · ' + reg.reject_reason }));
     var msg = el('div', { class: 'muted', role: 'status', text: stillMsg || '' });

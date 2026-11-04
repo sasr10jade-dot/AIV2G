@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 0.4.0 · 엔드포인트 83개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 0.4.0 · 엔드포인트 84개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -118,6 +118,7 @@
 | GET | `/registrations/member/{username}/history` | 관리자 이상(관리자·최고관리자) | 회원 변경 이력(관리자용 — 처리자·접속 IP 포함, 조회 사실도 기록) |
 | POST | `/registrations/{registration_id}/approve` | 관리자 이상(관리자·최고관리자) | 신청 승인 — 계정에 차량 연결 |
 | POST | `/registrations/{registration_id}/reject` | 관리자 이상(관리자·최고관리자) | 신청 반려 |
+| POST | `/registrations/{registration_id}/reserve` | 관리자 이상(관리자·최고관리자) | 예비 참여자로 두기/해제 — 활동 차량이 빠지면 예비에서 승인해 대체 |
 | POST | `/registrations/{registration_id}/reveal-plate` | 관리자 이상(관리자·최고관리자) | 전체 번호판 열람 — 사유 필수, 접속기록에 남음 |
 
 ## ingest

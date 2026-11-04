@@ -35,8 +35,9 @@ def list_registrations(
     except service.RegistryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     pending_count = len(service.list_all("pending", 500))
+    reserve_count = service.reserve_count()
     audit.log(user["username"], "registrations_list", detail={"status": status, "count": len(rows), "ip": client_ip(request)})
-    return {"registrations": [service.view(r) for r in rows], "pending_count": pending_count}
+    return {"registrations": [service.view(r) for r in rows], "pending_count": pending_count, "reserve_count": reserve_count}
 
 
 @router.post("/{registration_id}/reveal-plate", summary="전체 번호판 열람 — 사유 필수, 접속기록에 남음")
@@ -59,6 +60,23 @@ def approve(registration_id: str, body: ApproveIn, request: Request, user: dict 
     member_history.record(user["username"], reg["username"], "registration_approve",
                           [("status", "pending", "approved"), ("ev_id", None, reg["ev_id"])], ip=client_ip(request))
     return {"status": "approved", "ev_id": reg["ev_id"], "registration": service.view(reg)}
+
+
+class ReserveIn(BaseModel):
+    on: bool = Field(True, description="true: 예비 참여자로 두기 / false: 일반 승인 대기로 돌리기")
+    note: str = Field("", max_length=200, description="메모(예: 차종 구성상 예비, 30대 확보 후 대체용)")
+
+
+@router.post("/{registration_id}/reserve", summary="예비 참여자로 두기/해제 — 활동 차량이 빠지면 예비에서 승인해 대체")
+def reserve(registration_id: str, body: ReserveIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    try:
+        reg = service.set_reserve(registration_id, user["username"], body.on, body.note)
+    except service.RegistryError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    audit.log(user["username"], "registration_reserve", target=registration_id, detail={"on": body.on, "ip": client_ip(request)})
+    member_history.record(user["username"], reg["username"], "registration_reserve",
+                          [("reserve", None, "예비" if body.on else "대기")], ip=client_ip(request), note=body.note.strip() or None)
+    return {"status": "reserve" if body.on else "pending", "registration": service.view(reg)}
 
 
 @router.post("/{registration_id}/reject", summary="신청 반려")

@@ -304,3 +304,23 @@ def test_profile_correction_also_checks_sido_and_sigungu_match():
     assert _signup().status_code == 200                                                # 광주광역시 북구
     assert client.patch("/owner/profile", json={"sigungu": "수원시"}).status_code == 422   # 광주에 없는 시
     assert client.patch("/owner/profile", json={"sido": "경기도", "sigungu": "수원시"}).status_code == 200
+
+
+def test_reserve_participant_flow():
+    """예비 참여자(계획서: 이탈 시 예비 참여자 대체) — 대기 신청을 예비로 두고, 목록을 나누고, 예비에서 승인한다."""
+    assert _signup().status_code == 200
+    rid = _pending_id()
+    r = client.post(f"/registrations/{rid}/reserve", json={"on": True, "note": "30대 확보 후 대체용"})
+    assert r.status_code == 200 and r.json()["status"] == "reserve"
+    body = client.get("/registrations", params={"status": "pending"}).json()
+    assert body["registrations"] == [] and body["pending_count"] == 0 and body["reserve_count"] == 1
+    res = client.get("/registrations", params={"status": "reserve"}).json()["registrations"]
+    assert res[0]["registration_id"] == rid and res[0]["reserve"] == 1 and res[0]["reserve_note"] == "30대 확보 후 대체용"
+    _login()
+    reg = client.get("/owner/registration").json()["registration"]
+    assert reg["status"] == "pending" and reg["reserve"] == 1                     # 앱은 '예비 참여자' 안내를 띄운다
+    _admin()
+    a = client.post(f"/registrations/{rid}/approve", json={})
+    assert a.status_code == 200 and a.json()["registration"]["reserve"] == 0      # 예비에서 승인하면 예비 표시가 풀린다
+    assert client.get("/registrations", params={"status": "reserve"}).json()["reserve_count"] == 0
+    assert client.post(f"/registrations/{rid}/reserve", json={"on": True}).status_code == 409   # 승인된 신청은 예비로 못 돌린다

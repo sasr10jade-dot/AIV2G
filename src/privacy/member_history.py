@@ -23,6 +23,7 @@ ACTION_LABELS = {
     "registration_submit": "차량 등록 신청",
     "registration_approve": "차량 등록 승인",
     "registration_reject": "차량 등록 반려",
+    "registration_reserve": "예비 참여자 지정·해제",
     "profile_update": "회원정보 수정",
     "consent_grant": "동의",
     "consent_withdraw": "동의 철회",
@@ -35,7 +36,7 @@ FIELD_LABELS = {
     "plate": "번호판", "password": "비밀번호", "status": "상태", "ev_id": "연결 차량",
     "v2g_discharge_consent": "방전(V2G) 참여", "profile_consent": "개인정보 수집·이용 동의",
     "departure_time": "평소 출발 시각", "target_soc_pct": "목표 배터리(%)", "min_soc_pct": "최소 보장 배터리(%)",
-    "odometer_km": "누적 주행거리(km)",
+    "odometer_km": "누적 주행거리(km)", "reserve": "예비 참여자",
 }
 ALLOWED_FIELDS = frozenset(FIELD_LABELS)
 

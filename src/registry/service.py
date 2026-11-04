@@ -28,6 +28,7 @@ from src.registry import options
 EV_ID_RE = re.compile(r"^[A-Za-z0-9_-]{3,40}$")
 AUTO_EV_PREFIX = "EV-U"
 STATUSES = ("pending", "approved", "rejected")
+LIST_FILTERS = STATUSES + ("reserve",)   # reserve = 승인 대기 중 예비 참여자로 둔 신청(pending은 예비를 뺀 대기)
 
 
 class RegistryError(ValueError):
@@ -40,7 +41,8 @@ def _now() -> str:
 
 _COLS = ("registration_id", "username", "plate", "vehicle_model", "occupation", "region_sido", "region_sigungu",
          "departure_time", "target_soc_pct", "min_soc_pct", "odometer_km",
-         "status", "ev_id", "consent_version", "consented_at", "created_at", "reviewed_by", "reviewed_at", "reject_reason")
+         "status", "ev_id", "consent_version", "consented_at", "created_at", "reviewed_by", "reviewed_at", "reject_reason",
+         "reserve", "reserved_at", "reserve_note")
 OPERATING_FIELDS = ("departure_time", "target_soc_pct", "min_soc_pct", "odometer_km")
 HHMM_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
@@ -211,14 +213,18 @@ def latest_for(username: str, con: sqlite3.Connection | None = None) -> dict | N
 
 
 def list_all(status: str | None = None, limit: int = 200, con: sqlite3.Connection | None = None) -> list[dict]:
-    if status is not None and status not in STATUSES:
-        raise RegistryError(f"status는 {STATUSES} 중 하나여야 합니다")
+    if status is not None and status not in LIST_FILTERS:
+        raise RegistryError(f"status는 {LIST_FILTERS} 중 하나여야 합니다")
     own = con is None
     con = con or store.get_connection()
     try:
         q = f"SELECT {', '.join(_COLS)} FROM vehicle_registrations"
         args: tuple = ()
-        if status:
+        if status == "reserve":
+            q += " WHERE status='pending' AND reserve=1"
+        elif status == "pending":
+            q += " WHERE status='pending' AND reserve=0"
+        elif status:
             q += " WHERE status=?"
             args = (status,)
         rows = con.execute(q + " ORDER BY created_at DESC, rowid DESC LIMIT ?", args + (limit,)).fetchall()
@@ -261,7 +267,7 @@ def approve(registration_id: str, reviewer: str, ev_id: str | None = None,
                 raise RegistryError("다른 계정에 이미 연결된 차량 ID입니다")
         try:
             cur = con.execute(
-                "UPDATE vehicle_registrations SET status='approved', ev_id=?, reviewed_by=?, reviewed_at=? "
+                "UPDATE vehicle_registrations SET status='approved', ev_id=?, reviewed_by=?, reviewed_at=?, reserve=0 "
                 "WHERE registration_id=? AND status='pending'", (ev_id, reviewer, _now(), registration_id))
             if cur.rowcount != 1:
                 raise RegistryError("이미 처리된 신청입니다")
@@ -280,8 +286,41 @@ def approve(registration_id: str, reviewer: str, ev_id: str | None = None,
                 auth_store.set_owned_vehicle(linked_user, None)
             raise
         consent.grant(ev_id, "profile", reg["consent_version"], recorded_by=reg["username"])
-        reg.update(status="approved", ev_id=ev_id, reviewed_by=reviewer)
+        reg.update(status="approved", ev_id=ev_id, reviewed_by=reviewer, reserve=0)
         return reg
+    finally:
+        if own:
+            con.close()
+
+
+def set_reserve(registration_id: str, reviewer: str, on: bool, note: str = "", con: sqlite3.Connection | None = None) -> dict:
+    """승인 대기 중인 신청을 예비 참여자로 두거나(on=True) 다시 일반 대기로 돌린다. 활동 차량이 빠지면 예비에서 승인해 대체한다.
+    예비로 둔 시각과 메모(예: 차종 구성상 보류)를 남긴다."""
+    note = " ".join((note or "").split())[:200]
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        cur = con.execute(
+            "UPDATE vehicle_registrations SET reserve=?, reserved_at=?, reserve_note=?, reviewed_by=? "
+            "WHERE registration_id=? AND status='pending'",
+            (1 if on else 0, _now() if on else None, note if on else None, reviewer, registration_id))
+        con.commit()
+        if cur.rowcount != 1:
+            raise RegistryError("대기 중인 신청을 찾을 수 없습니다")
+        r = con.execute(f"SELECT {', '.join(_COLS)} FROM vehicle_registrations WHERE registration_id=?", (registration_id,)).fetchone()
+        return _row(r)
+    finally:
+        if own:
+            con.close()
+
+
+def reserve_count(con: sqlite3.Connection | None = None) -> int:
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        return int(con.execute("SELECT COUNT(*) FROM vehicle_registrations WHERE status='pending' AND reserve=1").fetchone()[0])
+    except sqlite3.OperationalError:   # 마이그레이션 전
+        return 0
     finally:
         if own:
             con.close()

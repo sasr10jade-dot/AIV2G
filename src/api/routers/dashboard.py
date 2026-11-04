@@ -332,6 +332,11 @@ def _collection(ev_df, charger_df, provenance: dict) -> dict:
     preview = not (sessions or vehicle_days)
     out = collection_status(ev_df, charger_df, count_sessions=sessions or preview, count_vehicle_days=vehicle_days or preview)
     out["preview"] = preview
+    from src.registry import service as registry
+    out["reserve_count"] = registry.reserve_count()
+    for w in out["warnings"]:
+        if w.get("code") == "few_active":
+            w["reserve"] = out["reserve_count"]
     return out
 
 @router.get("/dashboard", response_class=FileResponse, include_in_schema=False)

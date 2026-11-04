@@ -55,10 +55,11 @@
 <div class="wrap">
   <div class="ax-page-head">
       <h1>모바일 가입 승인</h1>
-      <div class="sub">승인하면 가입자 계정에 차량이 연결되어 모바일에서 알림·충전 안내가 열립니다. 번호판은 가려서 보입니다.</div>
+      <div class="sub">승인하면 가입자 계정에 차량이 연결되어 모바일에서 충전 안내가 열립니다. 30대가 찼거나 차종 구성상 보류할 신청은 '예비'로 두고, 활동 차량이 빠지면 예비에서 승인해 대체합니다. 번호판은 가려서 보입니다.</div>
   </div>
   <div class="tabs" role="group" aria-label="상태">
     <button type="button" data-status="pending" aria-pressed="true">승인 대기 <span id="pendingCount"></span></button>
+    <button type="button" data-status="reserve" aria-pressed="false">예비 참여자 <span id="reserveCount"></span></button>
     <button type="button" data-status="" aria-pressed="false">전체</button>
   </div>
   <div id="msg" class="msg" role="status"></div>
@@ -108,7 +109,12 @@
         if (reason.value.trim().length < 2) { say('반려 사유를 2자 이상 입력하세요.', true); reason.focus(); return; }
         act(reject, '/registrations/' + encodeURIComponent(r.registration_id) + '/reject', { reason: reason.value.trim() }, r.username + ' 반려 완료');
       });
-      acts.appendChild(ev); acts.appendChild(approve); acts.appendChild(reason); acts.appendChild(reject);
+      var resv = el('button', { type: 'button', text: r.reserve ? '대기로 돌리기' : '예비로 두기' });
+      resv.addEventListener('click', function () {
+        act(resv, '/registrations/' + encodeURIComponent(r.registration_id) + '/reserve', { on: !r.reserve, note: reason.value.trim() },
+          r.username + (r.reserve ? ' 일반 대기로 돌림' : ' 예비 참여자로 둠'));
+      });
+      acts.appendChild(ev); acts.appendChild(approve); acts.appendChild(reason); acts.appendChild(reject); acts.appendChild(resv);
     } else {
       acts.appendChild(tag);
       if (r.reject_reason) acts.appendChild(el('span', { class: 'muted', text: r.reject_reason }));
@@ -117,7 +123,8 @@
       el('div', {}, [el('div', { class: 'name', text: r.username }), el('div', { class: 'muted', text: fmt(r.created_at) })]),
       el('div', {}, [el('div', { text: (r.vehicle_label || r.vehicle_model) + ' · ' + r.plate }),
                      el('div', { class: 'muted', text: (r.occupation_label || '') + ' · ' + (r.region || '') })]),
-      el('div', { class: 'muted', text: r.status === 'pending' ? '승인 대기' : (r.reviewed_by ? '처리 ' + r.reviewed_by + ' · ' + fmt(r.reviewed_at) : '') }),
+      el('div', { class: 'muted', text: r.status === 'pending' ? (r.reserve ? '예비 참여자 · ' + fmt(r.reserved_at) + (r.reserve_note ? ' · ' + r.reserve_note : '') : '승인 대기')
+        : (r.reviewed_by ? '처리 ' + r.reviewed_by + ' · ' + fmt(r.reviewed_at) : '') }),
       acts,
     ]);
   }
@@ -141,8 +148,9 @@
     if (r.status === 401 || r.status === 403) { location.href = '/login?next=/approvals'; return; }
     if (!r.ok) { say(detail(r, '목록을 불러오지 못했습니다.'), true); return; }
     document.getElementById('pendingCount').textContent = r.body.pending_count ? '(' + r.body.pending_count + ')' : '';
+    document.getElementById('reserveCount').textContent = r.body.reserve_count ? '(' + r.body.reserve_count + ')' : '';
     while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
-    if (!r.body.registrations.length) listEl.appendChild(el('div', { class: 'empty', text: status ? '승인 대기 중인 신청이 없습니다.' : '신청 내역이 없습니다.' }));
+    if (!r.body.registrations.length) listEl.appendChild(el('div', { class: 'empty', text: status === 'reserve' ? '예비 참여자가 없습니다.' : status ? '승인 대기 중인 신청이 없습니다.' : '신청 내역이 없습니다.' }));
     r.body.registrations.forEach(function (x) { listEl.appendChild(row(x)); });
   }
 

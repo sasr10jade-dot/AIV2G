@@ -1370,8 +1370,8 @@ function renderCollection(data) {
     ? (LANG === 'en' ? `At the current pace (${fmtInt(w.per_day)}/day) ${t(w.label)} ends at ${fmtInt(w.expected)} records — below the ${fmtInt(w.target)} target`
                      : `현재 수집 속도(하루 ${fmtInt(w.per_day)}건)로는 ${w.label} 종료 시 ${fmtInt(w.expected)}건 — 목표 ${fmtInt(w.target)}건 미달 예상`)
     : w.code === 'few_active'
-      ? (LANG === 'en' ? `${w.active} active EVs — below the planned ${w.target} (consider reserve participants)`
-                       : `활동 차량 ${w.active}대 — 계획서 기준 ${w.target}대 미달(예비 참여자 대체 검토)`)
+      ? (LANG === 'en' ? `${w.active} active EVs — below the planned ${w.target} · ${w.reserve || 0} reserve participant(s) waiting (Sign-up approvals → Reserve)`
+                       : `활동 차량 ${w.active}대 — 계획서 기준 ${w.target}대 미달 · 예비 참여자 ${w.reserve || 0}명 대기(가입 승인 → 예비)`)
       : String(w.text || w);
   document.getElementById('collection-warn').innerHTML = (c.warnings || []).map(w => `<div class="ax-warn">${warnText(w)}</div>`).join('');
   const p = c.pace;
