@@ -1,4 +1,4 @@
-"""사용자 모바일웹(PWA) 정적 자원 서빙 — 화면(/app), 매니페스트, 서비스 워커, 아이콘.
+"""사용자 모바일웹(PWA) 정적 자원 서빙 — 화면(/app), 설치 안내(/install), 매니페스트, 서비스 워커, 아이콘.
 
 서비스 워커는 /sw.js(루트 경로)에서 내려줘야 scope가 "/"가 되어 /app 전체를 제어한다.
 sw.js와 /app은 항상 최신본을 받도록 no-cache로 보낸다(껍데기 변경이 바로 반영되게).
@@ -21,6 +21,12 @@ NO_CACHE = {"Cache-Control": "no-cache"}
 @router.get("/app")
 def owner_app() -> FileResponse:
     return FileResponse(STATIC_DIR / "owner.html", headers=NO_CACHE)
+
+
+@router.get("/install")
+def install_page() -> FileResponse:
+    """서포터즈 앱 설치 안내 — 안드로이드·PC는 버튼 한 번, 아이폰은 '홈 화면에 추가' 안내. 서포터즈에게 이 주소를 보낸다."""
+    return FileResponse(STATIC_DIR / "install.html", headers=NO_CACHE)
 
 
 @router.get("/privacy-policy")

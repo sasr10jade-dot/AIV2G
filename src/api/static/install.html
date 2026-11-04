@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>앱 설치 · AI-V2G 서포터즈</title>
+<meta name="theme-color" content="#F3F6FB" />
+<meta name="description" content="AI-V2G 실증 서포터즈 앱을 휴대폰 홈 화면에 설치합니다." />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/pwa/icon-192.png" />
+<link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="AI-V2G" />
+<style>
+/* 설치 안내 화면 — 색·글꼴은 /theme.css(AIV2GAPP 기준)를 따른다. 여기서는 배치만 정한다. */
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; justify-content: center; word-break: keep-all; }
+main { width: 100%; max-width: 430px; padding: 28px 20px 40px; display: flex; flex-direction: column; gap: 14px; }
+.app { display: flex; align-items: center; gap: 14px; }
+.app img { width: 64px; height: 64px; border-radius: 16px; }
+.app b { display: block; font-size: 20px; font-weight: 800; }
+.app span { font-size: 13px; color: var(--sub); }
+.card { padding: 18px 16px; border-radius: 20px; }
+.card h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+.card.hero { background: var(--navy); color: #fff; border: none; }
+.card.hero p { color: var(--cream); margin: 6px 0 0; font-size: 13px; line-height: 1.55; }
+.btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; margin-top: 14px; border: 0; border-radius: 14px;
+  background: var(--accent); color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none; }
+.btn:hover { background: var(--blue-d); }
+.btn.line { background: var(--card); color: var(--accent); border: 1px solid var(--accent); }
+.btn[disabled] { opacity: .5; cursor: default; }
+ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
+.muted { font-size: 12px; color: var(--sub); line-height: 1.55; }
+.ok { color: var(--good); font-weight: 700; }
+.chip { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--tint); color: var(--blue-d); font-size: 12px; font-weight: 700; }
+[hidden] { display: none !important; }
+</style>
+<link rel="stylesheet" href="/theme.css" />
+</head>
+<body>
+<main>
+  <div class="app"><img src="/pwa/icon-192.png" alt="" /><div><b>AI-V2G 서포터즈</b><span>전기차 충전 시간 추천 · 내 충전 리포트</span></div></div>
+
+  <div class="card hero">
+    <span class="chip" id="platform">설치 안내</span>
+    <h2 style="margin-top:10px;color:#fff;font-size:18px">휴대폰에 앱으로 설치하기</h2>
+    <p>앱 마켓 없이 바로 설치돼요. 설치하면 홈 화면 아이콘으로 열리고, 새 버전은 다음에 열 때 자동으로 바뀌어요.</p>
+  </div>
+
+  <!-- 안드로이드·PC 크롬/엣지: 버튼 한 번으로 설치 -->
+  <div class="card" id="oneTap" hidden>
+    <h2>버튼을 누르면 설치돼요</h2>
+    <div class="muted">설치 확인 창이 뜨면 '설치'를 눌러 주세요.</div>
+    <button class="btn" id="installBtn" type="button">앱 설치하기</button>
+  </div>
+
+  <!-- 설치 완료 / 이미 설치됨 -->
+  <div class="card" id="installed" hidden>
+    <h2 class="ok">설치되었어요</h2>
+    <div class="muted">홈 화면의 'AI-V2G' 아이콘으로 열 수 있어요.</div>
+    <a class="btn" href="/app">앱 열기</a>
+  </div>
+
+  <!-- 아이폰·아이패드(사파리): 공유 → 홈 화면에 추가 -->
+  <div class="card" id="ios" hidden>
+    <h2>아이폰은 사파리에서 3단계로 설치해요</h2>
+    <ol>
+      <li>화면 아래(또는 위)의 <b>공유 버튼</b>(네모에 위쪽 화살표)을 눌러요.</li>
+      <li>목록을 내려 <b>'홈 화면에 추가'</b>를 눌러요.</li>
+      <li>오른쪽 위 <b>'추가'</b>를 누르면 끝이에요.</li>
+    </ol>
+    <div class="muted" id="iosNotSafari" hidden>카카오톡·네이버 앱 안에서 열었다면 오른쪽 아래 메뉴에서 'Safari로 열기'를 먼저 눌러 주세요.</div>
+  </div>
+
+  <!-- 설치 버튼이 아직 준비되지 않은 브라우저 -->
+  <div class="card" id="manual" hidden>
+    <h2>브라우저 메뉴에서 설치해요</h2>
+    <ol>
+      <li>오른쪽 위(삼성 인터넷은 아래) <b>메뉴(⋮ 또는 ≡)</b>를 눌러요.</li>
+      <li><b>'앱 설치'</b> 또는 <b>'홈 화면에 추가'</b>를 눌러요.</li>
+    </ol>
+    <div class="muted">카카오톡·네이버 앱 안에서 열었다면 '다른 브라우저로 열기'(크롬·삼성 인터넷)를 먼저 눌러 주세요.</div>
+  </div>
+
+  <a class="btn line" href="/app">설치하지 않고 웹으로 쓰기</a>
+  <p class="muted">설치해도 개인정보는 휴대폰에 따로 저장되지 않아요. 로그인 정보와 차량 데이터는 서버에서만 불러와요.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var ua = navigator.userAgent;
+  var isIos = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var inApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var deferred = null;
+
+  function show(id) { ['oneTap', 'installed', 'ios', 'manual'].forEach(function (k) { $(k).hidden = k !== id; }); }
+
+  if (standalone) { show('installed'); $('platform').textContent = '설치됨'; }
+  else if (isIos) {
+    show('ios'); $('platform').textContent = '아이폰·아이패드';
+    $('iosNotSafari').hidden = !(inApp || /CriOS|FxiOS|EdgiOS/i.test(ua));
+  } else {
+    show('manual'); $('platform').textContent = /android/i.test(ua) ? '안드로이드' : 'PC';
+  }
+
+  // 크롬·엣지·삼성 인터넷: 설치 조건이 맞으면 이 이벤트가 오고, 버튼 한 번으로 설치 창을 띄울 수 있다(브라우저 정책상 자동 설치는 불가)
+  window.addEventListener('beforeinstallprompt', function (ev) {
+    ev.preventDefault();
+    deferred = ev;
+    if (!standalone) show('oneTap');
+  });
+  $('installBtn').addEventListener('click', async function () {
+    if (!deferred) return;
+    this.disabled = true;
+    deferred.prompt();
+    var choice = null;
+    try { choice = await deferred.userChoice; } catch (e) { choice = null; }
+    deferred = null;
+    this.disabled = false;
+    if (choice && choice.outcome === 'accepted') show('installed');
+  });
+  window.addEventListener('appinstalled', function () { show('installed'); });
+
+  // 이 화면에서도 서비스 워커를 등록해야 브라우저가 '설치 가능'으로 판단한다(범위 '/' — /app과 같은 워커)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () { /* 미지원 시 웹으로 사용 */ });
+  }
+})();
+</script>
+</body>
+</html>

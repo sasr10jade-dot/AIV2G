@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>AI-V2G</title>
-<meta name="theme-color" content="#f5f4f0" />
+<meta name="theme-color" content="#F3F6FB" />
 <meta name="description" content="내 전기차의 충전 요금 시간대, 수요예측, 충·방전 추천을 알림으로 받아보세요." />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa/icon-192.png" />
@@ -163,6 +163,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   <div class="banner install" id="installBanner" hidden>
     <span id="installText" data-i18n="install_hint">홈 화면에 추가하면 앱처럼 쓸 수 있어요.</span>
     <button class="iconbtn" id="installBtn" type="button" data-i18n="add" hidden>추가</button>
+    <a class="iconbtn" id="installHow" href="/install" data-i18n="install_how" hidden>설치 방법</a>
   </div>
 
   <main id="view"></main>
@@ -183,7 +184,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   var tabs = document.getElementById('tabs');
   var logoutBtn = document.getElementById('logoutBtn');
   var meBtn = document.getElementById('meBtn');
-  var state = { me: null, tab: 'inbox', loginMsg: null };
+  var state = { me: null, tab: (function () { var q = new URLSearchParams(location.search).get('tab'); return ['inbox', 'price', 'forecast', 'report'].indexOf(q) >= 0 ? q : 'inbox'; })(), loginMsg: null };
 
   // ---------------------------------------------------------------- 언어팩 (기본 KR)
   var I18N = {
@@ -191,7 +192,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       theme: '테마 전환', logout: '로그아웃', menu: '메뉴', close: '닫기', add: '추가',
       offline: '오프라인입니다. 연결되면 최신 정보를 불러옵니다.',
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
-      install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.',
+      install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.', install_how: '설치 방법',
       premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트',
       rp_title: '최근 4주 내 충전', rp_ai: 'AI 충전 분석', rp_odo: '누적 주행거리 기록', rp_odo_btn: '기록하기',
       rp_odo_hint: '계기판의 누적 주행거리(ODO)를 적어 주세요. 2번 이상 기록하면 주간 주행거리·전비·1km당 요금을 계산해요.',
@@ -264,7 +265,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       theme: 'Toggle theme', logout: 'Log out', menu: 'Menu', close: 'Close', add: 'Add',
       offline: 'You are offline. Latest data loads once you reconnect.',
       install_hint: 'Add to your home screen to use it like an app.',
-      install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.',
+      install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.', install_how: 'How to install',
       premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast', tab_report: 'Report',
       rp_title: 'My charging, last 4 weeks', rp_ai: 'AI charging analysis', rp_odo: 'Log odometer', rp_odo_btn: 'Save',
       rp_odo_hint: 'Enter the odometer reading. With two or more entries we calculate weekly distance, efficiency and cost per km.',
@@ -1472,12 +1473,25 @@ label.check input { width: 22px; height: 22px; flex: none; }
   if (isIos && !standalone && !dismissed) {
     installText.textContent = t('install_ios');
     installBanner.hidden = false;
+    document.getElementById('installHow').hidden = false;
   }
+  window.addEventListener('appinstalled', function () { installBanner.hidden = true; });
 
   // ---------------------------------------------------------------- 서비스 워커
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () { /* 미지원·차단 시 일반 웹으로 동작 */ });
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function (reg) {
+        // 새 버전 확인 — 앱을 다시 볼 때마다 서버의 sw.js를 확인한다
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) reg.update().catch(function () {}); });
+      }).catch(function () { /* 미지원·차단 시 일반 웹으로 동작 */ });
+    });
+    // 새 서비스 워커가 자리를 잡으면(설치된 앱 포함) 한 번만 새로고침해 새 버전을 바로 적용한다
+    var hadController = !!navigator.serviceWorker.controller, reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; }   // 첫 설치 때는 새로고침하지 않는다
+      if (reloading) return;
+      reloading = true;
+      location.reload();
     });
   }
 

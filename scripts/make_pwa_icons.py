@@ -8,8 +8,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parents[1] / "src" / "api" / "static" / "pwa"
-BG = (11, 18, 32)        # 짙은 남색 — manifest background_color/theme_color와 맞춘다
-ACCENT = (20, 184, 166)  # 청록 — 번개(충전·방전)
+BG = (15, 42, 92)        # AIV2GAPP 네이비(#0F2A5C) — 앱 디자인과 맞춘다
+ACCENT = (255, 255, 255)  # 흰 번개(충전·방전)
 SS = 4                   # 슈퍼샘플링 배율(가장자리 부드럽게)
 
 # 번개 모양 — 0~100 좌표계, 중앙 정렬

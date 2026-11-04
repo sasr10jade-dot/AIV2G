@@ -197,3 +197,23 @@ def test_supporter_app_has_aiv2gapp_service_parts():
     for key in ("hm_rec:", "ms_sug:", "r3_title:", "vg_title:", "ba_title:", "hs_title:", "function markKind"):
         assert key in html, key
     assert "포인트" not in html and "미션" not in html                     # 리워드(포인트·미션)는 옮기지 않았다
+
+
+
+def test_install_page_and_installable_manifest():
+    """설치 안내(/install)와 설치 조건 — 매니페스트(이름·시작 주소·standalone·192/512 아이콘), 서비스 워커 등록, 바로가기."""
+    r = client.get("/install")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+    html = r.text
+    assert "beforeinstallprompt" in html and "홈 화면에 추가" in html and "navigator.serviceWorker.register('/sw.js'" in html
+    assert '<link rel="manifest" href="/manifest.webmanifest"' in html and '<link rel="stylesheet" href="/theme.css"' in html
+    m = client.get("/manifest.webmanifest").json()
+    assert m["display"] == "standalone" and m["start_url"] == "/app" and m["prefer_related_applications"] is False
+    assert {"192x192", "512x512"} <= {i["sizes"] for i in m["icons"]}
+    assert [s["url"] for s in m["shortcuts"]] == ["/app?tab=price", "/app?tab=report"]
+    for icon in m["icons"]:
+        assert client.get(icon["src"]).status_code == 200
+    sw = client.get("/sw.js").text
+    assert "'/install'" in sw and "skipWaiting" in sw
+    app = client.get("/app").text
+    assert "controllerchange" in app and "get('tab')" in app and 'href="/install"' in app
