@@ -19,3 +19,16 @@ Report/_backup_*/
 *.docx
 *.hwp
 *.hwpx
+
+# 안드로이드 앱(Bubblewrap) 빌드 산출물 — 프로젝트 설정(twa-manifest.json)만 저장소에 둔다
+android/*
+!android/twa-manifest.json
+!android/README.md
+*.jks
+*.keystore
+*.apk
+*.aab
+*.idsig
+
+# 배포용 앱 파일(APK) — 저장소에 올리지 않고 서버의 downloads/ 에만 둔다
+downloads/

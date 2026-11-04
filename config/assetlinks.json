@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "kr.aiv2g.supporter",
+      "sha256_cert_fingerprints": ["2A:CC:31:F2:78:ED:49:10:44:10:77:56:5F:F3:69:C5:C4:4A:D2:31:E7:6F:49:52:B2:2D:8A:79:07:88:EE:ED"]
+    }
+  }
+]

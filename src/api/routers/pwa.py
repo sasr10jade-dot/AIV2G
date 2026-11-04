@@ -23,6 +23,27 @@ def owner_app() -> FileResponse:
     return FileResponse(STATIC_DIR / "owner.html", headers=NO_CACHE)
 
 
+@router.get("/.well-known/assetlinks.json")
+def asset_links() -> FileResponse:
+    """안드로이드 앱(APK, 패키지 kr.aiv2g.supporter)과 이 웹이 같은 주인임을 증명하는 파일 — 앱이 주소창 없이 전체 화면으로 열린다.
+    값은 config/assetlinks.json(서명 키의 공개 지문, 비밀 아님)."""
+    return FileResponse(STATIC_DIR.parents[2] / "config" / "assetlinks.json", media_type="application/json", headers=NO_CACHE)
+
+
+APK_DIR = STATIC_DIR.parents[2] / "downloads"
+APK_NAME = "AIV2G-supporter.apk"
+
+
+@router.get("/download/" + APK_NAME)
+def download_apk() -> FileResponse:
+    """안드로이드 설치 파일(APK) — downloads/ 에서 가장 최근 버전(AIV2G-supporter-*.apk)을 내려준다. 없으면 404.
+    APK는 저장소에 올리지 않는다(빌드: android/README.md)."""
+    files = sorted(APK_DIR.glob("AIV2G-supporter-*.apk"), key=lambda p: p.stat().st_mtime)
+    if not files:
+        raise HTTPException(status_code=404)
+    return FileResponse(files[-1], media_type="application/vnd.android.package-archive", filename=APK_NAME, headers=NO_CACHE)
+
+
 @router.get("/install")
 def install_page() -> FileResponse:
     """서포터즈 앱 설치 안내 — 안드로이드·PC는 버튼 한 번, 아이폰은 '홈 화면에 추가' 안내. 서포터즈에게 이 주소를 보낸다."""

@@ -217,3 +217,17 @@ def test_install_page_and_installable_manifest():
     assert "'/install'" in sw and "skipWaiting" in sw
     app = client.get("/app").text
     assert "controllerchange" in app and "get('tab')" in app and 'href="/install"' in app
+
+
+def test_android_app_links_and_apk_download(tmp_path, monkeypatch):
+    """안드로이드 앱(TWA) — 웹 인증 파일과 APK 내려받기."""
+    from src.api.routers import pwa
+    links = client.get("/.well-known/assetlinks.json").json()
+    assert links[0]["target"]["package_name"] == "kr.aiv2g.supporter"
+    assert len(links[0]["target"]["sha256_cert_fingerprints"][0].split(":")) == 32
+    monkeypatch.setattr(pwa, "APK_DIR", tmp_path)
+    assert client.get("/download/AIV2G-supporter.apk").status_code == 404           # 파일이 없으면 404
+    (tmp_path / "AIV2G-supporter-1.0.0.apk").write_bytes(b"PK-test")
+    r = client.get("/download/AIV2G-supporter.apk")
+    assert r.status_code == 200 and r.content == b"PK-test" and r.headers["content-type"] == "application/vnd.android.package-archive"
+    assert 'href="/download/AIV2G-supporter.apk"' in client.get("/install").text
