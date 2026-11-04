@@ -11,3 +11,11 @@ OBDData/
 # Office 임시 잠금 파일, 수동 백업 폴더(git 이력으로 대체)
 ~$*
 Report/_backup_*/
+
+# 공개 저장소 제외 — 계획서·명세서·발표자료 등 문서 파일
+*.pdf
+*.xlsx
+*.pptx
+*.docx
+*.hwp
+*.hwpx
