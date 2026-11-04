@@ -8,7 +8,7 @@
 (function () {
   var t;
   try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
-  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'light');
 })();
 </script>
 <style>
@@ -48,16 +48,15 @@
   .msg.err { color: var(--bad); }
   @media (max-width: 800px) { .card { grid-template-columns: 1fr; } .acts { justify-content: flex-start; } }
 </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
-<body>
+<body class="ax-page">
+<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals" aria-current="page">가입 승인</a><a href="/admin">웹앱 관리</a></nav></div></header>
 <div class="wrap">
-  <header>
-    <div>
+  <div class="ax-page-head">
       <h1>모바일 가입 승인</h1>
       <div class="sub">승인하면 가입자 계정에 차량이 연결되어 모바일에서 알림·충전 안내가 열립니다. 번호판은 가려서 보입니다.</div>
-    </div>
-    <a class="back" href="/dashboard">← 대시보드</a>
-  </header>
+  </div>
   <div class="tabs" role="group" aria-label="상태">
     <button type="button" data-status="pending" aria-pressed="true">승인 대기 <span id="pendingCount"></span></button>
     <button type="button" data-status="" aria-pressed="false">전체</button>

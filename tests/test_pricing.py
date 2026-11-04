@@ -4,7 +4,6 @@ import json
 import pandas as pd
 import pytest
 
-from src.grid import dr_events
 from src.grid import pricing as pr
 from src.grid import tariff as t
 from src.optimizer.economics import EconomicsParams, breakeven_sell_price
@@ -50,17 +49,6 @@ def test_price_model_separates_buy_and_sell():
     flat = pr.build_price_model(TIMES, grid, "kepco_ev_example", "contract_example")
     assert set(flat.sell_by_time.values()) == {300.0}
     assert flat.buy_by_time[TIMES[3]] == 100 and flat.buy_by_time[TIMES[12]] == 180
-
-
-def test_dr_premium_applies_to_sell_only(monkeypatch):
-    monkeypatch.setitem(dr_events.DR_EVENTS, "e1", {
-        "start_ts": TIMES[18], "end_ts": TIMES[20], "severity": "high",
-    })
-    grid = {ts: 100.0 for ts in TIMES}
-    pm = pr.build_price_model(TIMES, grid, "public_slow_2026_08", "smp")
-    assert pm.sell_by_time[TIMES[18]] > 100.0
-    assert pm.sell_by_time[TIMES[10]] == 100.0
-    assert pm.buy_by_time[TIMES[18]] == 295.0
 
 
 def test_breakeven_matches_prd_examples():

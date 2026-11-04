@@ -13,6 +13,7 @@ _ROLES = {
     "require_admin": ("관리자 이상(관리자·최고관리자)", 3),
     "require_owner": ("이용자(차량이 연결된 차량 등록자)", 2),
     "require_owner_account": ("이용자 계정(승인 전 포함)", 2),
+    "require_partner": ("참여기관 연계 토큰(㈜아크릴)", 2),
     "get_current_user": ("로그인 필요", 1),
 }
 PUBLIC = ("공개(로그인 불필요)", 0)

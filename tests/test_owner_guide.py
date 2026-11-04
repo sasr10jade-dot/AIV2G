@@ -76,8 +76,6 @@ from fastapi.testclient import TestClient  # noqa: E402
 from src.api import app  # noqa: E402
 from src.api.routers import signup as signup_router  # noqa: E402
 from src.auth import store as auth_store  # noqa: E402
-from src.copilot import owner_bot  # noqa: E402
-from src.copilot.gateway import GatewayResult  # noqa: E402
 
 client = TestClient(app)
 PAYLOAD = {"username": "guidedriver", "password": "driver-pass-1", "vehicle_model": "v2g_demo", "plate": "43오3450",
@@ -87,11 +85,8 @@ PAYLOAD = {"username": "guidedriver", "password": "driver-pass-1", "vehicle_mode
 @pytest.fixture
 def owner_session(tmp_path, monkeypatch):
     monkeypatch.setattr(auth_store, "USERS_FILE", tmp_path / "users.json")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.setenv("LLM_PROFILE", "demo")
     auth_store.create_user("opuser", "op-password-1", "admin")
     signup_router.reset_rate_limit()
-    owner_bot.reset_rate_limit()
     og.reset_caches()
     assert client.post("/signup", json=PAYLOAD).status_code == 200
     client.post("/auth/login", json={"username": "opuser", "password": "op-password-1"})
@@ -111,21 +106,6 @@ def test_charging_guide_endpoint_is_owner_only_and_uses_session_vehicle(owner_se
     assert client.get("/owner/charging-guide", params={"need_soc_pct": 10}).status_code == 422   # 범위 밖
     client.post("/auth/logout")
     assert client.get("/owner/charging-guide").status_code in (401, 403)
-
-
-def test_ev_bot_receives_the_calculated_schedule(owner_session, monkeypatch):
-    seen = {}
-
-    class GW:
-        def generate(self, system, prompt, facts, template, extra_allowed=()):
-            seen["prompt"] = prompt
-            return GatewayResult("ok", "llm")
-
-    monkeypatch.setattr(owner_bot, "get_gateway", lambda: GW())
-    monkeypatch.setattr(og, "demand_forecast", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no model")))
-    r = client.post("/owner/ask", json={"question": "내 차 언제 충전해?"})
-    assert r.status_code == 200 and r.json()["answer"] == "ok"
-    assert "추천 충전" in seen["prompt"] and "예상 절감" in seen["prompt"]       # 예측 모델이 없어도 충전 시간 계산은 전달
 
 
 def test_localize_translates_fixed_phrases_to_english_without_touching_the_original():
@@ -180,29 +160,21 @@ def test_v2g_switch_endpoint_defaults_off_and_records_history(owner_session):
     assert client.get("/owner/charging-guide", params={"current_soc_pct": 60, "need_soc_pct": 70}).json()["plan"]["discharge_kwh"] == 0
 
 
-def test_guide_and_ask_are_recorded_in_audit_log_without_question_text(owner_session, monkeypatch):
+def test_guide_is_recorded_in_audit_log(owner_session):
     import json
 
     from src.privacy import audit
 
-    class GW:
-        def generate(self, system, prompt, facts, template, extra_allowed=()):
-            return GatewayResult("답변입니다", "llm")
-
-    monkeypatch.setattr(owner_bot, "get_gateway", lambda: GW())
     assert client.get("/owner/charging-guide", params={"current_soc_pct": 45, "need_soc_pct": 85}).status_code == 200
-    assert client.post("/owner/ask", json={"question": "비밀번호는 secret-q 입니다"}).status_code == 200
     con = audit._connect()
     try:
         rows = {a: (t, json.loads(d)) for a, t, d in con.execute(
-            "SELECT action, target, detail FROM audit_log WHERE action IN ('owner_guide_issue','owner_ask') ORDER BY id")}
-        dump = json.dumps([r for r in con.execute("SELECT detail FROM audit_log")])
+            "SELECT action, target, detail FROM audit_log WHERE action = 'owner_guide_issue' ORDER BY id")}
     finally:
         con.close()
     target, guide = rows["owner_guide_issue"]
     assert guide["safety_passed"] is True and guide["failed_checks"] == [] and guide["inputs"]["need_soc_pct"] == 85
-    assert rows["owner_ask"][1]["question_chars"] == len("비밀번호는 secret-q 입니다")
-    assert "secret-q" not in dump and audit.verify_chain()["ok"] is True
+    assert audit.verify_chain()["ok"] is True
 
 
 def test_ai_ops_kpi_aggregates_safety_pass_and_withdrawal(owner_session):

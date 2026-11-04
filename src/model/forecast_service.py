@@ -1,4 +1,7 @@
-"""예측 서빙 계층 (Serving Layer) — 레지스트리에 등록된 활성 모델로 예측을 수행한다.
+"""예측 서빙 계층 (Serving Layer) — ㈜아크릴 예측 결과를 우선 쓰고, 없으면 기준(baseline) 모델로 예측한다.
+
+계획서상 AI 예측모델은 참여기관 ㈜아크릴이 개발·제공한다(일 배치 → `external_forecasts`). 이 저장소의 LightGBM 모델은
+아크릴 결과가 오기 전까지의 대체용이자 비교용 기준 모델이다 — 응답의 `model_source`로 어느 쪽인지 항상 밝힌다.
 
 `src/pipeline/source.py`를 통해 업로드된 실제 데이터가 있으면 그것을, 없으면 동일
 SimConfig로 생성한 데모 시나리오를 피처 원천으로 쓴다 — 예측·최적화 로직은 데이터
@@ -26,6 +29,20 @@ GRANULARITY_PRESETS = {
     "weekly": {"horizon_hours": 24 * 180, "bucket": "week", "label": "월별"},
 }
 EXOGENOUS_COLS = ["power_demand_mw", "renewable_gen_mw", "temperature_c", "price_krw_per_kwh", "is_holiday"]
+ALLOWED_TARGETS = {"ev_charging_demand_kw", "ev_available_v2g_kwh", "power_demand_mw"}
+
+
+def _load_model(target_col: str, cfg: SimConfig):
+    """활성 기준 모델을 읽는다. 새로 설치해 레지스트리가 비어 있으면 기준(비교용) 모델 v1을 먼저 학습·등록한다."""
+    from src.automation.scheduler import bootstrap
+
+    if target_col not in ALLOWED_TARGETS:
+        raise FileNotFoundError(f"등록되지 않은 예측 대상입니다: {target_col}")
+
+    registry = ModelRegistry(target_col)
+    if registry.active_version() is None:
+        bootstrap(registry, cfg, target_col)
+    return registry.load()
 
 
 @dataclass
@@ -40,8 +57,7 @@ class ForecastResponse:
 
 def forecast_latest(target_col: str, cfg: SimConfig | None = None, periods: int = 24) -> ForecastResponse:
     cfg = cfg or SimConfig()
-    registry = ModelRegistry(target_col)
-    model, feature_cols, info = registry.load()
+    model, feature_cols, info = _load_model(target_col, cfg)
 
     ev_df, _charger_df, grid_df, is_real = load_scenario(cfg)
     city_hourly = build_city_hourly(ev_df, grid_df, cfg)
@@ -94,8 +110,7 @@ def forecast_horizon(target_col: str, granularity: str, cfg: SimConfig | None = 
     horizon_hours, bucket = preset["horizon_hours"], preset["bucket"]
 
     cfg = cfg or SimConfig()
-    registry = ModelRegistry(target_col)
-    model, feature_cols, info = registry.load()
+    model, feature_cols, info = _load_model(target_col, cfg)
 
     ev_df, _charger_df, grid_df, is_real = load_scenario(cfg)
     city_hourly = build_city_hourly(ev_df, grid_df, cfg).sort_values("timestamp").reset_index(drop=True)
@@ -154,3 +169,35 @@ def forecast_horizon(target_col: str, granularity: str, cfg: SimConfig | None = 
         "values_lower": values_lower,
         "values_upper": values_upper,
     }
+
+
+MIN_EXTERNAL_POINTS = 24   # 아크릴 예측이 앞으로 24시간 이상 있을 때만 그것을 쓴다
+
+
+def forecast_preferred(target_col: str, granularity: str = "hourly", cfg: SimConfig | None = None) -> dict:
+    """시간대별(48시간) 전망은 아크릴 예측이 충분하면 그것을, 아니면 기준 모델 재귀 예측을 돌려준다.
+    주별·월별 전망은 아크릴 일 배치 범위를 넘으므로 기준 모델로 낸다."""
+    if granularity == "hourly":
+        from src.acryl import link
+
+        cfg = cfg or SimConfig()
+        ev_df, _c, grid_df, is_real = load_scenario(cfg)
+        last_ts = pd.Timestamp(ev_df["timestamp"].max())
+        horizon = GRANULARITY_PRESETS["hourly"]["horizon_hours"]
+        try:
+            fc = link.latest_forecast(target_col, start=last_ts + pd.Timedelta(hours=1), end=last_ts + pd.Timedelta(hours=horizon))
+        except link.LinkError:
+            fc = pd.DataFrame()
+        if len(fc) >= MIN_EXTERNAL_POINTS:
+            return {
+                "target_col": target_col, "granularity": granularity, "label": GRANULARITY_PRESETS["hourly"]["label"],
+                "bucket": "hour", "model_source": "acryl", "model_version": f"acryl:{fc['model_version'].iloc[-1]}",
+                "is_real_data": is_real, "timestamps": [t.isoformat() for t in fc["timestamp"]],
+                "values": [round(float(v), 2) for v in fc["value"]],
+                "values_lower": [round(float(v), 2) if pd.notna(v) else None for v in fc["lower"]],
+                "values_upper": [round(float(v), 2) if pd.notna(v) else None for v in fc["upper"]],
+                "generation": "inferred",
+            }
+    result = forecast_horizon(target_col, granularity, cfg)
+    return {**result, "model_source": "baseline", "generation": "inferred"}
+

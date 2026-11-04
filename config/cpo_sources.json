@@ -1,16 +1,42 @@
 {
-  "_comment": "충전사업자(CPO) 연계 설정. 사업자·연계 방식이 확정되면 enabled를 true로 바꾼다. type: csv(파일 전달) | mock(검증용). csv는 column_map에 {표준컬럼: 사업자 CSV 컬럼명}을 적는다. 표준컬럼: session_id, charger_id, start_ts, duration_h, energy_kwh, (선택) zone, ev_id. energy_unit은 kwh 또는 wh.",
+  "_comment": "충전서비스 사업자(CPO) 3사 연계 설정 — 계획서 13장 데이터 수집·제공 용역(나이스인프라·플러그링크·이브이시스, 일 단위 REST API 제공). 용역 체결·API 명세 수령 후 url·column_map을 채우고 enabled를 true로 바꾼다. type: rest(사업자 API) | csv(파일 전달) | mock(검증용). column_map은 {표준컬럼: 사업자 필드명}. 표준컬럼: session_id, charger_id, start_ts, duration_h(또는 end_ts로 계산), energy_kwh, (선택) zone, ev_id, end_ts, charger_type, connector_type, avg_power_kw, stop_reason, error_code. 인증 토큰은 auth_env에 적은 환경변수로만 넣는다(이 파일에 쓰지 않는다). energy_unit은 kwh 또는 wh.",
   "sources": [
     {
       "operator_id": "CPO-A",
+      "_operator": "나이스인프라㈜(참여의향서 9.22.)",
+      "type": "rest",
+      "enabled": false,
+      "url": "",
+      "auth_env": "CPO_A_API_TOKEN",
+      "items_path": "data.items",
+      "column_map": {"session_id": "txnId", "charger_id": "chargerId", "start_ts": "startTime", "end_ts": "endTime",
+                     "energy_kwh": "energyKwh", "avg_power_kw": "powerKw", "connector_type": "connectorType",
+                     "stop_reason": "stopReason", "error_code": "errorCode"},
+      "_note": "필드 이름은 예시 — 용역 산출물 'API 명세서' 수령 후 확정"
+    },
+    {
+      "operator_id": "CPO-B",
+      "_operator": "㈜플러그링크(참여의향서 9.18.)",
+      "type": "rest",
+      "enabled": false,
+      "url": "",
+      "auth_env": "CPO_B_API_TOKEN",
+      "items_path": "data.items",
+      "column_map": {"session_id": "txnId", "charger_id": "chargerId", "start_ts": "startTime", "end_ts": "endTime",
+                     "energy_kwh": "energyKwh"},
+      "_note": "필드 이름은 예시 — 용역 산출물 'API 명세서' 수령 후 확정"
+    },
+    {
+      "operator_id": "CPO-C",
+      "_operator": "㈜이브이시스(참여의향서 9.21.)",
       "type": "csv",
       "enabled": false,
-      "path": "data/cpo/cpo_a.csv",
+      "path": "data/cpo/cpo_c.csv",
       "column_map": {"session_id": "txn_id", "charger_id": "charger_id", "start_ts": "start_time", "duration_h": "duration_h", "energy_kwh": "energy_kwh"},
       "time_format": null,
       "energy_unit": "kwh",
-      "_note": "협의 중 — 실제 컬럼명은 사업자 샘플 수령 후 확정"
+      "_note": "API 제공 전 파일 전달로 시작하는 경우의 예시"
     },
-    {"operator_id": "CPO-B", "type": "mock", "enabled": false, "n_chargers": 5, "days": 7, "seed": 1}
+    {"operator_id": "CPO-MOCK", "type": "mock", "enabled": false, "n_chargers": 5, "days": 7, "seed": 1}
   ]
 }

@@ -50,12 +50,13 @@
   .err { color: #d9534f; font-size: 13px; min-height: 18px; }
   @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
 </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
-<body>
+<body class="ax-page">
+<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><span class="ax-tag">DEV</span><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin">웹앱 관리</a></nav></div></header>
 <div class="wrap">
-  <span class="badge">DEV</span>
-  <h1>AI-V2G 개발용 진입</h1>
-  <p class="lead">모바일 앱, PC 대시보드, 어드민으로 바로 들어가는 개발용 페이지입니다. 간편 로그인은 서버에 개발용 계정이 설정된 경우에만 나타납니다.</p>
+  <div class="ax-page-head"><h1>AX·V2G 개발용 진입</h1>
+  <p class="lead">모바일 앱, PC 대시보드, 어드민으로 바로 들어가는 개발용 페이지입니다. 간편 로그인은 서버에 개발용 계정이 설정된 경우에만 나타납니다.</p></div>
 
   <div class="grid">
     <section class="card a">
@@ -70,7 +71,7 @@
     <section class="card b">
       <h2>PC 대시보드</h2>
       <div class="path">/dashboard</div>
-      <p>운영 대시보드. KPI, 최적화 비교, 예측, DR, 충전기 에뮬레이터, EV Bot, 이용 가이드.</p>
+      <p>운영 대시보드. KPI, 최적화 비교, 수요예측, 충전기 현황, 이용 가이드.</p>
       <div class="actions">
         <a class="btn primary" href="/dashboard">열기</a>
         <button class="btn" type="button" id="qAdmin" hidden>간편 로그인으로 열기</button>

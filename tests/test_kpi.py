@@ -86,3 +86,16 @@ def test_summary_on_generated_scenario_has_plan_scale():
     assert s.is_real is False                                    # 합성 데이터는 실적이 아니다
     # 1차년도 기간(11/1~4/15) 안의 21주 시나리오만으로도 설계상 4,000건을 넘는다
     assert s.by_year[0].records >= kpi.PROJECT_YEARS["Y1"]["target"]
+
+
+def test_official_counts_exclude_synthetic_tables():
+    """EV만 실측이고 충전기는 합성으로 보완 중이면, 성과 실적에는 차량-일만 들어간다."""
+    ev = _ev([("2026-12-01 08:00", "A", True, False, 0.0, "m1"), ("2026-12-02 08:00", "A", True, False, 0.0, "m1")])
+    ch = _sessions(["2026-12-01", "2026-12-02", "2026-12-03"])
+    prov = {"ev_telemetry": "measured", "charger_sessions": "synthetic", "grid_signal": "synthetic"}
+    s = kpi.summarize_kpi(ev, ch, provenance=prov)
+    assert s.by_year[0].records == 5 and s.official_by_year[0].records == 2
+    assert (s.official_by_year[0].charger_sessions, s.official_by_year[0].vehicle_days) == (0, 2)
+    assert s.is_real is True and s.provenance == prov
+    demo = kpi.summarize_kpi(ev, ch)
+    assert demo.official_by_year[0].records == 0 and demo.is_real is False

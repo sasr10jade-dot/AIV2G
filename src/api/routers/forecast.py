@@ -1,4 +1,4 @@
-"""AI 수요·공급 예측 서빙 API (WS2)."""
+"""AI 수요·공급 예측 서빙 API — ㈜아크릴 예측 결과 우선, 없으면 기준(baseline) 모델."""
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from src.auth.deps import require_admin
 from src.datagen.config import SimConfig
 from src.model.forecast_report import build_forecast_report_docx, build_forecast_report_pdf
-from src.model.forecast_service import GRANULARITY_PRESETS, forecast_horizon, forecast_latest
+from src.model.forecast_service import GRANULARITY_PRESETS, forecast_latest, forecast_preferred
 from src.model.plugin_pattern import InsufficientHistoryError, UnknownVehicleError, forecast_plugin_schedule
 from src.pipeline.source import load_scenario
 
@@ -38,7 +38,7 @@ def get_forecast(
     }
 
 
-@router.get("/{target_col}/horizon", summary="일별(시간대별)/주별/월별 미래 전망 (재귀 예측)")
+@router.get("/{target_col}/horizon", summary="일별(시간대별)/주별/월별 미래 전망 — ㈜아크릴 예측 우선, 없으면 기준 모델 재귀 예측")
 def get_forecast_horizon(
     target_col: str,
     granularity: str = Query(
@@ -46,7 +46,8 @@ def get_forecast_horizon(
         description="hourly=다음 48시간(시간단위) · daily=다음 4주(일 합계) · weekly=다음 약 6개월(주 합계)",
     ),
 ) -> dict:
-    """일별(시간대별)/주별/월별 조회 단위로 미래 구간을 재귀 예측한다.
+    """일별(시간대별)/주별/월별 조회 단위로 미래 구간 전망을 낸다. 시간대별(48시간)은 ㈜아크릴이 보낸 예측이 24시간 이상
+    있으면 그것을 쓰고(`model_source="acryl"`), 아니면 기준 모델로 재귀 예측한다(`model_source="baseline"`).
 
     - hourly: 다음 48시간, 시간 단위
     - daily: 다음 4주, 일 합계(kWh)
@@ -60,7 +61,7 @@ def get_forecast_horizon(
     수치는 실증 데이터 양·품질에 따라 달라진다.
     """
     try:
-        return forecast_horizon(target_col, granularity)
+        return forecast_preferred(target_col, granularity)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

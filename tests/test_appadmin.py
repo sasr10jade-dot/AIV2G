@@ -6,7 +6,6 @@ from src.advisory import owner_guide as og
 from src.api import app
 from src.api.routers import signup as signup_router
 from src.auth import store as auth_store
-from src.copilot import owner_bot
 
 client = TestClient(app)
 PAYLOAD = {"username": "admindriver", "password": "driver-pass-1", "vehicle_model": "v2g_demo", "plate": "43오3450",
@@ -22,7 +21,6 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(auth_store, "USERS_FILE", tmp_path / "users.json")
     auth_store.create_user("opuser", "op-password-1", "admin")
     signup_router.reset_rate_limit()
-    owner_bot.reset_rate_limit()
     og.reset_caches()
     assert client.post("/signup", json=PAYLOAD).status_code == 200
     _login("opuser", "op-password-1")

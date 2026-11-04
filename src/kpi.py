@@ -14,7 +14,8 @@
 - 방전은 실측이 아니라 AI 추론이므로(계획서 '수행 전제') 건수에 넣지 않는다.
 
 연차는 사업기간으로 나눈다. 1·2차년도 사이 공백기(2027-04-16~04-30)와 사업기간 밖 데이터는 어느 연차에도 넣지 않는다.
-합성(모의) 데이터는 실적이 아니므로 `is_real=False`로 표시해 화면이 '모의'로 구분하게 한다.
+합성(모의) 데이터는 실적이 아니다. 표별 출처(`source.provenance()`)를 받아 실측 표의 건수만 `official_by_year`(성과 실적)로
+따로 센다 — EV만 실측이고 충전기는 합성으로 보완 중이면 충전 세션은 실적에 넣지 않는다.
 """
 from __future__ import annotations
 
@@ -67,11 +68,13 @@ class KpiSummary:
     charger_count: int
     charger_type_count: int | None    # 충전기 종류 컬럼이 없으면 None(미집계)
     operator_count: int | None        # 사업자 컬럼이 없으면 None(미집계)
-    by_year: list[YearCount]
+    by_year: list[YearCount]            # 출처와 무관하게 센 연차별 건수(모의 데이터 포함 — 화면 미리보기용)
+    official_by_year: list[YearCount]   # 실측 표의 건수만 센 연차별 성과 실적
     out_of_period_records: int        # 공백기·사업기간 밖(어느 연차에도 넣지 않음)
     scenario_records: int             # 기간 구분 없이 센 전체 유효 건수(참고)
     public_reference_records: int     # 공개 데이터 참고 건수(성과 미포함)
     is_real: bool
+    provenance: dict = field(default_factory=dict)
     targets: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
@@ -109,15 +112,16 @@ def count_vehicle_days(ev_df: pd.DataFrame) -> int:
     return int(len(_vehicle_days(ev_df)))
 
 
-def count_by_year(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> tuple[list[YearCount], int]:
-    """연차별 건수와 어느 연차에도 속하지 않는 건수."""
+def count_by_year(ev_df: pd.DataFrame, charger_df: pd.DataFrame,
+                  count_sessions: bool = True, count_vehicle_days: bool = True) -> tuple[list[YearCount], int]:
+    """연차별 건수와 어느 연차에도 속하지 않는 건수. count_*=False인 표는 0으로 센다(합성 표 제외용)."""
     sess_years = _session_dates(charger_df).map(project_year_of)
     vd = _vehicle_days(ev_df)
     vd_years = vd["_day"].map(project_year_of) if not vd.empty else pd.Series([], dtype="object")
     rows = []
     for key, y in PROJECT_YEARS.items():
-        s = int((sess_years == key).sum())
-        v = int((vd_years == key).sum())
+        s = int((sess_years == key).sum()) if count_sessions else 0
+        v = int((vd_years == key).sum()) if count_vehicle_days else 0
         rec = s + v
         rows.append(YearCount(key, y["label"], s, v, rec, y["target"], round(rec / y["target"] * 100, 1)))
     out = int(sess_years.isna().sum() + vd_years.isna().sum())
@@ -139,8 +143,17 @@ def summarize_kpi(
     grid_df: pd.DataFrame | None = None,
     is_real: bool = False,
     grid_is_real: bool = False,
+    provenance: dict | None = None,
 ) -> KpiSummary:
+    """provenance가 없으면 is_real 하나로 EV·충전기 표 모두의 출처를 정한다(구 호출 호환)."""
+    provenance = provenance or {"ev_telemetry": "measured" if is_real else "synthetic",
+                                "charger_sessions": "measured" if is_real else "synthetic",
+                                "grid_signal": "public" if grid_is_real else "synthetic"}
     by_year, out = count_by_year(ev_df, charger_df)
+    official, _ = count_by_year(ev_df, charger_df,
+                                count_sessions=provenance.get("charger_sessions") == "measured",
+                                count_vehicle_days=provenance.get("ev_telemetry") == "measured")
+    grid_is_real = provenance.get("grid_signal") == "public"
     # 공개 데이터 참고 건수: 전력수요·재생에너지·SMP·기상 4종 × 시간단위 행 수, 실데이터일 때만
     public_ref = (len(grid_df) * 4) if (grid_df is not None and grid_is_real) else 0
 
@@ -154,9 +167,11 @@ def summarize_kpi(
         charger_type_count=int(charger_df["charger_type"].nunique()) if has(charger_df, "charger_type") else None,
         operator_count=int(charger_df["operator_id"].nunique()) if has(charger_df, "operator_id") else None,
         by_year=by_year,
+        official_by_year=official,
         out_of_period_records=out,
         scenario_records=count_charger_sessions(charger_df) + count_vehicle_days(ev_df),
         public_reference_records=public_ref,
-        is_real=bool(is_real),
+        is_real=provenance.get("ev_telemetry") == "measured",
+        provenance=provenance,
         targets=plan_targets(),
     )

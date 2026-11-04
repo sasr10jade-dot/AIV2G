@@ -115,14 +115,19 @@ def test_approvals_page_served_and_linked_from_dashboard():
     assert 'href="/approvals"' in client.get("/dashboard").text
 
 
-def test_app_page_has_missions_tab():
+def test_app_page_has_plan_scope_tabs_only():
+    """계획서 범위: 홈(공지·참여 현황)·충전 시간·예측 탭만 있고, 미션·포인트·알림함은 없다."""
     html = client.get("/app").text
-    assert 'data-tab="missions"' in html and "renderMissions" in html and "/owner/missions" in html
+    for tab in ("inbox", "price", "forecast"):
+        assert f'data-tab="{tab}"' in html
+    for gone in ('data-tab="missions"', "/owner/missions", "/owner/points", "/owner/coupons", "/owner/notifications", "/owner/consent/notify"):
+        assert gone not in html
 
 
-def test_missions_tab_has_intro_in_both_languages():
+def test_signup_and_home_show_supporter_operating_inputs_in_both_languages():
     html = client.get("/app").text
-    assert "missionIntro" in html and "ms_intro_title: '미션이란?'" in html and "ms_intro_title: 'What are missions?'" in html
+    assert "departure_time" in html and "target_soc_pct" in html and "min_soc_pct" in html and "odometer_km" in html
+    assert "su_op_title: '운행 정보(선택)'" in html and "su_op_title: 'Driving info (optional)'" in html
 
 
 def test_dev_entry_page_links_mobile_pc_admin():
@@ -170,3 +175,15 @@ def test_owner_session_on_admin_pages_goes_to_login_with_a_reason_not_silently_t
     assert "reason') === 'owner'" in login and 'id="info"' in login               # 로그인 화면이 이유를 알려 준다
     dev = client.get("/dev").text
     assert 'id="who"' in dev and "/auth/me" in dev and 'id="logout"' in dev        # 진입 화면에 현재 로그인 계정과 로그아웃
+
+
+def test_every_screen_uses_the_shared_ax_v2g_theme():
+    """모든 화면이 /theme.css(AX·V2G 디자인 시스템)를 불러오고, 실측·추론 구분 표시를 쓴다."""
+    r = client.get("/theme.css")
+    assert r.status_code == 200 and "text/css" in r.headers["content-type"]
+    assert "--accent: #2563eb" in r.text and 'h2[data-kind="inferred"]::after' in r.text
+    for path in ("/login", "/dashboard", "/admin", "/approvals", "/dev", "/app", "/privacy-policy"):
+        assert '<link rel="stylesheet" href="/theme.css"' in client.get(path).text, path
+    dash = client.get("/dashboard").text
+    assert 'class="ax-header"' in dash and 'class="ax-notice"' in dash and 'data-kind="inferred"' in dash
+    assert "/owner/ask" not in client.get("/app").text          # 서버에서 삭제된 EV Bot을 부르지 않는다

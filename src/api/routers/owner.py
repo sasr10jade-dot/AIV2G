@@ -15,7 +15,6 @@ from src.api.routers.auth import validate_password_strength
 from src.auth import store as auth_store
 from src.auth.deps import client_ip, require_owner, require_owner_account
 from src.advisory import owner_guide, service as advisory
-from src.copilot import owner_bot
 from src.privacy import audit, consent, member_history
 from src.appadmin import service as appadmin
 from src.auth import throttle
@@ -223,61 +222,6 @@ def withdraw(body: WithdrawIn, request: Request, user: dict = Depends(require_ow
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     request.session.clear()
     return {"status": "withdrawn", "deleted": summary}
-
-
-# -------------------------------------------------------------------- 이용자용 EV Bot --
-
-class HistoryTurnIn(BaseModel):
-    role: str = Field(..., pattern="^(user|ai)$")
-    text: str = Field(..., max_length=owner_bot.MAX_TURN_CHARS)
-
-
-class AskIn(BaseModel):
-    question: str = Field(..., min_length=1, max_length=owner_bot.MAX_QUESTION_CHARS)
-    history: list[HistoryTurnIn] | None = Field(None, max_length=owner_bot.MAX_HISTORY_TURNS * 2)
-    lang: str = Field("ko", pattern="^(ko|en)$")   # 앱 표시 언어 — 답변 언어만 바꾼다
-
-
-BOT_FACTS_TTL_S = 90
-_bot_facts_cache: dict = {}
-
-
-@router.post("/ask", summary="이용자용 EV Bot — 앱 사용법·용어·개인정보 안내(본인 차량 정보만 근거)")
-def ask(body: AskIn, user: dict = Depends(require_owner)) -> dict:
-    """운영자용 EV Bot과 달리 이용자용 안내 문서와 본인 차량 정보만 근거로 답한다. 차량은 세션에서만 정해진다."""
-    info = owner_bot.build_vehicle_info(user["username"], user["owned_ev_id"])
-    extra = None
-    try:   # 충전 시간 질문에 실제 계산 결과로 답하게 한다(계산 실패는 일반 안내로 대체)
-        participating = consent.has_consent(user["owned_ev_id"], "v2g_discharge")
-        key = (user["username"], user["owned_ev_id"], participating)
-        hit = _bot_facts_cache.get(key)
-        if hit and time.monotonic() - hit[0] < BOT_FACTS_TTL_S:   # 같은 이용자의 연속 질문마다 최적화를 다시 풀지 않는다
-            extra = hit[1]
-        else:
-            extra = owner_guide.bot_facts(owner_guide.vehicle_profile(user["username"], user["owned_ev_id"]),
-                                          participating=participating)
-            if len(_bot_facts_cache) > 500:   # 이용자가 늘어도 메모리가 무한정 자라지 않게 오래된 것부터 비운다
-                for old in sorted(_bot_facts_cache, key=lambda k: _bot_facts_cache[k][0])[:250]:
-                    _bot_facts_cache.pop(old, None)
-            _bot_facts_cache[key] = (time.monotonic(), extra)
-    except Exception:   # noqa: BLE001
-        logger.exception("EV Bot: 충전 시간 계산을 건너뜁니다")
-    history = [h.model_dump() for h in body.history] if body.history else None
-    try:
-        answer = owner_bot.ask_owner(user["username"], body.question, info, history, extra, body.lang)
-    except owner_bot.OwnerBotRateLimited as exc:
-        raise HTTPException(status_code=429, detail=str(exc)) from exc
-    except owner_bot.CopilotNotConfigured as exc:
-        raise HTTPException(status_code=503, detail="지금은 EV Bot을 쓸 수 없어요. 운영자에게 문의해 주세요.") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    try:   # 질문·답변 본문은 개인정보가 섞일 수 있어 남기지 않고, 호출 사실과 길이만 기록한다
-        audit.log(user["username"], "owner_ask", target=user["owned_ev_id"], detail={
-            "lang": body.lang, "question_chars": len(body.question), "answer_chars": len(answer),
-            "history_turns": len(body.history or [])})
-    except Exception:   # noqa: BLE001
-        logger.exception("EV Bot 감사로그 기록에 실패했습니다")
-    return {"answer": answer}
 
 
 # -------------------------------------------------------------- 충전 시간 안내·수요 예측 --

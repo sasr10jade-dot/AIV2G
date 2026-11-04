@@ -12,14 +12,14 @@ from src.paths import PROJECT_ROOT
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-from .routers import auth, batch, copilot, dashboard, forecast, grid, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app  # noqa: E402
+from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app  # noqa: E402
 from src.auth.store import ensure_bootstrap_super_admin  # noqa: E402
 
 TAGS_METADATA = [
     {"name": "auth", "description": "로그인·로그아웃·계정관리 — 최고관리자(super_admin)/관리자(admin)/차량 등록자(owner) 권한."},
-    {"name": "owner", "description": "사용자 모바일웹(`/app`) — 차량 등록자(owner)가 본인 차량만 조회·설정. 알림·공지, 충전 시간 안내(안전 검증 포함), 수요 예측, 방전 참여·시범 포인트 적립 동의, 미션·포인트, 상품권 교환·쿠폰함, EV Bot(KR/EN), 내 정보(열람·정정·탈퇴)."},
-    {"name": "admin", "description": "웹앱 관리(관리자, `/admin`) — 공지사항(영어 포함), 앱 문구(미션 안내) 편집, 상품권 교환 신청 처리·코드 등록(암호화 저장, 반려 시 포인트 환급)."},
-    {"name": "advisory", "description": "추천 계획 발행·수용률(관리자) 및 AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율·EV Bot 호출 집계."},
+    {"name": "owner", "description": "사용자 모바일웹(`/app`) — 차량 등록자(owner)가 본인 차량만 조회·설정. 충전 시간 안내(안전 검증 포함), 수요 예측, 방전 참여 동의, 내 정보(열람·정정·탈퇴)."},
+    {"name": "admin", "description": "웹앱 관리(관리자, `/admin`) — 공지사항(영어 포함), 서포터즈 모집 및 승인 관리."},
+    {"name": "advisory", "description": "추천 계획 발행·수용률(관리자) 및 AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율 집계."},
     {"name": "privacy", "description": "개인정보 보호 — 동의 이력, 해시체인 감사로그와 무결성 검증(최고관리자)."},
     {"name": "health", "description": "서버 상태 확인(공개)."},
     {"name": "signup", "description": "모바일 회원가입 — 계정과 차량·페르소나 정보를 승인 대기로 등록(공개)."},
@@ -29,8 +29,7 @@ TAGS_METADATA = [
     {"name": "optimize", "description": "AI 최적 V2G 의사결정 (WS3/WS4) — 일반충전 vs 최적화 PoC 비교."},
     {"name": "models", "description": "예측 모델 레지스트리 조회 (Monitoring 레이어 입력)."},
     {"name": "dashboard", "description": "실시간 웹 대시보드 데이터 (KPI·차트·Closed-loop 통합)."},
-    {"name": "copilot", "description": "EV Bot — Gemini 기반 RAG 질의응답 (사업계획 문서 + 시나리오 데이터 근거)."},
-    {"name": "grid", "description": "한전 계통 수요반응(DR) 이벤트 — CEMS 외부 신호 수신 스텁, 가격 신호로 V2G 최적화에 반영."},
+    {"name": "acryl", "description": "참여기관 ㈜아크릴 AI 예측모델 연계 — 학습용 정제 데이터 제공(가명처리)과 예측 추론 결과 수신(일 배치). `/partner/acryl/*`은 기관 연계 토큰 전용."},
 ]
 
 app = FastAPI(
@@ -57,7 +56,7 @@ _session_secret = os.environ.get("SESSION_SECRET") or secrets.token_hex(32)
 _https_only = os.environ.get("SESSION_HTTPS_ONLY") == "1"
 app.add_middleware(SessionMiddleware, secret_key=_session_secret, session_cookie="v2g_session", same_site="lax", https_only=_https_only)
 
-_NO_STORE_PREFIXES = ("/auth", "/owner", "/admin", "/registrations", "/privacy", "/notify", "/signup")
+_NO_STORE_PREFIXES = ("/auth", "/owner", "/admin", "/registrations", "/privacy", "/signup", "/acryl", "/partner")
 
 
 @app.middleware("http")
@@ -90,13 +89,12 @@ app.include_router(forecast.router)
 app.include_router(optimize.router)
 app.include_router(models.router)
 app.include_router(dashboard.router)
-app.include_router(copilot.router)
-app.include_router(grid.router)
 app.include_router(owner.router)
 app.include_router(pwa.router)
 app.include_router(signup.router)
 app.include_router(registrations.router)
 app.include_router(admin_app.router)
+app.include_router(acryl.router)
 
 dashboard.start_cache_warmer()
 if "pytest" not in __import__("sys").modules:

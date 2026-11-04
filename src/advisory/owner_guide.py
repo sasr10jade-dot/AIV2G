@@ -350,11 +350,13 @@ def cached_demand_forecast() -> dict:
 
 
 def _fetch_forecast(target: str) -> dict:
-    from src.model.forecast_service import forecast_horizon
-    return forecast_horizon(target, "hourly")
+    from src.model.forecast_service import forecast_preferred
+    return forecast_preferred(target, "hourly")   # ㈜아크릴 예측 우선, 없으면 기준 모델
 
 
 def _extreme_windows(times: list[pd.Timestamp], values: np.ndarray, high: bool, top: int = 2) -> list[dict]:
+    if len(values) == 0:
+        return []
     q = np.quantile(values, 0.75 if high else 0.25)
     # 값이 같은 시간이 많으면 분위수가 최솟값·최댓값과 같아져 하루 전체가 선택된다 — 극값과 다른 시간만 후보로 둔다
     lo, hi = float(values.min()), float(values.max())
@@ -385,6 +387,7 @@ def demand_forecast(fetch=_fetch_forecast, now_s: float | None = None) -> dict:
             "charging_peaks": _extreme_windows(times, c, True), "charging_lows": _extreme_windows(times, c, False),
             "is_real_data": bool(charging.get("is_real_data") or v2g.get("is_real_data")),
             "model_versions": {"charging_demand": charging.get("model_version"), "v2g_available": v2g.get("model_version")},
+            "model_source": {"charging_demand": charging.get("model_source", "baseline"), "v2g_available": v2g.get("model_source", "baseline")},
             "scope": "시뮬레이션 차량 전체 기준(내 차 한 대가 아님)",
             "note": "예측 모델은 모의(합성) 데이터로 학습돼 있어요. 실제 운행 데이터가 쌓이면 달라질 수 있어요." if not (
                 charging.get("is_real_data") or v2g.get("is_real_data")) else "실증 데이터로 학습한 예측이에요.",

@@ -8,7 +8,7 @@
 (function () {
   var t;
   try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
-  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'light');
 })();
 </script>
 <style>
@@ -51,20 +51,19 @@
   .msg.err { color: var(--bad); }
   .body-text { white-space: pre-wrap; font-size: 13.5px; margin: 8px 0 0; }
 </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
-<body>
+<body class="ax-page">
+<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin" aria-current="page">웹앱 관리</a></nav></div></header>
 <div class="wrap">
-  <header>
-    <div>
+  <div class="ax-page-head">
       <h1>웹앱 관리</h1>
-      <div class="sub">모바일 앱(내 차)에 보이는 공지사항·문구와 상품권 교환을 관리합니다.</div>
-    </div>
-    <div class="links"><a class="nav" href="/approvals">가입 승인</a><a class="nav" href="/dashboard">← 대시보드</a></div>
-  </header>
+      <div class="sub">서포터즈 모바일 앱의 공지사항·안내 문구, ㈜아크릴 예측모델 연계(학습 데이터 제공·예측 결과 수신), AI 운영 지표를 관리합니다.</div>
+  </div>
   <div class="tabs" role="group" aria-label="메뉴">
     <button type="button" data-tab="notices" aria-pressed="true">공지사항</button>
-    <button type="button" data-tab="redeem" aria-pressed="false">상품권 교환 <span id="redeemCount"></span></button>
-    <button type="button" data-tab="content" aria-pressed="false">앱 문구(미션 안내)</button>
+    <button type="button" data-tab="acryl" aria-pressed="false">㈜아크릴 연계</button>
+    <button type="button" data-tab="content" aria-pressed="false">앱 안내 문구</button>
     <button type="button" data-tab="kpi" aria-pressed="false">AI 운영 지표</button>
   </div>
   <div id="msg" class="msg" role="status"></div>
@@ -165,43 +164,40 @@
     });
   }
 
-  // ---------------------------------------------------------------- 상품권 교환
-  async function renderRedeem() {
-    var r = await api('/admin/redemptions');
-    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
-    var cfg = r.body.config, list = r.body.redemptions;
-    var pending = list.filter(function (x) { return x.status === 'requested'; });
-    document.getElementById('redeemCount').textContent = pending.length ? '(' + pending.length + ')' : '';
+  // ---------------------------------------------------------------- ㈜아크릴 연계(계획서 5.2 기관 간 인터페이스)
+  async function renderAcryl() {
+    var rs = await Promise.all([api('/acryl/exports'), api('/acryl/forecasts/status')]);
+    if (!rs[0].ok || !rs[1].ok) { say(detail(rs[0].ok ? rs[1] : rs[0], '불러오지 못했습니다.'), true); return; }
+    var from = el('input', { type: 'date', 'aria-label': '제공 기간 시작일' }), to = el('input', { type: 'date', 'aria-label': '제공 기간 종료일' });
+    var make = el('button', { type: 'button', class: 'ok', text: '제공 묶음 만들기' });
+    make.addEventListener('click', function () {
+      act(make, function () { return send('POST', '/acryl/exports', { period_start: from.value || null, period_end: to.value || null }); },
+        '학습용 정제 데이터 묶음을 만들었습니다(가명처리·SHA-256 기록).');
+    });
     panel.appendChild(el('div', { class: 'card' }, [
-      el('div', { class: 'name', text: '교환 기준' }),
-      el('div', { class: 'muted', text: cfg.label + ' · ' + Number(cfg.threshold_points).toLocaleString('ko-KR') + '포인트 · ' + (cfg.redeem_enabled ? '신청 받는 중' : '신청 중지') +
-        ' — 기준·중지는 config/rewards.json에서 바꿉니다(협의 전 예시값).' })]));
-    if (!list.length) { panel.appendChild(el('div', { class: 'empty', text: '교환 신청이 없습니다.' })); return; }
-    list.forEach(function (x) {
-      var acts = el('div', { class: 'row', style: 'margin-top:10px' });
-      if (x.status === 'requested') {
-        var code = el('input', { type: 'text', class: 'grow', placeholder: '상품권 코드 입력', 'aria-label': '상품권 코드', maxlength: '200', autocomplete: 'off' });
-        var lab = el('input', { type: 'text', placeholder: cfg.label, 'aria-label': '상품권 이름', maxlength: '40', style: 'width:140px' });
-        var ok = el('button', { type: 'button', class: 'ok', text: '코드 등록' });
-        ok.addEventListener('click', function () {
-          if (!code.value.trim()) { say('상품권 코드를 입력하세요.', true); code.focus(); return; }
-          act(ok, function () { return send('POST', '/admin/redemptions/' + x.id + '/fulfill', { code: code.value, label: lab.value || null }); }, '코드를 등록했습니다. 이용자 쿠폰함에 나타납니다.');
-        });
-        var reason = el('input', { type: 'text', placeholder: '반려 사유', 'aria-label': '반려 사유', maxlength: '200', style: 'width:160px' });
-        var no = el('button', { type: 'button', class: 'no', text: '반려' });
-        no.addEventListener('click', function () {
-          if (reason.value.trim().length < 2) { say('반려 사유를 2자 이상 입력하세요.', true); reason.focus(); return; }
-          act(no, function () { return send('POST', '/admin/redemptions/' + x.id + '/reject', { reason: reason.value }); }, '반려했습니다. 포인트는 돌려줍니다.');
-        });
-        [code, lab, ok, reason, no].forEach(function (n) { acts.appendChild(n); });
-      } else {
-        acts.appendChild(el('span', { class: 'tag ' + (x.status === 'fulfilled' ? 'on' : 'bad'), text: x.status === 'fulfilled' ? '발급됨' : '반려됨' }));
-        acts.appendChild(el('span', { class: 'muted', text: (x.handled_by || '') + ' · ' + fmt(x.handled_at) + (x.reason ? ' · ' + x.reason : '') }));
-      }
+      el('div', { class: 'name', text: '학습용 정제 데이터 제공(아우토크립트 → 아크릴)' }),
+      el('div', { class: 'muted', text: '차량 ID는 가명으로 바꾸고 식별정보는 싣지 않습니다. 외부 제공 동의를 철회한 차량은 뺍니다. 1차 학습용 데이터는 2027년 1월 초 누적분 제공이 목표입니다.' }),
+      el('div', { class: 'row', style: 'margin-top:10px' }, [el('span', { class: 'muted', text: '기간(비우면 전체)' }), from, el('span', { class: 'muted', text: '~' }), to, el('span', { class: 'grow' }), make])]));
+    var ex = rs[0].body.exports;
+    if (!ex.length) panel.appendChild(el('div', { class: 'empty', text: '아직 제공한 묶음이 없습니다.' }));
+    ex.forEach(function (x) {
+      var rows = Object.keys(x.row_counts).map(function (k) { return k + ' ' + Number(x.row_counts[k]).toLocaleString('ko-KR'); }).join(' · ');
       panel.appendChild(el('div', { class: 'card' }, [
-        el('div', { class: 'row' }, [el('span', { class: 'name grow', text: '신청 #' + x.id + ' · 차량 ' + x.ev_id }),
-          el('span', { class: 'muted', text: Number(x.points).toLocaleString('ko-KR') + 'P · ' + fmt(x.requested_at) })]),
-        acts]));
+        el('div', { class: 'row' }, [el('span', { class: 'name grow', text: x.export_id }),
+          el('span', { class: 'muted', text: fmt(x.created_at) + ' · ' + (x.created_by || '') })]),
+        el('div', { class: 'muted', text: '기간 ' + (x.period_start || '처음') + ' ~ ' + (x.period_end || '끝') + ' · ' + rows }),
+        el('div', { class: 'muted', text: 'SHA-256 ' + x.sha256 })]));
+    });
+    panel.appendChild(el('div', { class: 'card', style: 'margin-top:18px' }, [
+      el('div', { class: 'name', text: '예측 추론 결과 수신(아크릴 → 아우토크립트, 일 배치)' }),
+      el('div', { class: 'muted', text: '참여기관은 연계 토큰(ACRYL_API_TOKEN)과 허용 접속지(ACRYL_ALLOWED_IPS)로 /partner/acryl/forecasts 에 보냅니다. 수신값은 추론값으로 따로 보관하며, 예측이 있으면 충전 추천·전망에 우선 사용합니다.' })]));
+    rs[1].body.targets.forEach(function (t) {
+      var lb = t.last_batch;
+      panel.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'name grow', text: t.label }),
+          el('span', { class: 'tag ' + (t.batches ? 'on' : 'off'), text: t.batches ? '수신 ' + t.batches + '배치' : '미수신' })]),
+        el('div', { class: 'muted', text: lb ? ('최근 ' + lb.model_id + ' v' + lb.model_version + ' · 발행 ' + fmt(lb.issued_at) + ' · 수신 ' + fmt(t.last_received_at) +
+          ' · 예측 구간 ' + fmt(t.covers_from) + ' ~ ' + fmt(t.covers_to)) : '아직 받은 예측이 없습니다. 그동안은 기준(비교용) 모델로 계산합니다.' })]));
     });
   }
 
@@ -254,7 +250,7 @@
   async function render() {
     clear(panel);
     if (tab === 'notices') await renderNotices();
-    else if (tab === 'redeem') await renderRedeem();
+    else if (tab === 'acryl') await renderAcryl();
     else if (tab === 'kpi') await renderKpi();
     else await renderContent();
   }
@@ -271,9 +267,6 @@
     if (!me || !me.ok) { location.href = '/login?next=/admin'; return; }
     if (me.body.role === 'owner') { location.href = '/login?next=/admin&reason=owner'; return; }
     render();
-    api('/admin/redemptions?status=requested').then(function (r) {
-      if (r.ok) { var n = r.body.redemptions.length; document.getElementById('redeemCount').textContent = n ? '(' + n + ')' : ''; }
-    });
   })();
 })();
 </script>

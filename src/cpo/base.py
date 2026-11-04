@@ -14,6 +14,8 @@ import pandas as pd
 
 # 어댑터가 반환해야 하는 표준 세션 컬럼 (session_id는 사업자 내부 ID — 전역 유일성은 sync에서 보장)
 SESSION_COLUMNS = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id"]
+# 계획서 4.1·13장 용역 수집 항목 중 사업자가 줄 수 있으면 받는 선택 컬럼(종료 시각·충전기 종류·커넥터·출력·종료 사유·오류 코드)
+OPTIONAL_COLUMNS = ["end_ts", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code"]
 
 
 class CpoAdapter(ABC):
@@ -52,4 +54,9 @@ def normalize_sessions(df: pd.DataFrame) -> pd.DataFrame:
     if bad.any():
         raise CpoDataError(f"형식 오류 행 {int(bad.sum())}건 (인덱스 {list(out.index[bad][:5])} …)")
     out["zone"] = pd.to_numeric(out["zone"], errors="coerce").fillna(0).astype(int)
-    return out[SESSION_COLUMNS]
+    extra = [c for c in OPTIONAL_COLUMNS if c in out.columns]
+    if "end_ts" in extra:
+        out["end_ts"] = pd.to_datetime(out["end_ts"], errors="coerce")
+    if "avg_power_kw" in extra:
+        out["avg_power_kw"] = pd.to_numeric(out["avg_power_kw"], errors="coerce")
+    return out[SESSION_COLUMNS + extra]

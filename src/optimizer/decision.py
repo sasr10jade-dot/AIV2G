@@ -69,14 +69,9 @@ def optimize_fleet(
     target_soc: float,
     price_by_time: dict,
     economics=None,
-    dr_windows: list[dict] | None = None,
 ) -> dict:
     """economics(EconomicsParams)가 있으면 충·방전 효율과 열화비용을 반영한다 — 에너지 수지는
     eta_c*충전 - 방전/eta_d >= 필요량, 방전 비용에는 열화단가를 더한다. 없으면 기존 동작 그대로.
-
-    dr_windows: [{"start", "end", "multiplier"}] — DR(수요반응) 이벤트 구간. 구간 안 선단 순부하(충전-방전)의 최대값을
-    별도 변수로 두고 PEAK_WEIGHT × 심각도 배수로 벌점을 줘, 충전을 구간 밖으로 옮기고 방전 가능한 차량은 방전해
-    구간 순부하를 줄이게 한다(가격 프리미엄만으로는 피크 벌점에 가려 아무 효과가 없었다).
 
     방전이 가능한 차량은 시간대별 배터리 잔량(예비 잔량 이상, 용량 이하)을 상태변수로 둬 제한한다 — 일찍 많이 충전했다가
     나중에 방전하는 계획에서 잔량이 용량을 넘거나 예비 아래로 내려가는 것을 막는다."""
@@ -96,11 +91,6 @@ def optimize_fleet(
             n_vars += 1
     peak_idx = n_vars
     n_vars += 1
-    windows = [w for w in (dr_windows or []) if pd.Timestamp(w["end"]) > pd.Timestamp(w["start"])]
-    dr_idx = []
-    for _w in windows:
-        dr_idx.append(n_vars)
-        n_vars += 1
 
     def _band_ok(session: dict, t) -> bool:
         soc_here = session["soc_baseline_pct"].get(t)
@@ -134,8 +124,6 @@ def optimize_fleet(
             in_band = soc_here is not None and SOC_BAND_MIN_PCT <= soc_here <= SOC_BAND_MAX_PCT
             ub[di] = max_discharge_kw if (v2g_capable and in_band) else 0.0
     c[peak_idx] = PEAK_WEIGHT
-    for j, w in zip(dr_idx, windows):
-        c[j] = PEAK_WEIGHT * float(w.get("multiplier", 1.0))
     for sid in stateful:
         sess = sessions[sid]
         cap_kwh = float(sess["capacity_kwh"])
@@ -166,22 +154,6 @@ def optimize_fleet(
         data.append(-1.0)
         b_ub.append(0.0)
         row += 1
-
-    # DR 구간별: 구간 안 시간대마다 선단 순부하(충전-방전) <= 그 구간의 DR 피크 변수
-    for j, w in zip(dr_idx, windows):
-        w_start, w_end = pd.Timestamp(w["start"]), pd.Timestamp(w["end"])
-        for t, pairs in by_time.items():
-            if not (w_start <= t < w_end):
-                continue
-            for ci, di in pairs:
-                row_idx += [row, row]
-                col_idx += [ci, di]
-                data += [1.0, -1.0]
-            row_idx.append(row)
-            col_idx.append(j)
-            data.append(-1.0)
-            b_ub.append(0.0)
-            row += 1
 
     # 세션별 최소 필요 에너지: charge - discharge >= needed_kwh  ->  -charge + discharge <= -needed_kwh
     # 세션 길이 x 최대충전출력을 넘어서는 요구량은 물리적으로 불가능(infeasible)하므로 상한을 둔다

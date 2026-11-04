@@ -6,7 +6,6 @@ from src.optimizer.decision import optimize_fleet
 from src.optimizer.poc_compare import (
     _extract_sessions,
     _single_vehicle_arbitrage_schedule,
-    compute_dr_event_performance,
     compute_fleet_revenue_comparison,
     plan_next_session,
     run_v2g_optimization,
@@ -305,43 +304,3 @@ def test_plan_next_session_unknown_vehicle_raises():
 
     with pytest.raises(UnknownVehicleError):
         plan_next_session(ev_df, grid_df, cfg, "NO-SUCH-EV")
-
-
-def _dr_comparison_and_grid():
-    ts = pd.date_range("2026-09-01 00:00", periods=6, freq="h")
-    comparison = pd.DataFrame({
-        "timestamp": ts,
-        "baseline_kw": [10, 10, 10, 10, 10, 10],
-        "optimized_kw": [10, 10, -5, -5, 10, 10],  # 09:01~03시에 방전
-    })
-    grid_df = pd.DataFrame({"timestamp": ts, "price_krw_per_kwh": [100, 100, 200, 200, 100, 100]})
-    return comparison, grid_df
-
-
-def test_compute_dr_event_performance_overlapping_event_measures_actual_response():
-    comparison, grid_df = _dr_comparison_and_grid()
-    events = [{
-        "event_id": "DR-1", "severity": "high", "reason": "test",
-        "start_ts": "2026-09-01T01:00:00", "end_ts": "2026-09-01T03:00:00",
-    }]
-    result = compute_dr_event_performance(comparison, grid_df, events)
-    assert len(result) == 1
-    r = result[0]
-    # 창은 [01:00, 03:00) -> 01:00(optimized=10), 02:00(optimized=-5) 두 시간
-    assert r["overlapped"] is True
-    assert r["baseline_kwh"] == 20.0
-    assert r["optimized_kwh"] == 5.0
-    assert r["reduced_kwh"] == 15.0
-    assert r["cost_savings_krw"] > 0
-
-
-def test_compute_dr_event_performance_non_overlapping_event_returns_zeros():
-    comparison, grid_df = _dr_comparison_and_grid()
-    events = [{
-        "event_id": "DR-2", "severity": "low", "reason": "",
-        "start_ts": "2020-01-01T00:00:00", "end_ts": "2020-01-01T02:00:00",
-    }]
-    result = compute_dr_event_performance(comparison, grid_df, events)
-    assert result[0]["overlapped"] is False
-    assert result[0]["baseline_kwh"] == 0.0
-    assert result[0]["cost_savings_krw"] == 0.0

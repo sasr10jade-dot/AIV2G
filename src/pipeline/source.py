@@ -41,6 +41,20 @@ def current_mode() -> str:
     return "generated"
 
 
+def provenance() -> dict:
+    """표별 데이터 출처 — 계획서 '데이터 출처(실측·공개·참여자 입력)와 생성 방식(실측·추론)을 구분하여 기록'.
+
+    measured = 실측(OBD·충전사업자) · public = 공개 공공데이터 · synthetic = 합성(실적 아님).
+    EV만 실측이고 충전기·계통은 아직 합성으로 보완 중인 부분 실증 상태를 표마다 그대로 드러낸다.
+    """
+    uploaded = current_mode() == "uploaded"
+    return {
+        "ev_telemetry": "measured" if uploaded else "synthetic",
+        "charger_sessions": "measured" if uploaded and CHARGER_CSV.exists() else "synthetic",
+        "grid_signal": "public" if uploaded and GRID_CSV.exists() else "synthetic",
+    }
+
+
 def mark_source(kind: str) -> None:
     SOURCE_MARKER.write_text(kind, encoding="utf-8")
 

@@ -15,7 +15,7 @@ from src.pipeline import store
 from src.pipeline.migrations import migrate
 from src.privacy import audit
 
-from .base import CpoAdapter
+from .base import OPTIONAL_COLUMNS, CpoAdapter
 
 
 def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> int:
@@ -24,7 +24,10 @@ def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> i
     out["operator_id"] = adapter.operator_id
     out["source"] = adapter.source_kind
     out["start_ts"] = out["start_ts"].astype(str)
+    if "end_ts" in out.columns:
+        out["end_ts"] = out["end_ts"].astype(str)
     cols = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id", "operator_id", "source"]
+    cols += [c for c in OPTIONAL_COLUMNS if c in out.columns]
     exists = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='charger_sessions'").fetchone()
     if not exists:
         out[cols].to_sql("charger_sessions", con, index=False)
@@ -32,7 +35,7 @@ def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> i
     migrate(con)  # operator_id/source 컬럼 보장
     # 과거 인제스트가 만든 테이블에는 선택 컬럼(ev_id 등)이 없을 수 있다 — 빠진 컬럼은 추가한다
     have = {r[1] for r in con.execute("PRAGMA table_info(charger_sessions)")}
-    types = {"zone": "INTEGER", "duration_h": "REAL", "energy_kwh": "REAL"}
+    types = {"zone": "INTEGER", "duration_h": "REAL", "energy_kwh": "REAL", "avg_power_kw": "REAL"}
     for col in cols:
         if col not in have:
             con.execute(f"ALTER TABLE charger_sessions ADD COLUMN {col} {types.get(col, 'TEXT')}")

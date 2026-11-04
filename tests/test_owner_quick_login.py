@@ -111,8 +111,10 @@ def test_demo_account_script_creates_owner_once(monkeypatch, capsys):
     assert "이미 있습니다" in capsys.readouterr().out
 
 
-def test_demo_account_script_skips_when_env_missing(capsys):
+def test_demo_account_script_skips_when_env_missing(capsys, monkeypatch):
     mod = _load_script()
+    monkeypatch.delenv("DEMO_OWNER_USERNAME", raising=False)
+    monkeypatch.delenv("DEMO_OWNER_PASSWORD", raising=False)
     mod.ensure("owner", "DEMO_OWNER_USERNAME", "DEMO_OWNER_PASSWORD", "EV-001")
     assert store.get_user("demo-owner") is None
     assert "건너뜀" in capsys.readouterr().out

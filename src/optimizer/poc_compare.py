@@ -15,7 +15,6 @@ from scipy.sparse import coo_matrix
 
 from src.datagen.config import SimConfig
 from src.datagen.grid import generate_grid_signal
-from src.grid.dr_events import DR_EVENTS, SEVERITY_MULTIPLIER, apply_dr_premium_to_price
 from src.timeutil import to_kst_naive
 from src.grid.pricing import DEFAULT_COMPENSATION_ID, DEFAULT_TARIFF_ID, PriceModel, build_price_model
 from src.model.plugin_pattern import UnknownVehicleError, forecast_plugin_schedule
@@ -67,12 +66,6 @@ def _extract_sessions(
     return sessions, session_ev_map
 
 
-def active_dr_windows() -> list[dict]:
-    """등록된 DR 이벤트를 최적화기 입력(구간·심각도 배수)으로 바꾼다. 시각은 등록 시 한국시간 naive로 정규화돼 있다."""
-    return [{"start": e["start_ts"], "end": e["end_ts"], "multiplier": SEVERITY_MULTIPLIER[e["severity"]]}
-            for e in DR_EVENTS.values()]
-
-
 def run_v2g_optimization(
     ev_df: pd.DataFrame,
     grid_df: pd.DataFrame,
@@ -86,9 +79,8 @@ def run_v2g_optimization(
 ) -> dict:
     """세션 추출→LP 최적화까지 실행하고 중간 산출물을 전부 반환한다.
 
-    `compare_baseline_vs_optimized`(집계 비교용)와 세션별 설명(`summarize_session_plan`,
-    EV Bot의 "내 충전/방전 계획 설명" 기능)이 이 함수 하나를 공유해, 대시보드 차트와
-    AI 설명이 항상 같은 최적화 결과를 근거로 삼는다.
+    `compare_baseline_vs_optimized`(집계 비교용)와 세션별 설명(`summarize_session_plan`)이
+    이 함수 하나를 공유해, 대시보드 차트와 분석이 항상 같은 최적화 결과를 근거로 삼는다.
 
     price_model이 있으면 충전 비용은 요금표 단가(buy), 방전 보상은 보상 시나리오(sell)로 따로
     계산한다(FR-P01·P02). 없으면 기존처럼 grid_signal 가격 하나를 둘 다에 쓴다."""
@@ -98,9 +90,6 @@ def run_v2g_optimization(
         price_by_time = price_model.buy_by_time
         sell_price_by_time = price_model.sell_by_time
     else:
-        # 선단 최적화의 가격은 실제 계통 가격 그대로 둔다(비용·절감액 계산이 같은 가격을 쓰도록). DR(수요반응)은 가격 프리미엄이
-        # 아니라 아래 dr_windows(구간 순부하 최소화 목표)로 반영한다 — 프리미엄은 피크 벌점에 가려 효과가 없었고, 비용 계산에는
-        # 프리미엄 없는 가격이 쓰여 두 값이 어긋났다.
         price_by_time = dict(zip(grid_df["timestamp"], grid_df["price_krw_per_kwh"]))
         sell_price_by_time = price_by_time
     schedule = optimize_fleet(
@@ -111,7 +100,6 @@ def run_v2g_optimization(
         target_soc=target_soc,
         price_by_time=price_by_time,
         economics=economics,
-        dr_windows=active_dr_windows(),
     )
     return {
         "sessions": sessions,
@@ -141,8 +129,12 @@ def compare_baseline_vs_optimized(
         reserve_soc=reserve_soc, target_soc=target_soc, economics=economics,
         price_model=price_model,
     )
-    schedule = result["schedule"]
+    return aggregate_comparison(ev_df, result["schedule"])
 
+
+def aggregate_comparison(ev_df: pd.DataFrame, schedule: dict) -> pd.DataFrame:
+    """관측 충전(baseline)과 최적화 스케줄을 시간대별 선단 합계로 묶는다 — 최적화 결과(run)를 이미 가진 호출자가
+    다시 풀지 않고 비교표만 만들 때 쓴다."""
     baseline = ev_df.groupby("timestamp")["charging_kw"].sum().rename("baseline_kw")
 
     optimized_by_time: dict[pd.Timestamp, float] = defaultdict(float)
@@ -240,49 +232,6 @@ def compute_owner_cost_comparison(
     if economics is not None:
         result["assumptions"] = economics.as_dict()
     return result
-
-
-def compute_dr_event_performance(comparison: pd.DataFrame, grid_df: pd.DataFrame, events: list[dict]) -> list[dict]:
-    """등록된 DR 이벤트별로, 그 시간대에 선단(fleet)이 실제로 얼마나 방전/부하감축으로
-    반응했는지를 실제 LP 최적화 결과(`comparison`)로 계산한다 — DR 카드가 지금까지는
-    "이벤트가 등록됐다"까지만 보여주고 실제 대응 실적은 없었던 것을 메운다.
-
-    DR 이벤트 시각이 현재 시나리오의 관측기간과 겹치지 않으면(과거에 등록했던 이벤트가
-    시나리오를 새로 실행해 기간이 바뀐 경우 등) `overlapped=False`로 표시하고 0을
-    반환한다 — 지어낸 값을 채우지 않는다."""
-    merged = comparison.merge(grid_df[["timestamp", "price_krw_per_kwh"]], on="timestamp", how="left")
-    merged["price_krw_per_kwh"] = merged["price_krw_per_kwh"].fillna(0.0)
-
-    results = []
-    for e in events:
-        # DR 이벤트 시각은 tz-aware(UTC)일 수 있고 시나리오 timestamp는 한국시간 naive 관례다 — 한국시간으로
-        # 변환한 뒤 tz를 뗀다(tz_localize(None)만 하면 UTC 시각을 한국시간으로 읽어 9시간 어긋난다).
-        start = to_kst_naive(e["start_ts"])
-        end = to_kst_naive(e["end_ts"])
-
-        window = merged[(merged["timestamp"] >= start) & (merged["timestamp"] < end)]
-        base = {
-            "event_id": e["event_id"], "severity": e.get("severity"), "reason": e.get("reason", ""),
-            "start_ts": e["start_ts"], "end_ts": e["end_ts"],
-        }
-        if window.empty:
-            results.append({
-                **base, "overlapped": False,
-                "baseline_kwh": 0.0, "optimized_kwh": 0.0, "reduced_kwh": 0.0, "cost_savings_krw": 0.0,
-            })
-            continue
-
-        baseline_kwh = float(window["baseline_kw"].sum())
-        optimized_kwh = float(window["optimized_kw"].sum())
-        cost_savings_krw = float(((window["baseline_kw"] - window["optimized_kw"]) * window["price_krw_per_kwh"]).sum())
-        results.append({
-            **base, "overlapped": True,
-            "baseline_kwh": round(baseline_kwh, 1),
-            "optimized_kwh": round(optimized_kwh, 1),
-            "reduced_kwh": round(baseline_kwh - optimized_kwh, 1),
-            "cost_savings_krw": round(cost_savings_krw, 0),
-        })
-    return results
 
 
 def _single_vehicle_arbitrage_schedule(
@@ -415,7 +364,7 @@ def plan_next_session(
         )
         price_by_time, sell_price_by_time = price_model.buy_by_time, price_model.sell_by_time
     else:
-        price_by_time = apply_dr_premium_to_price(grid_price_by_time)
+        price_by_time = grid_price_by_time
         sell_price_by_time = price_by_time
 
     target_pct = target_soc * 100

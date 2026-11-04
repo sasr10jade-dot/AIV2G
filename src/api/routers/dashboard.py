@@ -14,20 +14,21 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from src.acryl import link as acryl_link
 from src.timeutil import kst_now
 from src.auth.deps import require_admin
 from src.automation.model_registry import ModelRegistry
 from src.closed_loop import run_closed_loop_cycle
 from src.datagen.config import SimConfig
-from src.grid import dr_events
 from src.kpi import summarize_kpi
 from src.model.charging_efficiency import NoLinkedSessionsError, compute_charging_efficiency
 from src.model.demand_forecast import train_forecast_model
 from src.optimizer.economics import EconomicsParams
+from src.optimizer.effect_metrics import compute_effect_metrics
 from src.optimizer.poc_compare import (
-    compare_baseline_vs_optimized,
-    compute_dr_event_performance,
+    aggregate_comparison,
     compute_fleet_revenue_comparison,
+    run_v2g_optimization,
 )
 from src.optimizer.profit_sharing import InvalidShareError, compute_profit_sharing
 from src.pipeline import source
@@ -49,6 +50,7 @@ router = APIRouter(tags=["dashboard"])
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 KNOWN_TARGETS = ["ev_charging_demand_kw", "ev_available_v2g_kwh"]
 DEFAULT_TARGET = "ev_charging_demand_kw"
+V2G_TARGET = "ev_available_v2g_kwh"
 CHART_WINDOW_DAYS = 5  # viz.py의 정적 차트와 동일한 관례(최근/앞 5일만 표시)
 POC_DAILY_WINDOW_DAYS = 56  # 주별 뷰: 최근 8주를 일 합계(kWh)로
 
@@ -131,20 +133,32 @@ def _cached_heavy_compute(
         return cached[1]
 
     # LP 최적화(scipy HiGHS)와 예측모델 학습(LightGBM)을 스레드로 동시 실행하는 것도
-    # 시도했으나(격리 벤치마크로는 확실히 빨라짐), 실서비스처럼 대시보드 새로고침/OCPP/DR
-    # 폴링이 겹쳐 캐시미스 요청이 동시에 여러 개 들어오면 요청마다 CPU를 2배로 요구해
+    # 시도했으나(격리 벤치마크로는 확실히 빨라짐), 실서비스처럼 대시보드 새로고침
+    # 요청이 동시에 여러 개 들어오면 요청마다 CPU를 2배로 요구해
     # 코어를 과다구독(oversubscribe)하게 되고, 서버 전체가 응답 불능(hang)에 빠지는 걸
     # 실측으로 확인함(동시 요청 3개로 재현) — 우리가 애초에 고치려던 바로 그 장애를
     # 더 악화시키므로 되돌림. 순차 실행 유지.
     economics = EconomicsParams.load()  # config/economics.json — 효율·열화비용(가정값은 verified=false)
-    comparison = compare_baseline_vs_optimized(
+    run = run_v2g_optimization(
         ev_df, grid_df, cfg,
         max_charge_kw=max_charge_kw, max_discharge_kw=max_discharge_kw,
         reserve_soc=reserve_soc, target_soc=target_soc, economics=economics,
     )
+    comparison = aggregate_comparison(ev_df, run["schedule"])
     revenue = compute_fleet_revenue_comparison(comparison, grid_df, economics)
     city_hourly = build_city_hourly(ev_df, grid_df, cfg)
     forecast_result = train_forecast_model(city_hourly, target_col)
+    # AI 추론 V2G 예측률 — ㈜아크릴 예측이 실측과 겹치면 그것으로, 아니면 기준 모델의 홀드아웃(마지막 2주)으로 계산한다
+    v2g_eval = acryl_link.evaluate_against_actual(V2G_TARGET, city_hourly)
+    if v2g_eval["matched_hours"] >= 24:
+        v2g_pair, v2g_source = None, "acryl"
+    else:
+        v2g_fit = forecast_result if target_col == V2G_TARGET else train_forecast_model(city_hourly, V2G_TARGET)
+        v2g_pair, v2g_source = (v2g_fit.test_df["y_true"], v2g_fit.test_df["y_pred"]), "baseline"
+    effect = compute_effect_metrics(run, comparison, ev_df, grid_df, target_soc, economics, v2g_forecast=v2g_pair)
+    if v2g_source == "acryl":
+        effect["v2g_prediction_rate_pct"] = v2g_eval["prediction_rate_pct"]
+    effect["v2g_prediction_source"] = v2g_source
     # run_closed_loop_cycle의 "재학습 전(before)" 모델은 바로 위 forecast_result와
     # 사실상 같은 것을 다시 만드는 것이라(같은 cfg·target_col), 재사용해 중복 학습을 없앤다.
     closed_loop = run_closed_loop_cycle(cfg, target_col=target_col, before=forecast_result)
@@ -166,7 +180,7 @@ def _cached_heavy_compute(
             "closed_loop_improve_pct": closed_loop["improve_pct"],
         })
 
-    result = (comparison, revenue, forecast_result, closed_loop)
+    result = (comparison, revenue, forecast_result, closed_loop, effect)
     if len(_heavy_compute_cache) >= _HEAVY_CACHE_MAX_ENTRIES:
         _heavy_compute_cache.clear()  # 단순 무제한 성장 방지(LRU 아님, PoC 규모엔 충분)
     _heavy_compute_cache[key] = (time.time(), result)
@@ -210,7 +224,7 @@ def build_dashboard_payload(
         validate(grid_df, "grid_signal", GRID_SIGNAL_SCHEMA, dedup_keys=["timestamp"]),
     ]
     weekly_report = build_ev_weekly_report(ev_df, cfg)
-    kpi_summary = summarize_kpi(ev_df, charger_df, grid_df, is_real=is_real, grid_is_real=is_real)
+    kpi_summary = summarize_kpi(ev_df, charger_df, grid_df, provenance=source.provenance())
 
     charger_utilization = build_charger_utilization_hourly(charger_df)
     fleet_hourly_util = (
@@ -225,7 +239,7 @@ def build_dashboard_payload(
         fleet_hourly_util["utilization_pct"].idxmax().isoformat() if not fleet_hourly_util.empty else None
     )
 
-    comparison, revenue, forecast_result, closed_loop = _cached_heavy_compute(
+    comparison, revenue, forecast_result, closed_loop, effect = _cached_heavy_compute(
         cfg, target_col, ev_df, grid_df,
         max_charge_kw, max_discharge_kw, reserve_soc, target_soc,
     )
@@ -265,6 +279,8 @@ def build_dashboard_payload(
             "weeks": cfg.weeks,
             # 계획서 v1.0 성과지표 — 연차별(1차 4,000 / 2차 4,500, 미중복) 데이터 건수. 합성 데이터면 is_real=False(실적 아님)
             "data_by_year": [y.__dict__ for y in kpi_summary.by_year],
+            "data_official_by_year": [y.__dict__ for y in kpi_summary.official_by_year],   # 실측 표만 — 성과 실적
+            "data_provenance": kpi_summary.provenance,
             "data_out_of_period": kpi_summary.out_of_period_records,
             "data_scenario_records": kpi_summary.scenario_records,
             "data_is_real": kpi_summary.is_real,
@@ -290,6 +306,8 @@ def build_dashboard_payload(
             for gran, df in poc_views.items()
         },
         "revenue_comparison": revenue,
+        # 계획서 4.1 다. AI 적용 전·후 효용성 검증 — 피크 시간대 충전 비중·충전 비용·목표 배터리 도달·V2G 예측률, 조건별 반복 분석
+        "effect_verification": effect,
         "forecast_fit": {
             "target_col": target_col,
             "mae": forecast_result.mae,
@@ -354,37 +372,6 @@ def dashboard_data(
     except InvalidShareError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return payload
-
-
-@router.get(
-    "/dashboard/dr-performance",
-    summary="등록된 DR 이벤트별 방전/부하감축 실적(AI 추론·모의 포함)",
-    dependencies=[Depends(require_admin)],
-)
-def dashboard_dr_performance(
-    n_ev: int = Query(30, ge=1, le=500),
-    n_chargers: int = Query(150, ge=1, le=2000),
-    weeks: int = Query(21, ge=4, le=52),
-    n_zones: int = Query(4, ge=1, le=20),
-    max_charge_kw: float = Query(7.0, gt=0, le=50),
-    max_discharge_kw: float = Query(7.0, ge=0, le=50),
-    reserve_soc: float = Query(0.20, ge=0, le=0.5),
-    target_soc: float = Query(0.90, ge=0.5, le=0.99),
-) -> list[dict]:
-    """`/grid/dr-events`가 "이벤트가 등록됐다"까지만 보여주는 것과 달리, 그 이벤트
-    시간대에 선단이 실제로 방전/부하감축으로 얼마나 반응했는지(실제 LP 최적화 결과
-    기준)를 계산한다. `/dashboard/data`와 동일한 시나리오 파라미터를 주면 같은 캐시를
-    재사용해 추가 연산 없이 즉시 응답한다.
-
-    이벤트 시각이 현재 시나리오의 관측기간과 겹치지 않으면(시나리오를 새로 실행해
-    기간이 바뀐 경우 등) `overlapped: false`로 표시한다 — 지어낸 값을 채우지 않는다."""
-    cfg = SimConfig(n_ev=n_ev, n_chargers=n_chargers, weeks=weeks, charger_days=weeks * 7, n_zones=n_zones)
-    ev_df, _charger_df, grid_df, _is_real = load_scenario(cfg)
-    comparison, _revenue, _forecast_result, _closed_loop = _cached_heavy_compute(
-        cfg, DEFAULT_TARGET, ev_df, grid_df, max_charge_kw, max_discharge_kw, reserve_soc, target_soc,
-    )
-    events = dr_events.list_dr_events()
-    return compute_dr_event_performance(comparison, grid_df, events)
 
 
 @router.get(

@@ -1,0 +1,148 @@
+/* AX·V2G 디자인 시스템 — 모든 화면(대시보드·관리·승인·로그인·진입·모바일·처리방침)이 공유하는 톤앤매너.
+ *
+ * 기준: Ax-V2g-Demo-Service(데모 사이트) — Pretendard, 슬레이트 바탕 + 블루 포인트, 둥근 카드(20px)와 옅은 그림자,
+ * 흐림 처리된 고정 헤더, 알약형 메뉴·상태 칩, 대문자 소형 라벨, 숫자는 JetBrains Mono.
+ * UX 원칙(계획서 '수행 전제'): 실측과 추론을 항상 구분한다 — 실측은 실선·진한 배지, 예측·추론은 점선·블루 점선 배지.
+ *
+ * 각 화면의 <style> 뒤에 불러오므로, 같은 이름의 변수·공통 클래스는 이 파일 값이 적용된다.
+ * 예전 화면이 쓰던 변수 이름(--surface-page, --teal, --charge …)은 아래 '호환 이름'에서 새 값으로 연결한다.
+ */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0; --text: #0f172a; --muted: #64748b;
+  --accent: #2563eb; --accent2: #eff6ff; --accent-soft: #dbeafe;
+  --surface: #ffffff; --surface-2: #f1f5f9; --line: rgba(37, 99, 235, 0.12);
+  --shadow: 0 8px 30px rgba(15, 23, 42, 0.06); --radius: 20px; --radius-sm: 12px;
+  --ok: #16a34a; --warn: #f59e0b; --bad: #ef4444;
+  --actual: #0f172a;            /* 실측 계열(실선) */
+  --inferred: #2563eb;          /* 예측·추론 계열(점선) */
+  --font: 'Pretendard', 'Pretendard Variable', 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+}
+:root[data-theme="dark"], .dark {
+  --bg: #0a0f1e; --card: #121a2d; --border: #1e2a44; --text: #e2e8f0; --muted: #94a3b8;
+  --accent: #3b82f6; --accent2: #13203d; --accent-soft: #1a2d5a;
+  --surface: #121a2d; --surface-2: #162032; --line: rgba(59, 130, 246, 0.18);
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --actual: #e2e8f0; --inferred: #3b82f6;
+}
+
+/* ---- 호환 이름 — 기존 화면 CSS·차트 코드가 읽는 변수를 새 토큰으로 연결 */
+:root, :root[data-theme="dark"] {
+  /* 대시보드·관리·승인·로그인 */
+  --surface-page: var(--bg); --surface-card: var(--card);
+  --text-primary: var(--text); --text-secondary: var(--muted); --text-muted: var(--muted);
+  --gridline: var(--border); --baseline-axis: var(--muted);
+  --status-good: var(--ok); --status-critical: var(--bad);
+  --copper: var(--muted);       /* 일반 충전(적용 전, 실측) */
+  --teal: var(--accent);        /* AI 최적화·예측(적용 후, 추론) */
+  /* 진입 화면 */
+  --blue: var(--accent); --pastel-a: var(--accent2); --pastel-b: color-mix(in srgb, var(--ok) 12%, var(--card));
+  --pastel-c: color-mix(in srgb, var(--warn) 14%, var(--card));
+  /* 모바일 */
+  --accent-ink: #ffffff; --charge: var(--ok); --r: var(--radius-sm);
+}
+:root[data-theme="dark"] { --pastel-b: color-mix(in srgb, var(--ok) 18%, var(--card)); --pastel-c: color-mix(in srgb, var(--warn) 18%, var(--card)); }
+
+/* ---- 기본 */
+html, body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: inherit; }
+.mono, code, pre { font-family: var(--mono); }
+
+/* ---- 공통 컴포넌트(데모 사이트와 같은 모양) */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+.ax-header {
+  position: sticky; top: 0; z-index: 40;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--bg) 84%, transparent); border-bottom: 1px solid var(--border);
+}
+.ax-header-inner { max-width: 1680px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.ax-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.02em; font-size: 16px; color: var(--text); text-decoration: none; }
+.ax-logo-badge { width: 32px; height: 32px; border-radius: 10px; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+.ax-logo b { font-weight: 800; color: var(--accent); }
+.ax-tag { padding: 3px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 10px; font-weight: 600; color: var(--muted); }
+.ax-nav { display: flex; gap: 6px; padding: 4px; background: var(--surface-2); border-radius: 999px; border: 1px solid var(--border); flex-wrap: wrap; }
+.ax-nav a, .ax-nav button { padding: 7px 14px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; transition: .18s; }
+.ax-nav a:hover, .ax-nav button:hover { color: var(--text); }
+.ax-nav .active, .ax-nav [aria-current="page"], .ax-nav [aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: var(--shadow); border-color: var(--border); }
+.ax-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ax-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.ax-pill b { color: var(--text); }
+.ax-pill.mono { background: var(--surface-2); font-family: var(--mono); }
+.ax-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+.ax-dot.accent { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.ax-dot.muted { background: var(--muted); box-shadow: none; }
+.ax-icon-btn { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); display: inline-grid; place-items: center; cursor: pointer; font-size: 13px; text-decoration: none; }
+.ax-icon-btn:hover { background: var(--surface-2); }
+
+/* 수행 전제 안내 */
+.ax-notice { display: flex; gap: 10px; padding: 10px 14px; background: var(--accent2); border: 1px solid var(--accent-soft); border-radius: var(--radius-sm); font-size: 12px; color: var(--text); line-height: 1.5; }
+.ax-notice > b:first-child { font-weight: 800; white-space: nowrap; color: var(--accent); }
+
+/* 실측·추론 배지 */
+.ax-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle; white-space: nowrap; }
+.ax-badge.actual { background: var(--actual); color: var(--card); }
+.ax-badge.inferred { background: var(--accent2); color: var(--accent); border: 1px dashed var(--accent); }
+.ax-badge.sim { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.ax-badge.ok { background: var(--ok); color: #fff; }
+
+/* 카드 제목에 섹션 번호·실측/추론 표시 — <h2 data-sec="01" data-kind="actual|inferred|sim"> */
+h2[data-sec]::before { content: attr(data-sec); font-family: var(--mono); font-size: 0.78em; font-weight: 600; color: var(--accent); margin-right: 8px; letter-spacing: 0; }
+h2[data-kind]::after { display: inline-flex; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; vertical-align: 3px; }
+h2[data-kind="actual"]::after { content: "실측"; background: var(--actual); color: var(--card); }
+h2[data-kind="inferred"]::after { content: "AI 추론"; background: var(--accent2); color: var(--accent); border: 1px dashed var(--accent); }
+h2[data-kind="mixed"]::after { content: "실측 · 추론"; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+h2[data-kind="sim"]::after { content: "모의"; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+:root[lang="en"] h2[data-kind="actual"]::after { content: "MEASURED"; }
+:root[lang="en"] h2[data-kind="inferred"]::after { content: "AI INFERRED"; }
+:root[lang="en"] h2[data-kind="mixed"]::after { content: "MEASURED · INFERRED"; }
+:root[lang="en"] h2[data-kind="sim"]::after { content: "SIMULATED"; }
+
+/* KPI 카드 */
+.ax-kpi-label { font-size: 11px; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+.ax-kpi-value { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
+.ax-progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+.ax-progress i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.ax-progress.done i { background: var(--ok); }
+
+/* 범례: 실측 실선 / 예측 점선 */
+.ax-legend-line { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--actual); vertical-align: middle; margin-right: 6px; }
+.ax-legend-line.inferred { border-top: 2px dashed var(--inferred); }
+
+/* 표 */
+table th { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* 입력 */
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .ax-header-inner { padding: 12px 16px; }
+  .ax-nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+}
+
+/* ---- 운영 보조 화면(웹앱 관리·가입 승인·개발용 진입·처리방침) — <body class="ax-page"> */
+body.ax-page { padding: 0 0 60px; }
+body.ax-page .wrap { padding: 24px; }
+body.ax-page .ax-header-inner { max-width: 1100px; }
+.ax-page-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.ax-page-head .sub, .ax-page-head .lead { font-size: 13px; color: var(--muted); margin: 6px 0 18px; line-height: 1.5; }
+body.ax-page .card { border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 14px; }
+body.ax-page button, body.ax-page a.btn, body.ax-page a.back {
+  border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px;
+  padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none;
+}
+body.ax-page button:hover, body.ax-page a.btn:hover { background: var(--surface-2); }
+body.ax-page button.ok, body.ax-page .btn.primary, body.ax-page button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+body.ax-page button.no { color: var(--bad); }
+body.ax-page .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; width: fit-content; margin-bottom: 14px; flex-wrap: wrap; }
+body.ax-page .tabs button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 8px; font-weight: 600; }
+body.ax-page .tabs button[aria-pressed="true"] { background: var(--card); color: var(--text); border-color: var(--border); box-shadow: var(--shadow); }
+body.ax-page input[type=text], body.ax-page input[type=date], body.ax-page input[type=password], body.ax-page textarea, body.ax-page select {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+}
+body.ax-page .tag { border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--surface-2); }
+body.ax-page .tag.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent2); }
+body.ax-page .name { font-weight: 700; letter-spacing: -0.01em; }

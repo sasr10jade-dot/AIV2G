@@ -33,6 +33,12 @@ def manifest() -> FileResponse:
     return FileResponse(PWA_DIR / "manifest.webmanifest", media_type="application/manifest+json", headers=NO_CACHE)
 
 
+@router.get("/theme.css")
+def theme_css() -> FileResponse:
+    """모든 화면이 함께 쓰는 AX·V2G 디자인 시스템(색·글꼴·공통 컴포넌트)."""
+    return FileResponse(STATIC_DIR / "theme.css", media_type="text/css", headers=NO_CACHE)
+
+
 @router.get("/sw.js")
 def service_worker() -> FileResponse:
     return FileResponse(

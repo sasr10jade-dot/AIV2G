@@ -8,7 +8,7 @@
 (function () {
   var t;
   try { t = localStorage.getItem('ai-v2g-theme'); } catch (e) { t = null; }
-  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
+  document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'light');
   var l;
   try { l = localStorage.getItem('ai-v2g-lang'); } catch (e) { l = null; }
   document.documentElement.setAttribute('lang', (l === 'en') ? 'en' : 'ko');
@@ -50,9 +50,12 @@
     max-width: 360px;
     background: var(--surface-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     padding: 32px 28px;
   }
+  body { background: radial-gradient(120% 120% at 30% 10%, var(--accent2) 0%, var(--surface-2) 50%, var(--bg) 100%); }
+  .login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-weight: 700; letter-spacing: -0.02em; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   .subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 24px; }
   label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
@@ -60,7 +63,7 @@
     width: 100%;
     background: var(--surface-page);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     color: var(--text-primary);
     padding: 10px 12px;
     font-size: 14px;
@@ -69,9 +72,9 @@
   button {
     width: 100%;
     border: none;
-    background: var(--teal);
+    background: var(--accent);
     color: #ffffff;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 11px;
     font-size: 14px;
     font-weight: 600;
@@ -108,10 +111,12 @@
     padding: 0; font-size: 16px; border-radius: 6px; cursor: pointer;
   }
 </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
 <div class="card">
   <div class="top-row"><button type="button" id="lang-toggle" aria-label="Language"></button></div>
+  <div class="login-logo"><span class="ax-logo-badge">AX</span><span><b style="color:var(--accent)">AX·V2G</b> <span data-i18n>허브 실증</span></span><span class="ax-tag">V1.0</span></div>
   <h1 data-i18n>AI-V2G 실증 대시보드</h1>
   <div class="subtitle" data-i18n>로그인 후 이용할 수 있습니다</div>
   <div id="info" hidden></div>
@@ -136,6 +141,7 @@ try { LANG = (localStorage.getItem('ai-v2g-lang') === 'en') ? 'en' : 'ko'; } cat
 document.documentElement.setAttribute('lang', LANG);
 
 const I18N_EN = {
+  '허브 실증': 'Hub pilot',
   'AI-V2G 실증 대시보드': 'AI-V2G Field Test Dashboard',
   '로그인 후 이용할 수 있습니다': 'Please log in to continue',
   '⚡ 최고관리자로 빠른 로그인': '⚡ Quick login as Super Admin',

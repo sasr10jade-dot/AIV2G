@@ -22,18 +22,7 @@
 })();
 </script>
 <style>
-/* 유럽(북유럽·스위스) 스타일: 따뜻한 오프화이트, 헤어라인, 넓은 여백, 하나의 절제된 포인트 색, 평평한 면 */
-:root {
-  --bg: #f5f4f0; --surface: #ffffff; --surface-2: #ecebe5; --border: #dddbd3;
-  --text: #17191c; --muted: #6c6f73; --accent: #1d4ed8; --accent-ink: #ffffff;
-  --charge: #1f6f5c; --warn: #b4651d; --bad: #b3261e;
-  --r: 4px;
-}
-:root[data-theme="dark"] {
-  --bg: #0f1113; --surface: #16191c; --surface-2: #1f2327; --border: #2c3136;
-  --text: #ecebe7; --muted: #8f9399; --accent: #8fb0ff; --accent-ink: #0b1220;
-  --charge: #6fc9ad; --warn: #e0a15c; --bad: #f08a82;
-}
+/* 색·글꼴·반경은 /theme.css(AX·V2G 디자인 시스템)를 따른다. 여기서는 모바일 화면 배치만 정한다. */
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
@@ -44,9 +33,11 @@ body {
 }
 button, input, select { font: inherit; color: inherit; }
 .app { min-height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
-.brand { font-weight: 600; letter-spacing: .16em; font-size: 13px; text-transform: uppercase; }
-.brand span { color: var(--accent); }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 10px 20px; border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: color-mix(in srgb, var(--bg) 84%, transparent); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+.brand b { font-weight: 800; color: var(--accent); }
+.brand .ax-logo-badge { width: 28px; height: 28px; border-radius: 9px; font-size: 12px; }
 .tools { display: flex; align-items: center; gap: 4px; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .seg button { min-height: 32px; min-width: 38px; padding: 0 8px; border: 0; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); }
@@ -56,9 +47,9 @@ button, input, select { font: inherit; color: inherit; }
 .iconbtn svg { width: 18px; height: 18px; vertical-align: middle; }
 .iconbtn:focus-visible, .tab:focus-visible, .primary:focus-visible, input:focus-visible, select:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 main { flex: 1; padding: 28px 20px 24px; width: 100%; max-width: 560px; margin: 0 auto; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 14px; }
 .card h2, .eyebrow { margin: 0 0 8px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
-.big { font-size: 22px; font-weight: 500; letter-spacing: -.01em; line-height: 1.3; }
+.big { font-size: 22px; font-weight: 700; letter-spacing: -.03em; line-height: 1.3; }
 .muted { color: var(--muted); font-size: 14px; }
 .chip { display: inline-block; padding: 1px 8px; border: 1px solid var(--border); border-radius: 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .banner { margin: 0 20px; padding: 10px 14px; border-radius: var(--r); font-size: 14px; }
@@ -71,7 +62,7 @@ input[type=text], input[type=password], input[type=number], select {
 }
 .primary {
   width: 100%; min-height: 48px; margin-top: 22px; border: 0; border-radius: var(--r); cursor: pointer;
-  background: var(--text); color: var(--bg); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; font-size: 13px;
+  background: var(--accent); color: #ffffff; font-weight: 600; font-size: 15px;
 }
 .linkbtn { display: block; width: 100%; margin-top: 14px; min-height: 44px; background: none; border: 0; color: var(--muted); font-size: 14px; text-decoration: underline; cursor: pointer; }
 .hint { font-size: 12px; margin: 6px 0 0; }
@@ -88,11 +79,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .gap { margin-top: 16px !important; }
 .error { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 10px; }
 .tabs {
-  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
-  background: var(--bg); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
+  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr);
+  background: color-mix(in srgb, var(--card) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
 }
 .tab { min-height: 58px; background: none; border: 0; border-top: 2px solid transparent; margin-top: -1px; cursor: pointer; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; position: relative; }
-.tab[aria-selected="true"] { color: var(--text); border-top-color: var(--text); font-weight: 600; }
+.tab[aria-selected="true"] { color: var(--accent); border-top-color: var(--accent); font-weight: 700; }
 .sm:disabled { opacity: .4; cursor: default; }
 .kv { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 14px; }
 .kv span:first-child { color: var(--muted); flex: none; }
@@ -107,7 +98,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .notice .nt { font-weight: 600; font-size: 15px; }
 .notice .nb { white-space: pre-wrap; font-size: 14px; margin-top: 6px; color: var(--muted); }
 .notice .pin { font-size: 11px; color: var(--accent); margin-right: 6px; }
-.code { font-family: ui-monospace, Consolas, monospace; font-size: 16px; letter-spacing: .04em; word-break: break-all; }
 .intro { padding: 0; }
 .intro summary { cursor: pointer; list-style: none; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
 .intro summary::-webkit-details-marker { display: none; }
@@ -118,9 +108,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .intro li { counter-increment: st; padding: 10px 0 10px 34px; position: relative; border-top: 1px solid var(--border); }
 .intro li::before { content: counter(st); position: absolute; left: 0; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; display: flex; align-items: center; justify-content: center; }
 .intro li b { display: block; font-weight: 600; font-size: 14px; }
-.mission .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.mission .pts { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.mission .pts.got { color: var(--charge); }
 .tab svg { display: block; width: 22px; height: 22px; margin: 0 auto 3px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .empty { text-align: center; padding: 40px 8px; color: var(--muted); }
 .empty svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.2; margin-bottom: 10px; }
@@ -146,31 +133,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .notice .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .notice .t { font-weight: 600; }
 .notice .b { color: var(--muted); font-size: 14px; margin-top: 2px; white-space: pre-line; }
-.fab {
-  position: fixed; right: 20px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 20;
-  min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r); cursor: pointer;
-  background: var(--accent); color: var(--accent-ink); font-weight: 500; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
-}
-.fab svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; fill: none; stroke: currentColor; stroke-width: 1.6; }
-.fab:focus-visible, .bot-close:focus-visible, .bot-send:focus-visible, .chip-btn:focus-visible, .bot-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.bot { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--bg); padding-top: env(safe-area-inset-top); }
-.bot-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); }
-.bot-head .t { font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: 13px; }
-.bot-head .s { font-size: 12px; color: var(--muted); }
-.bot-close { min-width: 44px; min-height: 44px; border: 0; background: transparent; cursor: pointer; font-size: 18px; color: var(--muted); }
-.bot-msgs { flex: 1; overflow-y: auto; padding: 20px; width: 100%; max-width: 560px; margin: 0 auto; }
-.bubble { max-width: 88%; padding: 10px 14px; border-radius: var(--r); margin-bottom: 10px; white-space: pre-wrap; word-break: keep-all; }
-.bubble.ai { background: var(--surface); border: 1px solid var(--border); }
-.bubble.me { background: var(--text); color: var(--bg); margin-left: auto; }
-.bubble.err { border-color: var(--bad); color: var(--bad); }
-.bubble.wait { color: var(--muted); }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
-.chip-btn { min-height: 38px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 14px; }
-.bot-form { display: flex; gap: 8px; padding: 10px 20px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); width: 100%; max-width: 560px; margin: 0 auto; }
-.bot-input { flex: 1; min-height: 48px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--border); background: var(--surface); font-size: 16px; }
-.bot-send { min-width: 64px; min-height: 48px; border: 0; border-radius: var(--r); cursor: pointer; background: var(--text); color: var(--bg); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-.bot-send:disabled { opacity: .5; cursor: default; }
-.bot-note { font-size: 12px; color: var(--muted); text-align: center; padding: 0 20px 6px; }
 .chartwrap { margin-top: 4px; }
 .readout { display: flex; align-items: baseline; gap: 10px; min-height: 40px; }
 .readout .rv { font-size: 28px; font-weight: 300; letter-spacing: -.02em; }
@@ -180,11 +142,12 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .swatches i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; opacity: .6; }
 [hidden] { display: none !important; }
 </style>
+<link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand">AI-<span>V2G</span></div>
+    <div class="brand"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b></span></div>
     <div class="tools">
       <div class="seg" role="group" aria-label="Language">
         <button type="button" data-lang="ko" aria-pressed="true">KR</button>
@@ -205,25 +168,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
   <main id="view"></main>
 
   <nav class="tabs" id="tabs" role="tablist" aria-label="메뉴" data-i18n-aria="menu" hidden>
-    <button class="tab" role="tab" data-tab="inbox" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg><span data-i18n="tab_inbox">알림</span><span class="badge" id="inboxBadge" hidden></span></button>
+    <button class="tab" role="tab" data-tab="inbox" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg><span data-i18n="tab_inbox">홈</span></button>
     <button class="tab" role="tab" data-tab="price" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13h6l-1 8 8-10h-6z"/></svg><span data-i18n="tab_price">충전 시간</span></button>
     <button class="tab" role="tab" data-tab="forecast" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg><span data-i18n="tab_forecast">예측</span></button>
-    <button class="tab" role="tab" data-tab="missions" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4"/><path d="M6 5h11l-2 4 2 4H6"/></svg><span data-i18n="tab_missions">미션</span></button>
   </nav>
 
-  <button class="fab" id="botFab" type="button" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>EV Bot</button>
-  <section class="bot" id="botPanel" role="dialog" aria-modal="true" aria-label="EV Bot" hidden>
-    <div class="bot-head">
-      <div><div class="t">EV Bot</div><div class="s" data-i18n="bot_sub">앱 사용법·용어·개인정보를 물어보세요</div></div>
-      <button class="bot-close" id="botClose" type="button" data-i18n-aria="close" aria-label="닫기">✕</button>
-    </div>
-    <div class="bot-msgs" id="botMsgs" role="log" aria-live="polite"></div>
-    <div class="bot-note" data-i18n="bot_note">금액·효과는 가정값이에요. 개인정보(번호판 등)는 입력하지 마세요.</div>
-    <form class="bot-form" id="botForm">
-      <input class="bot-input" id="botInput" type="text" maxlength="500" autocomplete="off" data-i18n-ph="bot_ph" placeholder="궁금한 점을 입력하세요" data-i18n-aria="bot_q" aria-label="질문 입력" />
-      <button class="bot-send" id="botSend" type="submit" data-i18n="send">보내기</button>
-    </form>
-  </section>
 </div>
 
 <script>
@@ -233,7 +182,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   var tabs = document.getElementById('tabs');
   var logoutBtn = document.getElementById('logoutBtn');
   var meBtn = document.getElementById('meBtn');
-  var state = { me: null, tab: 'inbox', unread: 0, loginMsg: null };
+  var state = { me: null, tab: 'inbox', loginMsg: null };
 
   // ---------------------------------------------------------------- 언어팩 (기본 KR)
   var I18N = {
@@ -242,33 +191,25 @@ label.check input { width: 22px; height: 22px; flex: none; }
       offline: '오프라인입니다. 연결되면 최신 정보를 불러옵니다.',
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
       install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.',
-      tab_inbox: '알림', tab_price: '충전 시간', tab_forecast: '예측', tab_missions: '미션',
-      ms_points: '시범 포인트', ms_month: '이번 달 {n}P / 상한 {cap}P', ms_note: '실제 금전 정산이 아닌 시범 포인트예요. 보상 수치는 협의 전 예시값이에요.',
-      ms_consent_title: '포인트 적립', ms_consent_on: '적립 중이에요. 언제든 끌 수 있어요.', ms_consent_off: '켜면 달성한 미션의 포인트가 쌓여요.',
-      ms_on: '켜기', ms_off: '끄기', ms_list: '미션', ms_done: '달성', ms_awarded: '+{n}P 적립', ms_pending: '동의하면 포인트가 쌓여요',
-      ms_week: '이번 주', ms_once: '1회', ms_safe: '잔량을 낮추거나 무리한 방전을 유도하는 미션은 없어요.',
-      ms_ver_unavailable: '충전 기록(OBD)이 연결된 차량에서 확인돼요.', ms_ver_pending: '충전 기록이 반영되면 확인돼요.',
-      ms_intro_title: '미션이란?', ms_intro_lead: '충전 시간을 옮기고 앱을 활용하면 시범 포인트를 받는 활동이에요.',
-      ms_step1: '포인트 적립을 켜요', ms_step1_d: '동의해야 포인트가 쌓여요. 언제든 끌 수 있어요.',
-      ms_step2: '안내를 확인하고 따라 해요', ms_step2_d: '충전 시간 탭의 추천 시간을 보고, 가능한 날 그 시간에 충전해요.',
-      ms_step3: '미션 수행을 했는지 검증해요', ms_step3_d: '안내 확인은 앱 기록으로, 추천 시간 충전은 충전 기록(OBD)으로 확인해요.',
-      ms_intro_safe: '안전이 먼저예요. 잔량을 낮추거나 무리한 방전을 유도하는 미션은 없고, 일정 때문에 못 맞춰도 감점은 없어요. 포인트는 시범이며 실제 금전 정산이 아니에요. 1천 포인트 적립시 문화상품권 코드를 발급해 드려요!',
-      nt_title: '공지사항', cp_title: '상품권 교환', cp_desc: '{n}포인트가 모이면 문화상품권 코드를 받을 수 있어요.',
-      cp_request: '교환 신청', cp_pending: '신청했어요. 관리자가 코드를 등록하면 여기에 나타나요.', cp_code: '쿠폰 코드', cp_copy: '복사', cp_copied: '복사했어요',
-      cp_rejected: '반려됐어요 · 포인트를 돌려드렸어요', cp_reason: '사유', cp_err: '교환 신청에 실패했어요.',
+      premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측',
+      nt_title: '공지사항', home_intro: 'AI-V2G 실증 서포터즈로 참여해 주셔서 고마워요. 내 차의 운행·충전 데이터로 AI가 충전하기 좋은 시간을 추천해요.',
+      pt_title: '내 실증 참여', pt_dep: '평소 출발 시각', pt_target: '목표 배터리', pt_min: '최소 보장 배터리', pt_odo: '누적 주행거리', pt_v2g: '방전(V2G) 추론 안내',
+      pt_edit: '내 정보에서 바꿀 수 있어요.', pt_unset: '미입력(기본값 사용)',
+      data_note: '수집한 데이터는 가명처리해 AI 예측·분석에만 쓰여요. 방전 안내는 실제 방전이 아닌 AI 추론 결과예요.',
+      su_op_title: '운행 정보(선택)', su_op_hint: '입력하면 충전 추천이 내 운행에 맞춰져요. 비워 두면 08시 출발·목표 80%·최소 20%로 계산해요.',
+      su_dep: '평소 출발 시각', su_target: '출발 시 목표 배터리(%)', su_min: '최소 보장 배터리(%)', su_odo: '누적 주행거리(km)', h_reg: '평소 출발 시각({t})',
       me_btn: '내 정보', mp_title: '내 정보', mp_back: '← 돌아가기', mp_fail: '내 정보를 불러오지 못했어요', mp_fail_sub: '잠시 후 다시 시도해 주세요.',
       mp_account: '계정', mp_username: '아이디', mp_joined: '가입일', mp_status: '승인 상태', mp_vehicle: '차종', mp_plate: '번호판', mp_occ: '직업군', mp_region: '거주지',
       mp_s_pending: '승인 대기', mp_s_approved: '승인됨', mp_s_rejected: '반려됨', mp_reject_reason: '반려 사유',
       mp_edit_title: '정보 정정', mp_edit_note: '번호판은 직접 바꿀 수 없어요. 바꾸려면 관리자 재심사가 필요해요.', mp_save: '저장', mp_nochange: '바뀐 내용이 없어요.', mp_saved: '저장했어요.', mp_save_fail: '저장하지 못했어요.',
       mp_pw_title: '비밀번호 변경', mp_pw_cur: '현재 비밀번호', mp_pw_new: '새 비밀번호', mp_pw_new2: '새 비밀번호 확인', mp_pw_change: '비밀번호 변경', mp_pw_mismatch: '새 비밀번호가 서로 달라요.', mp_pw_short: '새 비밀번호는 8자 이상, 영문과 숫자를 포함해야 해요.', mp_pw_done: '비밀번호를 바꿨어요.', mp_pw_fail: '비밀번호를 바꾸지 못했어요.',
-      mp_consent_title: '동의 현황', mp_c_on: '동의함', mp_c_off: '철회', mp_c_none: '기록이 없어요.', mp_c_notify: '알림 수신', mp_c_v2g: '방전(V2G) 참여', mp_c_incentive: '시범 포인트 적립', mp_c_collect: '데이터 수집', mp_c_profile: '개인정보 수집·이용', mp_c_share: '외부 제공', mp_c_research: '연구 활용',
+      mp_consent_title: '동의 현황', mp_c_on: '동의함', mp_c_off: '철회', mp_c_none: '기록이 없어요.', mp_c_v2g: '방전(V2G) 참여', mp_c_collect: '데이터 수집', mp_c_profile: '개인정보 수집·이용', mp_c_share: '외부 제공', mp_c_research: '연구 활용',
       mp_hist_title: '정보 변경 이력', mp_hist_none: '변경 이력이 없어요.', mp_by_me: '본인', mp_by_admin: '관리자',
-      mp_out_title: '회원 탈퇴', mp_out_desc: '탈퇴하면 계정, 차량 등록 정보, 알림, 포인트·쿠폰 내역이 삭제되고 되돌릴 수 없어요. 접속기록과 정보 변경 이력은 법정 보관 기간 동안 보관돼요.', mp_out_pw: '비밀번호 확인', mp_out_confirm: '탈퇴하면 되돌릴 수 없음을 확인했어요', mp_out_btn: '회원 탈퇴', mp_out_need: '비밀번호를 입력하고 확인에 체크해 주세요.', mp_out_fail: '탈퇴하지 못했어요.', mp_withdrawn: '탈퇴했어요. 이용해 주셔서 고마워요.',
+      mp_out_title: '회원 탈퇴', mp_out_desc: '탈퇴하면 계정, 차량 등록·운행 정보, 추천 기록이 삭제되고 되돌릴 수 없어요. 접속기록과 정보 변경 이력은 법정 보관 기간 동안 보관돼요.', mp_out_pw: '비밀번호 확인', mp_out_confirm: '탈퇴하면 되돌릴 수 없음을 확인했어요', mp_out_btn: '회원 탈퇴', mp_out_need: '비밀번호를 입력하고 확인에 체크해 주세요.', mp_out_fail: '탈퇴하지 못했어요.', mp_withdrawn: '탈퇴했어요. 이용해 주셔서 고마워요.',
       mp_reapply_title: '다시 신청하기', mp_reapply_desc: '반려 사유를 확인하고 차량 정보를 고쳐 다시 신청해 주세요.', mp_reapply_btn: '다시 신청', mp_reapply_ok: '다시 신청했어요. 관리자 승인을 기다려 주세요.', mp_reapply_fail: '다시 신청하지 못했어요.', mp_reapply_need: '모든 항목을 입력하고 동의해 주세요.',
       pend_reapply: '다시 신청하기',
       rc_title: '이 추천대로 해볼까요?', rc_yes: '추천대로 할게요', rc_no: '나중에', rc_done_yes: '‘추천대로 할게요’로 남겼어요.', rc_done_no: '‘나중에’로 남겼어요.',
       rc_note: '일정에 맞지 않으면 건너뛰어도 괜찮아요. 응답은 추천을 더 잘 맞추는 데만 쓰여요.', rc_fail: '응답을 남기지 못했어요.',
-      ms_fail: '미션을 불러오지 못했어요', ms_fail_sub: '잠시 후 다시 시도해 주세요.', unread_label: '안 읽은 알림', unread_dot: '안 읽음',
       login_title: '내 차 로그인', login_desc: '차량 등록자 계정으로 로그인하세요. 계정은 관리자에게서 발급받습니다.',
       username: '아이디', password: '비밀번호', login: '로그인', logging_in: '로그인 중…',
       need_both: '아이디와 비밀번호를 입력하세요.', login_fail: '로그인에 실패했습니다.',
@@ -277,16 +218,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
       su_model: '차종', su_plate: '번호판', su_plate_ph: '예: 43오3450', su_occ: '직업군', su_sido: '시·도', su_sigungu: '시·군·구',
       su_pick: '선택하세요', su_sigungu_first: '시·도를 먼저 선택하세요', su_pw_hint: '8자 이상, 영문·숫자 포함', su_consent: '개인정보 수집·이용에 동의합니다(필수)', su_policy: '처리방침 보기',
       su_submit: '가입하고 승인 요청', su_submitting: '가입 중…', su_need: '모든 항목을 입력하고 동의해 주세요.', su_fail: '가입에 실패했습니다.', su_back: '로그인으로 돌아가기',
-      pend_title: '승인 대기 중', pend_desc: '관리자가 차량을 확인하면 알림·충전 안내를 볼 수 있어요.', pend_vehicle: '신청 차량', pend_region: '거주지',
+      pend_title: '승인 대기 중', pend_desc: '관리자가 차량을 확인하면 충전 시간 추천을 볼 수 있어요.', pend_vehicle: '신청 차량', pend_region: '거주지',
       pend_refresh: '승인 상태 새로고침', pend_still: '아직 승인 전이에요.', rej_title: '신청이 반려됐어요', rej_reason: '사유', rej_help: '관리자에게 문의한 뒤 다시 신청해 주세요.',
       dev_login: '개발용 간편 로그인', dev_fail: '간편 로그인에 실패했습니다.', login_needed: '로그인이 필요해요.',
       my_car: '내 차량', user_suffix: ' 님',
-      k_price_window: '충전 시간', k_forecast: '수요 예측', k_advisory: '추천', k_system: '안내',
-      notify_on: '알림 수신 중', notify_on_sub: '새 알림은 이 화면에 쌓여요.', turn_off: '끄기',
-      notify_q: '알림을 받아보시겠어요?', notify_desc: '충전 요금이 낮은 시간대, 전력 수요 예측, 내 차에 맞춘 충·방전 추천이 생기면 알림함에 쌓아드려요. 동의는 언제든 끌 수 있어요.', notify_btn: '알림 받기',
-      loading: '불러오는 중…', inbox_fail: '알림을 불러오지 못했어요', inbox_fail_sub: '연결을 확인한 뒤 다시 열어보세요.',
-      inbox_empty: '받은 알림이 없습니다', inbox_empty_sub: '충전하기 좋은 시간대와 추천이 생기면 여기에 쌓여요.',
-      read_all: '모두 읽음', recent: '최근 알림',
+      loading: '불러오는 중…',
       find_title: '내 차 충전 시간 찾기', soc_now: '지금 배터리(%)', soc_need: '출발할 때 필요한 배터리(%)', dep_time: '출발 시각',
       h8: '8시간 뒤', h12: '12시간 뒤', h16: '16시간 뒤', h24: '내일 이 시각', show_rec: '추천 시간 보기', calculating: '계산하는 중이에요…',
       calc_fail: '계산하지 못했어요. 입력값을 확인해 주세요.',
@@ -304,44 +240,31 @@ label.check input { width: 22px; height: 22px; flex: none; }
       safety_title: '안전 확인', safety_ok: '모두 통과', safety_fail: '통과하지 못해 방전 없이 안내해요',
       ck_departure_soc: '출발 시 배터리가 필요량 이상', ck_reserve_floor: '예비 배터리(20%) 아래로 내려가지 않음', ck_capacity_cap: '배터리 용량 초과 없음',
       ck_discharge_band: '방전은 허용 범위(35~80%)에서만', ck_no_simultaneous: '충전·방전 동시 없음', ck_participation: '방전 참여 설정 준수',
-      bot_sub: '앱 사용법·용어·개인정보를 물어보세요', bot_note: '금액·효과는 가정값이에요. 개인정보(번호판 등)는 입력하지 마세요.',
-      bot_ph: '궁금한 점을 입력하세요', bot_q: '질문 입력', send: '보내기',
-      bot_hi: '안녕하세요! AI-V2G 내 차 도우미예요. 앱 사용법이나 용어가 궁금하면 물어봐 주세요.',
-      bot_wait: '답변을 만드는 중…', bot_fail: '지금은 답변을 드리기 어려워요. 잠시 후 다시 시도해 주세요.', bot_net: '네트워크 오류예요. 연결을 확인해 주세요.',
-      sug: ['지금 쓸 수 있는 기능은 뭐예요?', 'V2G가 뭐예요?', '방전하면 이득인가요?', '내 정보는 어떻게 보호되나요?']
     },
     en: {
       theme: 'Toggle theme', logout: 'Log out', menu: 'Menu', close: 'Close', add: 'Add',
       offline: 'You are offline. Latest data loads once you reconnect.',
       install_hint: 'Add to your home screen to use it like an app.',
       install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.',
-      tab_inbox: 'Inbox', tab_price: 'Charge', tab_forecast: 'Forecast', tab_missions: 'Missions',
-      ms_points: 'Trial points', ms_month: '{n}P this month / cap {cap}P', ms_note: 'Trial points, not a real cash settlement. Reward amounts are example values pending agreement.',
-      ms_consent_title: 'Earn points', ms_consent_on: 'Earning is on. You can turn it off anytime.', ms_consent_off: 'Turn on to earn points for completed missions.',
-      ms_on: 'Turn on', ms_off: 'Turn off', ms_list: 'Missions', ms_done: 'Done', ms_awarded: '+{n}P earned', ms_pending: 'Points are earned once you agree',
-      ms_week: 'This week', ms_once: 'Once', ms_safe: 'No mission asks you to lower your charge or discharge aggressively.',
-      ms_ver_unavailable: 'Verified from charging records (OBD), so it needs a connected vehicle.', ms_ver_pending: 'Will be checked once charging records arrive.',
-      ms_intro_title: 'What are missions?', ms_intro_lead: 'Shift your charging and use the app to earn trial points.',
-      ms_step1: 'Turn on point earning', ms_step1_d: 'Points accrue only after you agree. You can turn it off anytime.',
-      ms_step2: 'Check the guide and follow it', ms_step2_d: 'See the recommended times in the Charge tab and charge then when you can.',
-      ms_step3: 'We verify that you completed the mission', ms_step3_d: 'Guide views are checked from app records; charging at recommended times from charging records (OBD).',
-      ms_intro_safe: 'Safety comes first. No mission asks you to lower your charge or discharge aggressively, and there is no penalty if your schedule does not allow it. Points are a trial, not a cash settlement. Earn 1,000 points and we will issue a cultural gift certificate code!',
-      nt_title: 'Notices', cp_title: 'Gift certificate', cp_desc: 'Collect {n} points to receive a cultural gift certificate code.',
-      cp_request: 'Request', cp_pending: 'Requested. The code will appear here once the administrator registers it.', cp_code: 'Coupon code', cp_copy: 'Copy', cp_copied: 'Copied',
-      cp_rejected: 'Rejected · points were returned', cp_reason: 'Reason', cp_err: 'Could not request redemption.',
+      premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast',
+      nt_title: 'Notices', home_intro: 'Thank you for joining the AI-V2G pilot as a supporter. AI recommends good charging times from your car\'s driving and charging data.',
+      pt_title: 'My pilot participation', pt_dep: 'Usual departure', pt_target: 'Target battery', pt_min: 'Minimum battery', pt_odo: 'Odometer', pt_v2g: 'Discharge (V2G) inference guidance',
+      pt_edit: 'You can change these in My info.', pt_unset: 'Not set (defaults used)',
+      data_note: 'Collected data is pseudonymized and used only for AI forecasting and analysis. Discharge guidance is an AI inference, not an actual discharge.',
+      su_op_title: 'Driving info (optional)', su_op_hint: 'Fill these in to fit recommendations to your driving. If blank we assume 08:00 departure, 80% target and 20% minimum.',
+      su_dep: 'Usual departure time', su_target: 'Target battery at departure (%)', su_min: 'Minimum battery (%)', su_odo: 'Odometer (km)', h_reg: 'Usual departure ({t})',
       me_btn: 'My info', mp_title: 'My info', mp_back: '← Back', mp_fail: 'Could not load your info', mp_fail_sub: 'Please try again shortly.',
       mp_account: 'Account', mp_username: 'Username', mp_joined: 'Joined', mp_status: 'Approval status', mp_vehicle: 'Vehicle model', mp_plate: 'Plate number', mp_occ: 'Occupation', mp_region: 'Region',
       mp_s_pending: 'Pending', mp_s_approved: 'Approved', mp_s_rejected: 'Rejected', mp_reject_reason: 'Reason for rejection',
       mp_edit_title: 'Edit info', mp_edit_note: 'The plate number cannot be changed here. It needs an administrator re-review.', mp_save: 'Save', mp_nochange: 'Nothing changed.', mp_saved: 'Saved.', mp_save_fail: 'Could not save.',
       mp_pw_title: 'Change password', mp_pw_cur: 'Current password', mp_pw_new: 'New password', mp_pw_new2: 'Confirm new password', mp_pw_change: 'Change password', mp_pw_mismatch: 'The new passwords do not match.', mp_pw_short: 'Use at least 8 characters with letters and numbers.', mp_pw_done: 'Password changed.', mp_pw_fail: 'Could not change the password.',
-      mp_consent_title: 'Consents', mp_c_on: 'Agreed', mp_c_off: 'Withdrawn', mp_c_none: 'No record.', mp_c_notify: 'Notifications', mp_c_v2g: 'Discharge (V2G) participation', mp_c_incentive: 'Trial point earning', mp_c_collect: 'Data collection', mp_c_profile: 'Personal data use', mp_c_share: 'Sharing with third parties', mp_c_research: 'Research use',
+      mp_consent_title: 'Consents', mp_c_on: 'Agreed', mp_c_off: 'Withdrawn', mp_c_none: 'No record.', mp_c_v2g: 'Discharge (V2G) participation', mp_c_collect: 'Data collection', mp_c_profile: 'Personal data use', mp_c_share: 'Sharing with third parties', mp_c_research: 'Research use',
       mp_hist_title: 'Change history', mp_hist_none: 'No changes yet.', mp_by_me: 'You', mp_by_admin: 'Administrator',
-      mp_out_title: 'Delete account', mp_out_desc: 'Your account, vehicle registration, notifications and points/coupon records are deleted and cannot be restored. Access logs and change history are kept for the legal retention period.', mp_out_pw: 'Confirm password', mp_out_confirm: 'I understand this cannot be undone', mp_out_btn: 'Delete account', mp_out_need: 'Enter your password and tick the confirmation.', mp_out_fail: 'Could not delete the account.', mp_withdrawn: 'Your account was deleted. Thank you for using the service.',
+      mp_out_title: 'Delete account', mp_out_desc: 'Your account, vehicle registration and driving info, and recommendation records are deleted and cannot be restored. Access logs and change history are kept for the legal retention period.', mp_out_pw: 'Confirm password', mp_out_confirm: 'I understand this cannot be undone', mp_out_btn: 'Delete account', mp_out_need: 'Enter your password and tick the confirmation.', mp_out_fail: 'Could not delete the account.', mp_withdrawn: 'Your account was deleted. Thank you for using the service.',
       mp_reapply_title: 'Apply again', mp_reapply_desc: 'Check the reason, correct your vehicle info and apply again.', mp_reapply_btn: 'Apply again', mp_reapply_ok: 'Applied again. Please wait for administrator approval.', mp_reapply_fail: 'Could not apply again.', mp_reapply_need: 'Fill in every field and agree to continue.',
       pend_reapply: 'Apply again',
       rc_title: 'Try this recommendation?', rc_yes: 'I will follow it', rc_no: 'Maybe later', rc_done_yes: 'Saved as: I will follow it.', rc_done_no: 'Saved as: maybe later.',
       rc_note: 'It is fine to skip it if it does not fit your schedule. Your answer is only used to improve recommendations.', rc_fail: 'Could not save your answer.',
-      ms_fail: 'Could not load missions', ms_fail_sub: 'Please try again shortly.', unread_label: 'Unread notifications', unread_dot: 'Unread',
       login_title: 'Sign in', login_desc: 'Sign in with your vehicle owner account. Accounts are issued by the administrator.',
       username: 'Username', password: 'Password', login: 'Sign in', logging_in: 'Signing in…',
       need_both: 'Enter your username and password.', login_fail: 'Sign-in failed.',
@@ -350,16 +273,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
       su_model: 'Vehicle model', su_plate: 'Plate number', su_plate_ph: 'e.g. 43오3450', su_occ: 'Occupation', su_sido: 'Province / city', su_sigungu: 'District',
       su_pick: 'Select', su_sigungu_first: 'Select a province first', su_pw_hint: 'At least 8 characters, letters and numbers', su_consent: 'I agree to the collection and use of personal data (required)', su_policy: 'View policy',
       su_submit: 'Sign up and request approval', su_submitting: 'Signing up…', su_need: 'Fill in every field and agree to continue.', su_fail: 'Sign-up failed.', su_back: 'Back to sign in',
-      pend_title: 'Awaiting approval', pend_desc: 'Once an administrator confirms your vehicle, notifications and charging guidance appear.', pend_vehicle: 'Vehicle', pend_region: 'Region',
+      pend_title: 'Awaiting approval', pend_desc: 'Once an administrator confirms your vehicle, charging recommendations appear.', pend_vehicle: 'Vehicle', pend_region: 'Region',
       pend_refresh: 'Refresh approval status', pend_still: 'Not approved yet.', rej_title: 'Request rejected', rej_reason: 'Reason', rej_help: 'Contact the administrator, then apply again.',
       dev_login: 'Developer quick sign-in', dev_fail: 'Quick sign-in failed.', login_needed: 'Please sign in.',
       my_car: 'My vehicle', user_suffix: '',
-      k_price_window: 'Charge window', k_forecast: 'Demand forecast', k_advisory: 'Advice', k_system: 'Notice',
-      notify_on: 'Notifications on', notify_on_sub: 'New alerts are collected on this screen.', turn_off: 'Turn off',
-      notify_q: 'Receive notifications?', notify_desc: 'We collect low-price charging windows, demand forecasts and charge/discharge advice for your car in your inbox. You can opt out at any time.', notify_btn: 'Turn on',
-      loading: 'Loading…', inbox_fail: 'Could not load notifications', inbox_fail_sub: 'Check your connection and try again.',
-      inbox_empty: 'No notifications yet', inbox_empty_sub: 'Good charging windows and advice will appear here.',
-      read_all: 'Mark all read', recent: 'Recent',
+      loading: 'Loading…',
       find_title: 'Find a charging time', soc_now: 'Battery now (%)', soc_need: 'Battery needed at departure (%)', dep_time: 'Departure',
       h8: 'In 8 hours', h12: 'In 12 hours', h16: 'In 16 hours', h24: 'Same time tomorrow', show_rec: 'Show recommendation', calculating: 'Calculating…',
       calc_fail: 'Could not calculate. Please check your input.',
@@ -377,11 +295,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
       safety_title: 'Safety check', safety_ok: 'All passed', safety_fail: 'Not passed, so advice has no discharge',
       ck_departure_soc: 'Battery at departure meets your need', ck_reserve_floor: 'Never below the 20% reserve', ck_capacity_cap: 'Never above battery capacity',
       ck_discharge_band: 'Discharge only within 35-80%', ck_no_simultaneous: 'No simultaneous charge and discharge', ck_participation: 'Discharge setting respected',
-      bot_sub: 'Ask about the app, terms and privacy', bot_note: 'Amounts and effects are assumptions. Do not enter personal data such as plate numbers.',
-      bot_ph: 'Type your question', bot_q: 'Question', send: 'Send',
-      bot_hi: 'Hello! I am the AI-V2G assistant. Ask me about the app or any terms.',
-      bot_wait: 'Thinking…', bot_fail: 'Cannot answer right now. Please try again shortly.', bot_net: 'Network error. Check your connection.',
-      sug: ['What can I use now?', 'What is V2G?', 'Is discharging worthwhile?', 'How is my data protected?']
     }
   };
   var lang = (document.documentElement.getAttribute('lang') === 'en') ? 'en' : 'ko';
@@ -403,7 +316,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     lang = next;
     try { localStorage.setItem('ai-v2g-lang', lang); } catch (e) { /* 저장 불가여도 이번 화면에는 적용 */ }
     applyStatic();
-    if (state.me) { renderHome(); if (botMsgs.firstChild) { botHistory = []; resetBot(); } }
+    if (state.me) renderHome();
     else renderLogin(state.loginMsg);
   }
   document.querySelector('.seg').addEventListener('click', function (ev) {
@@ -444,9 +357,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   // message: { key } 번역 키 또는 { raw } 서버 메시지
   function renderLogin(message) {
     state.me = null; state.loginMsg = message || null;
-    setUnread(0);  // 로그아웃·다른 계정 전환 시 이전 사용자의 알림 수가 남지 않게
     tabs.hidden = true; logoutBtn.hidden = true; meBtn.hidden = true;
-    closeBot(true);  // 로그아웃·계정 전환 시 이전 대화가 남지 않게 지운다
     clear(view);
     function msgText(m) { return !m ? '' : (m.raw != null ? m.raw : t(m.key)); }
     var err = el('div', { class: 'error', role: 'alert', text: msgText(message) });
@@ -538,6 +449,10 @@ label.check input { width: 22px; height: 22px; flex: none; }
       sido: select('su_s', o.sido, function (x) { return x; }, function (x) { return x; }),
       sigungu: el('select', { id: 'su_g', required: '', disabled: '' }, [el('option', { value: '', text: t('su_sigungu_first') })]),
       consent: el('input', { type: 'checkbox', id: 'su_c' }),
+      dep: el('input', { type: 'time', id: 'su_dep' }),
+      target: el('input', { type: 'number', id: 'su_tg', min: '20', max: '100', inputmode: 'numeric' }),
+      minsoc: el('input', { type: 'number', id: 'su_mn', min: '10', max: '90', inputmode: 'numeric' }),
+      odo: el('input', { type: 'number', id: 'su_od', min: '0', inputmode: 'numeric' }),
     };
     // 시·도를 고르면 그 시·도의 시·군·구만 선택지로 채운다(서버 검증과 같은 목록)
     var byProv = o.sigungu_by_sido || {};
@@ -560,6 +475,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
       el('label', { for: 'su_o', text: t('su_occ') }), f.occ,
       el('label', { for: 'su_s', text: t('su_sido') }), f.sido,
       el('label', { for: 'su_g', text: t('su_sigungu') }), f.sigungu,
+      el('h2', { class: 'gap', text: t('su_op_title') }), el('p', { class: 'muted hint', text: t('su_op_hint') }),
+      el('label', { for: 'su_dep', text: t('su_dep') }), f.dep,
+      el('label', { for: 'su_tg', text: t('su_target') }), f.target,
+      el('label', { for: 'su_mn', text: t('su_min') }), f.minsoc,
+      el('label', { for: 'su_od', text: t('su_odo') }), f.odo,
       el('p', { class: 'muted consent-text', text: o.consent.text || '' }),
       el('label', { class: 'check', for: 'su_c' }, [f.consent, el('span', { text: t('su_consent') })]),
       el('p', { class: 'muted hint' }, [policy]),
@@ -573,9 +493,10 @@ label.check input { width: 22px; height: 22px; flex: none; }
       }
       btn.disabled = true; btn.textContent = t('su_submitting');
       try {
-        var r = await api('/signup', { method: 'POST', body: JSON.stringify({
+        var r = await api('/signup', { method: 'POST', body: JSON.stringify(Object.assign({
           username: f.user.value.trim(), password: f.pass.value, vehicle_model: f.model.value, plate: f.plate.value.trim(),
-          occupation: f.occ.value, sido: f.sido.value, sigungu: f.sigungu.value, consent: f.consent.checked }) });
+          occupation: f.occ.value, sido: f.sido.value, sigungu: f.sigungu.value, consent: f.consent.checked },
+          operatingBody(f.dep.value, f.target.value, f.minsoc.value, f.odo.value))) });
         if (!r.ok) {
           var d = r.body && r.body.detail;
           err.textContent = (typeof d === 'string' && d) || (Array.isArray(d) && d[0] && d[0].msg) || t('su_fail');
@@ -594,10 +515,18 @@ label.check input { width: 22px; height: 22px; flex: none; }
     back.addEventListener('click', function () { renderLogin(null); });
     card.appendChild(back);
   }
+  // 운행 정보(선택) — 빈 칸은 보내지 않는다(서버 기본값을 쓴다)
+  function operatingBody(dep, target, minsoc, odo) {
+    var b = {};
+    if (dep) b.departure_time = dep;
+    if (target !== '' && target != null) b.target_soc_pct = Number(target);
+    if (minsoc !== '' && minsoc != null) b.min_soc_pct = Number(minsoc);
+    if (odo !== '' && odo != null) b.odometer_km = Number(odo);
+    return b;
+  }
   function renderPending(reg, stillMsg) {
     state.me = null;
     tabs.hidden = true; logoutBtn.hidden = false; meBtn.hidden = false;
-    closeBot(true);
     clear(view);
     var rejected = reg && reg.status === 'rejected';
     var rows = [];
@@ -628,7 +557,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 
 
   // ---------------------------------------------------------------- 화면: 내 정보 (열람·정정·비밀번호·동의·이력·탈퇴·재신청)
-  var PURPOSE_KEY = { notify: 'mp_c_notify', v2g_discharge: 'mp_c_v2g', incentive: 'mp_c_incentive', collect: 'mp_c_collect', profile: 'mp_c_profile', share_external: 'mp_c_share', research: 'mp_c_research' };
+  var PURPOSE_KEY = { v2g_discharge: 'mp_c_v2g', collect: 'mp_c_collect', profile: 'mp_c_profile', share_external: 'mp_c_share', research: 'mp_c_research' };
   function kv(label, value) { return el('div', { class: 'kv' }, [el('span', { text: label }), el('span', { text: value == null || value === '' ? '-' : String(value) })]); }
   function selectOf(items, valueOf, labelOf, current) {
     var sel = el('select', {}, [el('option', { value: '', text: t('su_pick') })]);
@@ -658,7 +587,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
     return (typeof d === 'string' && d) || (Array.isArray(d) && d[0] && d[0].msg) || fallback;
   }
   async function renderMyPage() {
-    closeBot(true);
     tabs.hidden = true;
     clear(view);
     view.appendChild(el('div', { class: 'empty', role: 'status', text: t('loading') }));
@@ -679,6 +607,8 @@ label.check input { width: 22px; height: 22px; flex: none; }
       info.appendChild(kv(t('mp_status'), t('mp_s_' + reg.status)));
       info.appendChild(kv(t('mp_vehicle'), reg.vehicle_label)); info.appendChild(kv(t('mp_plate'), reg.plate));
       info.appendChild(kv(t('mp_occ'), reg.occupation_label)); info.appendChild(kv(t('mp_region'), reg.region));
+      info.appendChild(kv(t('pt_dep'), reg.departure_time)); info.appendChild(kv(t('pt_target'), reg.target_soc_pct == null ? '' : reg.target_soc_pct + '%'));
+      info.appendChild(kv(t('pt_min'), reg.min_soc_pct == null ? '' : reg.min_soc_pct + '%')); info.appendChild(kv(t('pt_odo'), reg.odometer_km == null ? '' : Number(reg.odometer_km).toLocaleString(t('locale')) + ' km'));
       if (reg.status === 'rejected' && reg.reject_reason) info.appendChild(el('p', { class: 'error', text: t('mp_reject_reason') + ' · ' + reg.reject_reason }));
     }
     view.appendChild(info);
@@ -697,6 +627,12 @@ label.check input { width: 22px; height: 22px; flex: none; }
       var kids = [el('label', { text: t('su_model') }), model];
       if (plate) kids.push(el('label', { text: t('su_plate') }), plate);
       kids.push(el('label', { text: t('su_occ') }), occ, el('label', { text: t('su_sido') }), prov.sido, el('label', { text: t('su_sigungu') }), prov.sigungu);
+      var opDep = el('input', { type: 'time', value: reg.departure_time || '' });
+      var opTarget = el('input', { type: 'number', min: '20', max: '100', inputmode: 'numeric', value: reg.target_soc_pct == null ? '' : String(reg.target_soc_pct) });
+      var opMin = el('input', { type: 'number', min: '10', max: '90', inputmode: 'numeric', value: reg.min_soc_pct == null ? '' : String(reg.min_soc_pct) });
+      var opOdo = el('input', { type: 'number', min: '0', inputmode: 'numeric', value: reg.odometer_km == null ? '' : String(reg.odometer_km) });
+      kids.push(el('h2', { class: 'gap', text: t('su_op_title') }), el('label', { text: t('su_dep') }), opDep, el('label', { text: t('su_target') }), opTarget,
+        el('label', { text: t('su_min') }), opMin, el('label', { text: t('su_odo') }), opOdo);
       if (rejected) {
         kids.push(el('p', { class: 'muted consent-text', text: (opt.consent && opt.consent.text) || '' }),
           el('label', { class: 'check' }, [agree, el('span', { text: t('su_consent') })]));
@@ -709,8 +645,9 @@ label.check input { width: 22px; height: 22px; flex: none; }
         try {
           if (rejected) {
             if (!model.value || !plate.value.trim() || !occ.value || !prov.sido.value || !prov.sigungu.value || !agree.checked) { fmsg.textContent = t('mp_reapply_need'); return; }
-            var r1 = await api('/owner/registration', { method: 'POST', body: JSON.stringify({ vehicle_model: model.value, plate: plate.value.trim(),
-              occupation: occ.value, sido: prov.sido.value, sigungu: prov.sigungu.value, consent: agree.checked }) });
+            var r1 = await api('/owner/registration', { method: 'POST', body: JSON.stringify(Object.assign({ vehicle_model: model.value, plate: plate.value.trim(),
+              occupation: occ.value, sido: prov.sido.value, sigungu: prov.sigungu.value, consent: agree.checked },
+              operatingBody(opDep.value, opTarget.value, opMin.value, opOdo.value))) });
             if (!r1.ok) { fmsg.textContent = errText(r1, t('mp_reapply_fail')); return; }
             await boot(); return;
           }
@@ -719,6 +656,8 @@ label.check input { width: 22px; height: 22px; flex: none; }
           if (occ.value && occ.value !== reg.occupation) updates.occupation = occ.value;
           if (prov.sido.value && prov.sido.value !== reg.region_sido) updates.sido = prov.sido.value;
           if (prov.sigungu.value && prov.sigungu.value !== reg.region_sigungu) updates.sigungu = prov.sigungu.value;
+          var op = operatingBody(opDep.value, opTarget.value, opMin.value, opOdo.value);
+          Object.keys(op).forEach(function (k) { if (op[k] !== reg[k]) updates[k] = op[k]; });
           if (!Object.keys(updates).length) { okmsg.textContent = t('mp_nochange'); return; }
           if (updates.sido && !updates.sigungu) { fmsg.textContent = t('su_sigungu_first'); return; }   // 시·도를 바꾸면 시·군·구도 함께 고른다
           var r2 = await api('/owner/profile', { method: 'PATCH', body: JSON.stringify(updates) });
@@ -803,7 +742,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
       el('p', { text: body }),
     ]);
   }
-  var KIND_KEY = { price_window: 'k_price_window', forecast: 'k_forecast', advisory: 'k_advisory', system: 'k_system' };
   function fmtTime(iso) {
     try {
       return new Date(iso).toLocaleString(t('locale'), {
@@ -811,56 +749,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       });
     } catch (e) { return ''; }
   }
-  function setUnread(n) {
-    state.unread = n;
-    var b = document.getElementById('inboxBadge');
-    b.textContent = n > 99 ? '99+' : String(n);
-    b.setAttribute('aria-label', t('unread_label'));
-    b.hidden = n < 1;
-  }
-  async function setConsent(granted) {
-    var r = await api('/owner/consent/notify', { method: 'PUT', body: JSON.stringify({ granted: granted }) });
-    if (r.ok) renderHome();
-    return r.ok;
-  }
-  function consentCard(granted) {
-    if (granted) {
-      var off = el('button', { class: 'sm', type: 'button', text: t('turn_off') });
-      off.addEventListener('click', function () { off.disabled = true; setConsent(false).then(function (ok) { if (!ok) off.disabled = false; }); });
-      return el('div', { class: 'card row' }, [
-        el('div', {}, [el('div', { text: t('notify_on') }), el('div', { class: 'muted', text: t('notify_on_sub') })]),
-        off,
-      ]);
-    }
-    var on = el('button', { class: 'primary', type: 'button', text: t('notify_btn') });
-    on.addEventListener('click', function () { on.disabled = true; setConsent(true).then(function (ok) { if (!ok) on.disabled = false; }); });
-    return el('div', { class: 'card' }, [
-      el('div', { class: 'big', text: t('notify_q') }),
-      el('p', { class: 'muted', text: t('notify_desc') }),
-      on,
-    ]);
-  }
-  function noticeItem(n) {
-    var meta = el('div', { class: 'meta' }, [
-      el('span', { class: 'chip', text: t(KIND_KEY[n.kind] || 'k_system') }),
-      el('span', { text: fmtTime(n.created_at) }),
-    ]);
-    if (!n.read) meta.appendChild(el('span', { class: 'dot', role: 'img', 'aria-label': t('unread_dot') }));
-    var item = el('button', { class: 'notice' + (n.read ? '' : ' unread'), type: 'button' }, [
-      meta, el('div', { class: 't', text: n.title }), el('div', { class: 'b', text: n.body }),
-    ]);
-    item.addEventListener('click', async function () {
-      if (n.read) return;
-      var r = await api('/owner/notifications/' + encodeURIComponent(n.notification_id) + '/read', { method: 'POST' });
-      if (!r.ok) return;
-      n.read = true;
-      item.className = 'notice';
-      var dot = item.querySelector('.dot'); if (dot) dot.remove();
-      setUnread(Math.max(0, state.unread - 1));
-    });
-    return item;
-  }
-  // 관리자가 올린 공지사항 — 고정된 것이 먼저(서버가 정렬). 실패해도 알림함은 계속 보여 준다.
+  // 관리자가 올린 공지사항 — 고정된 것이 먼저(서버가 정렬). 실패해도 홈은 계속 보여 준다.
   async function renderNotices(box) {
     var nr;
     try { nr = await api('/owner/notices?lang=' + lang); } catch (e) { return; }
@@ -872,143 +761,31 @@ label.check input { width: 22px; height: 22px; flex: none; }
         el('div', { class: 'nb', text: n.body })]));
     });
   }
+  // 홈 — 서포터즈 참여 안내, 내 운행 입력(최적화 기준값), 방전 추론 안내 동의 상태, 공지
   async function renderInbox(box) {
     box.appendChild(el('div', { class: 'empty', role: 'status', text: t('loading') }));
-    var r;
-    try { r = await api('/owner/notifications?lang=' + lang); } catch (e) { r = null; }
+    var rs;
+    try { rs = await Promise.all([api('/owner/registration'), api('/owner/consent/v2g')]); } catch (e) { rs = null; }
     if (state.tab !== 'inbox' || !box.isConnected) return;   // 불러오는 사이 다른 탭으로 이동
     clear(box);
-    if (!r || !r.ok) { box.appendChild(emptyTab('warn', t('inbox_fail'), t('inbox_fail_sub'))); return; }
-    var data = r.body;
-    setUnread(data.unread);
+    box.appendChild(el('div', { class: 'card' }, [el('p', { text: t('home_intro') }),
+      el('div', { class: 'ax-notice' }, [el('b', { text: t('premise') }), el('span', { text: t('data_note') })])]));
+    var reg = rs && rs[0].ok ? rs[0].body.registration : null;
+    if (reg) {
+      var unset = t('pt_unset');
+      box.appendChild(el('div', { class: 'card' }, [el('h2', { text: t('pt_title') }),
+        kv(t('pt_dep'), reg.departure_time || unset),
+        kv(t('pt_target'), reg.target_soc_pct == null ? unset : reg.target_soc_pct + '%'),
+        kv(t('pt_min'), reg.min_soc_pct == null ? unset : reg.min_soc_pct + '%'),
+        kv(t('pt_v2g'), rs[1].ok && rs[1].body.v2g ? t('mp_c_on') : t('mp_c_off')),
+        el('p', { class: 'muted', text: t('pt_edit') })]));
+    }
     await renderNotices(box);
-    if (state.tab !== 'inbox' || !box.isConnected) return;
-    box.appendChild(consentCard(data.notify_consent));
-    if (!data.notifications.length) {
-      box.appendChild(emptyTab('bell', t('inbox_empty'), t('inbox_empty_sub')));
-      return;
-    }
-    var all = el('button', { class: 'sm', type: 'button', text: t('read_all') });
-    all.hidden = data.unread < 1;
-    all.addEventListener('click', async function () {
-      var rr = await api('/owner/notifications/read-all', { method: 'POST' });
-      if (rr.ok) renderHome();
-    });
-    box.appendChild(el('div', { class: 'listhead' }, [el('span', { class: 'eyebrow', text: t('recent') }), all]));
-    data.notifications.forEach(function (n) { box.appendChild(noticeItem(n)); });
-  }
-  // ---------------------------------------------------------------- 화면: 미션 · 시범 포인트
-  // 달성은 서버가 판정한다. 이 화면은 결과를 보여 주고 포인트 적립 동의만 바꾼다.
-  // 미션 소개 — 처음 한 번은 펼쳐 보여 주고, 이후에는 접어 둔다(브라우저에 기억).
-  function missionIntro() {
-    var seen = false;
-    try { seen = localStorage.getItem('ai-v2g-ms-intro') === '1'; } catch (e) { /* 저장 불가여도 소개는 보인다 */ }
-    var d = el('details', { class: 'card intro' });
-    if (!seen) {
-      d.setAttribute('open', '');
-      try { localStorage.setItem('ai-v2g-ms-intro', '1'); } catch (e) { /* 무시 */ }   // 다음 방문부터는 접어 둔다
-    }
-    var steps = el('ol', {});
-    [['ms_step1', 'ms_step1_d'], ['ms_step2', 'ms_step2_d'], ['ms_step3', 'ms_step3_d']].forEach(function (k) {
-      steps.appendChild(el('li', {}, [el('b', { text: t(k[0]) }), el('span', { class: 'muted', text: t(k[1]) })]));
-    });
-    d.appendChild(el('summary', {}, [el('h2', { text: t('ms_intro_title') })]));
-    d.appendChild(el('div', { class: 'body' }, [el('div', { class: 'muted', text: t('ms_intro_lead') }), steps,
-      el('div', { class: 'muted', text: t('ms_intro_safe') })]));
-    return d;
-  }
-  // 상품권 교환 — 기준 포인트가 모이면 신청, 관리자가 코드를 등록하면 쿠폰함에 코드가 나타난다.
-  function couponCard(d) {
-    var rd = d.redeem;
-    if (!rd.enabled && !d.coupons.length) return el('span', {});
-    var pct = Math.min(100, Math.round(rd.balance / rd.threshold * 100));
-    var err = el('div', { class: 'error', role: 'alert' });
-    var c = el('div', { class: 'card' }, [
-      el('h2', { text: t('cp_title') }),
-      el('div', { class: 'muted', text: t('cp_desc', { n: Number(rd.threshold).toLocaleString(t('locale')) }) }),
-      el('div', { class: 'bar' + (pct >= 100 ? ' done' : ''), role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(rd.threshold),
-                  'aria-valuenow': String(Math.min(rd.balance, rd.threshold)) }, [el('i', { style: 'width:' + pct + '%' })]),
-      el('div', { class: 'muted', text: Number(rd.balance).toLocaleString(t('locale')) + ' / ' + Number(rd.threshold).toLocaleString(t('locale')) + ' P' })]);
-    if (rd.pending) c.appendChild(el('div', { class: 'muted', text: t('cp_pending') }));
-    else if (rd.enabled) {
-      var btn = el('button', { class: 'sm solid', type: 'button', text: t('cp_request') });
-      btn.disabled = !rd.can_request;
-      btn.addEventListener('click', async function () {
-        btn.disabled = true;
-        var rr = await api('/owner/points/redeem', { method: 'POST' });
-        if (rr.ok) renderHome(); else { err.textContent = (rr.body && typeof rr.body.detail === 'string' && rr.body.detail) || t('cp_err'); btn.disabled = false; }
-      });
-      c.appendChild(el('div', { style: 'margin-top:12px' }, [btn]));
-    }
-    c.appendChild(err);
-    d.coupons.forEach(function (k) {
-      if (k.status === 'fulfilled') {
-        var copy = el('button', { class: 'sm', type: 'button', text: t('cp_copy') });
-        copy.addEventListener('click', function () {
-          try { navigator.clipboard.writeText(k.code).then(function () { copy.textContent = t('cp_copied'); }); } catch (e) { /* 복사를 못 하면 눈으로 보고 입력한다 */ }
-        });
-        c.appendChild(el('div', { style: 'margin-top:14px; border-top:1px solid var(--border); padding-top:12px' }, [
-          el('div', { class: 'muted', text: (k.label || '') + ' · ' + t('cp_code') }), el('div', { class: 'code', text: k.code }), copy]));
-      } else if (k.status === 'rejected') {
-        c.appendChild(el('div', { class: 'muted', style: 'margin-top:10px', text: t('cp_rejected') + (k.reason ? ' · ' + t('cp_reason') + ': ' + k.reason : '') }));
-      }
-    });
-    return c;
-  }
-  async function renderMissions(box) {
-    box.appendChild(el('div', { class: 'empty', role: 'status', text: t('loading') }));
-    var r;
-    try { r = await api('/owner/missions?lang=' + lang); } catch (e) { r = null; }
-    if (state.tab !== 'missions' || !box.isConnected) return;
-    clear(box);
-    if (!r || !r.ok) { box.appendChild(emptyTab('warn', t('ms_fail'), t('ms_fail_sub'))); return; }
-    var d = r.body, on = !!d.incentive_consent;
-    var pts = d.points;
-    box.appendChild(missionIntro());
-    box.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: t('ms_points') }),
-      el('div', { class: 'big', text: Number(pts.balance).toLocaleString(t('locale')) + ' P' }),
-      el('div', { class: 'muted', text: t('ms_month', { n: pts.month_earned, cap: pts.month_cap == null ? '∞' : Number(pts.month_cap).toLocaleString(t('locale')) }) }),
-      el('div', { class: 'muted', text: t('ms_note') }),
-    ]));
-    var btn = el('button', { class: on ? 'sm' : 'sm solid', type: 'button', text: on ? t('ms_off') : t('ms_on') });
-    btn.addEventListener('click', async function () {
-      btn.disabled = true;
-      var rr = await api('/owner/consent/incentive', { method: 'PUT', body: JSON.stringify({ granted: !on }) });
-      if (rr.ok) renderHome(); else btn.disabled = false;
-    });
-    box.appendChild(el('div', { class: 'card row' }, [
-      el('div', {}, [el('h2', { text: t('ms_consent_title') }), el('div', { class: 'muted', text: on ? t('ms_consent_on') : t('ms_consent_off') })]),
-      btn,
-    ]));
-    var cp;
-    try { cp = await api('/owner/coupons?lang=' + lang); } catch (e) { cp = null; }
-    if (state.tab !== 'missions' || !box.isConnected) return;
-    if (cp && cp.ok) box.appendChild(couponCard(cp.body));
-    box.appendChild(el('div', { class: 'listhead' }, [el('span', { class: 'eyebrow', text: t('ms_list') })]));
-    d.missions.forEach(function (m) {
-      var pct = Math.round(m.progress / m.target * 100);
-      var status = m.awarded_points != null ? t('ms_awarded', { n: m.awarded_points }) : (m.achieved && !on ? t('ms_pending') : '+' + m.points + 'P');
-      box.appendChild(el('div', { class: 'card mission' }, [
-        el('div', { class: 'top' }, [
-          el('div', { class: 'big', text: m.title }),
-          el('div', { class: 'pts' + (m.awarded_points != null ? ' got' : ''), text: status }),
-        ]),
-        el('div', { class: 'muted', text: m.desc }),
-        el('div', { class: 'bar' + (m.achieved ? ' done' : ''), role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(m.target),
-                    'aria-valuenow': String(m.progress) }, [el('i', { style: 'width:' + pct + '%' })]),
-        (m.verification === 'unavailable' || m.verification === 'pending')
-          ? el('div', { class: 'muted', text: t('ms_ver_' + m.verification) }) : el('span', {}),
-        el('div', { class: 'muted', text: m.progress + ' / ' + m.target + ' · ' + (m.period === 'weekly' ? t('ms_week') : t('ms_once')) + (m.achieved ? ' · ' + t('ms_done') : '') }),
-      ]));
-    });
-    box.appendChild(el('p', { class: 'muted', text: t('ms_safe') }));
   }
   var TAB_VIEWS = {
     inbox: renderInbox,
     price: renderPrice,
     forecast: renderForecast,
-    missions: renderMissions,
   };
 
   // ---------------------------------------------------------------- 화면: 충전 시간 · 예측
@@ -1157,7 +934,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     clear(box);
     var plan = g.plan;
     box.appendChild(v2gCard(g));
-    var head = el('div', { class: 'card' }, [el('h2', { text: t('rec_charge') })]);
+    var head = el('div', { class: 'card' }, [el('h2', { text: t('rec_charge'), 'data-kind': 'inferred' })]);
     if (plan.charge.length) {
       plan.charge.forEach(function (p) {
         head.appendChild(el('div', { class: 'big', text: rangeLabel(p) + ' · ' + p.kwh + ' kWh' }));
@@ -1179,7 +956,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var marks = prices.map(function () { return null; });
     plan.charge.forEach(function (p) { markRange(prices, marks, p, 'charge'); });
     plan.discharge.forEach(function (p) { markRange(prices, marks, p, 'discharge'); });
-    var chart = el('div', { class: 'card' }, [el('h2', { text: t('chart_price') })]);
+    var chart = el('div', { class: 'card' }, [el('h2', { text: t('chart_price'), 'data-kind': 'inferred' })]);
     chart.appendChild(barChart(prices.map(function (p) { return p.buy_krw; }), marks, t('chart_price_aria'), t('per_kwh'), prices.map(function (p) { return p.time; }), { step: true, focus: Math.max(0, marks.indexOf('charge')) }));
     chart.appendChild(swatches([['var(--charge)', t('lg_charge')], ['var(--warn)', t('lg_discharge')]]));
     chart.appendChild(legend([hourLabel(prices[0].time) + t('start_at'), hourLabel(g.period.departure) + t('depart_at')]));
@@ -1191,7 +968,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 
     var c = g.cost;
     box.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: t('cost_title') }),
+      el('h2', { text: t('cost_title'), 'data-kind': 'inferred' }),
       el('div', { class: 'big', text: c.saving_krw >= 0 ? t('saving', { a: won(c.saving_krw), p: c.saving_pct }) : t('no_saving') }),
       el('div', { class: 'muted', text: t('baseline_to', { a: won(c.baseline_krw), b: won(c.optimized_krw) }) }),
       el('div', { class: 'muted', text: t('final_soc', { n: Math.round(plan.final_soc_pct) }) }),
@@ -1238,6 +1015,15 @@ label.check input { width: 22px; height: 22px; flex: none; }
       dep.appendChild(el('option', { value: String(o[0]), text: t(o[1]) }));
     });
     dep.value = '12';
+    api('/owner/registration').then(function (rr) {   // 서포터즈 운행 입력이 있으면 기본값으로 쓴다(계획서 4.1 서포터즈 입력)
+      var reg = rr && rr.ok && rr.body.registration;
+      if (!reg) return;
+      if (reg.target_soc_pct != null) socNeed.value = String(Math.round(reg.target_soc_pct));
+      if (reg.departure_time) {
+        dep.insertBefore(el('option', { value: 'reg', text: t('h_reg', { t: reg.departure_time }) }), dep.firstChild);
+        dep.value = 'reg';
+      }
+    }).catch(function () { /* 입력이 없으면 기본값 */ });
     var out = el('div', {});
     var go = el('button', { class: 'primary', type: 'button', text: t('show_rec') });
     var form = el('div', { class: 'card' }, [
@@ -1252,7 +1038,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       go.disabled = true; clear(out);
       out.appendChild(el('p', { class: 'muted', text: t('calculating') }));
       var q = 'current_soc_pct=' + encodeURIComponent(socNow.value) + '&need_soc_pct=' + encodeURIComponent(socNeed.value) +
-        '&departure=' + encodeURIComponent(kstString(Date.now() + Number(dep.value) * 3600 * 1000));
+        (dep.value === 'reg' ? '' : '&departure=' + encodeURIComponent(kstString(Date.now() + Number(dep.value) * 3600 * 1000)));
       var r = await api('/owner/charging-guide?' + q + '&lang=' + lang);
       go.disabled = false;
       if (!box.isConnected) return;
@@ -1276,7 +1062,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     clear(box);
     if (!r.ok) { box.appendChild(emptyTab('trend', t('fc_wait'), t('fc_wait_sub'))); return; }
     var f = r.body, series = f.series;
-    var chart = el('div', { class: 'card' }, [el('h2', { text: t('fc_title') })]);
+    var chart = el('div', { class: 'card' }, [el('h2', { text: t('fc_title'), 'data-kind': 'inferred' })]);
     var vals = series.map(function (s) { return s.charging_demand_kw; });
     var marks = series.map(function (s) {
       var tm = new Date(s.time).getTime();
@@ -1326,11 +1112,9 @@ label.check input { width: 22px; height: 22px; flex: none; }
     view.appendChild(box);
     TAB_VIEWS[state.tab](box);
     tabs.hidden = false; logoutBtn.hidden = false; meBtn.hidden = false;
-    if (botPanel.hidden) botFab.hidden = false;
     Array.prototype.forEach.call(tabs.querySelectorAll('.tab'), function (tb) {
       tb.setAttribute('aria-selected', String(tb.getAttribute('data-tab') === state.tab));
     });
-    setUnread(state.unread);
   }
   tabs.addEventListener('click', function (ev) {
     var tb = ev.target.closest('.tab');
@@ -1428,98 +1212,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
     });
   }
 
-  // ---------------------------------------------------------------- EV Bot
-  // 앱 사용법·용어·개인정보를 안내한다. 서버(/owner/ask)가 이용자용 문서와 본인 차량 정보만 근거로 답한다.
-  var botFab = document.getElementById('botFab');
-  var botPanel = document.getElementById('botPanel');
-  var botMsgs = document.getElementById('botMsgs');
-  var botInput = document.getElementById('botInput');
-  var botSend = document.getElementById('botSend');
-  var botHistory = [];
-  var botBusy = false;
-
-  function tidy(text) {   // Gemini가 쓰는 마크다운 기호를 화면에 맞게 정리(텍스트로만 표시한다)
-    return String(text).replace(/\*\*/g, '').replace(/^\s*[*-]\s+/gm, '• ').trim();
-  }
-  function addBubble(kind, text) {
-    var b = el('div', { class: 'bubble ' + kind, text: text });
-    botMsgs.appendChild(b);
-    botMsgs.scrollTop = botMsgs.scrollHeight;
-    return b;
-  }
-  function resetBot() {
-    botHistory = [];
-    clear(botMsgs);
-    addBubble('ai', t('bot_hi'));
-    var chips = el('div', { class: 'chips' });
-    t('sug').forEach(function (q) {
-      var c = el('button', { class: 'chip-btn', type: 'button', text: q });
-      c.addEventListener('click', function () { sendBot(q); });
-      chips.appendChild(c);
-    });
-    botMsgs.appendChild(chips);
-  }
-  function openBot() {
-    if (!state.me) return;
-    botPanel.hidden = false; botFab.hidden = true;
-    if (!botMsgs.firstChild) resetBot();
-    botInput.focus();
-  }
-  function closeBot(wipe) {
-    var wasOpen = !botPanel.hidden;
-    botPanel.hidden = true;
-    botFab.hidden = !state.me;
-    if (wipe) { botHistory = []; clear(botMsgs); }
-    if (wasOpen && state.me) botFab.focus();
-  }
-  async function sendBot(text) {
-    text = (text || '').trim();
-    if (!text || botBusy) return;
-    botBusy = true; botSend.disabled = true;
-    addBubble('me', text);
-    botInput.value = '';
-    var wait = addBubble('ai wait', t('bot_wait'));
-    try {
-      var r = await api('/owner/ask', { method: 'POST', body: JSON.stringify({ question: text, history: botHistory.slice(-4), lang: lang }) });
-      wait.remove();
-      if (r.ok && r.body && r.body.answer) {
-        var answer = tidy(r.body.answer);
-        addBubble('ai', answer);
-        botHistory.push({ role: 'user', text: text.slice(0, 500) }, { role: 'ai', text: answer.slice(0, 500) });
-        botHistory = botHistory.slice(-4);
-      } else if (r.status === 401 || r.status === 403) {
-        closeBot(true);
-        renderLogin({ key: 'login_needed' });
-      } else {
-        var detail = r.body && typeof r.body.detail === 'string' ? r.body.detail : t('bot_fail');
-        addBubble('ai err', detail);
-      }
-    } catch (e) {
-      wait.remove();
-      addBubble('ai err', t('bot_net'));
-    } finally {
-      botBusy = false; botSend.disabled = false;
-      if (!botPanel.hidden) botInput.focus();
-    }
-  }
-  botFab.addEventListener('click', openBot);
-  document.getElementById('botClose').addEventListener('click', function () { closeBot(false); });
-  document.getElementById('botForm').addEventListener('submit', function (ev) { ev.preventDefault(); sendBot(botInput.value); });
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !botPanel.hidden) closeBot(false); });
-
-  // ---------------------------------------------------------------- 알림 새로고침
-  // 앱을 다시 열거나 화면이 보일 때, 그리고 보이는 동안 1분마다 안 읽은 알림 수를 확인한다.
-  async function pollUnread() {
-    if (!state.me || document.visibilityState !== 'visible' || !navigator.onLine) return;
-    var r;
-    try { r = await api('/owner/notifications?limit=1'); } catch (e) { return; }
-    if (!r || !r.ok) return;
-    if (r.body.unread !== state.unread) {
-      if (state.tab === 'inbox') renderHome(); else setUnread(r.body.unread);
-    }
-  }
-  document.addEventListener('visibilitychange', pollUnread);
-  setInterval(pollUnread, 60000);
 
   applyStatic();
   boot();
