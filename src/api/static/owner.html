@@ -199,6 +199,18 @@ label.check input { width: 22px; height: 22px; flex: none; }
       rp_m_week: '주 충전 횟수', rp_m_avg: '1회 평균 충전량', rp_m_kwhw: '주간 충전량', rp_m_peak: '피크 시간 충전 비중',
       rp_m_won: '1kWh당 요금', rp_m_kmw: '주간 주행거리', rp_m_kmkwh: '1kWh당 주행', rp_m_wonkm: '1km당 요금',
       rp_period: '기간', rp_unit_times: '회', rp_recent: '최근 기록',
+      hm_battery: '지금 배터리', hm_odo: '누적 주행거리(입력)', hm_kmw: '주간 평균 주행(최근 4주)', hm_none: '미입력', hm_short: '입력 부족',
+      hm_ai: 'AI 추천', hm_ai_sub: '전력수요 예측 기반', hm_rec: '{w}에 충전하면 가장 유리해요', hm_cost: '예상 충전 요금', hm_save: '일반 충전 대비',
+      hm_save_v: '{v}원 절감', hm_go: '충전 시간 자세히 보기', hm_norec: '지금은 따로 충전하지 않아도 돼요',
+      ms_title: '최소 보장 배터리', ms_sub: '방전(V2G)을 하더라도 이 아래로는 내려가지 않아요.', ms_now: '지금 설정', ms_sug: '제안값 {p}%로 바꾸기',
+      ms_save: '저장', ms_done: '바꿨어요.',
+      r3_title: '최근 충전 3회', r3_sub: '단가 = 요금 ÷ 충전량 (모의 단가)', rc_date: '충전일', rc_kwh: '충전량', rc_cost: '요금', rc_unit: '단가',
+      vg_title: '최근 4주 V2G 기여', vg_sub: '실제로 방전하지 않았어요. 내 충전 기록에 AI 최적화를 적용했다면 얻었을 효과예요.',
+      vg_n: '실측 충전', vg_dis: '방전 추론량', vg_share: '이익공유 모의',
+      vg_share_note: '절감액 {s}원 중 차주 몫 {p}%(가정)로 계산한 모의값이에요. 실제 지급은 2차년도 이익공유 모델이 정해진 뒤에 정해져요.',
+      ba_title: 'AI 적용 전·후 비교', ba_peak: '피크 시간 충전 비율', ba_cost: '4주 충전 요금', ba_reach: '목표 배터리 도달률',
+      hs_title: '충전 기록', hs_day: '일', hs_week: '주', hs_month: '월', hs_kwh: '충전량', hs_n: '횟수', hs_cost: '요금',
+      hs_total: '기간 합계', hs_avg_kwh: '{u} 평균 충전량', hs_avg_cost: '{u} 평균 요금', hs_u_day: '하루', hs_u_week: '주', hs_u_month: '월',
       nt_title: '공지사항', home_intro: 'AI-V2G 실증 서포터즈로 참여해 주셔서 고마워요. 내 차의 운행·충전 데이터로 AI가 충전하기 좋은 시간을 추천해요.',
       pt_title: '내 실증 참여', pt_dep: '평소 출발 시각', pt_target: '목표 배터리', pt_min: '최소 보장 배터리', pt_odo: '누적 주행거리', pt_v2g: '방전(V2G) 추론 안내',
       pt_edit: '내 정보에서 바꿀 수 있어요.', pt_unset: '미입력(기본값 사용)',
@@ -260,6 +272,18 @@ label.check input { width: 22px; height: 22px; flex: none; }
       rp_m_week: 'Charges per week', rp_m_avg: 'Avg energy per charge', rp_m_kwhw: 'Energy per week', rp_m_peak: 'Peak-hour share',
       rp_m_won: 'Cost per kWh', rp_m_kmw: 'Distance per week', rp_m_kmkwh: 'km per kWh', rp_m_wonkm: 'Cost per km',
       rp_period: 'Period', rp_unit_times: '', rp_recent: 'Recent entries',
+      hm_battery: 'Battery now', hm_odo: 'Odometer (entered)', hm_kmw: 'Weekly distance (last 4 wk)', hm_none: 'Not entered', hm_short: 'Not enough entries',
+      hm_ai: 'AI pick', hm_ai_sub: 'Based on demand forecast', hm_rec: 'Charging {w} is the best deal', hm_cost: 'Expected cost', hm_save: 'vs. standard charging',
+      hm_save_v: '{v} KRW saved', hm_go: 'See charging times', hm_norec: 'No extra charging needed right now',
+      ms_title: 'Minimum battery', ms_sub: 'Even with discharge (V2G), the battery never goes below this.', ms_now: 'Current setting', ms_sug: 'Use suggested {p}%',
+      ms_save: 'Save', ms_done: 'Updated.',
+      r3_title: 'Last 3 charges', r3_sub: 'Unit price = cost ÷ energy (simulated prices)', rc_date: 'Date', rc_kwh: 'Energy', rc_cost: 'Cost', rc_unit: 'Per kWh',
+      vg_title: 'V2G contribution, last 4 weeks', vg_sub: 'No actual discharge happened. This is what AI optimization of your charging record would have achieved.',
+      vg_n: 'Measured charges', vg_dis: 'Inferred discharge', vg_share: 'Simulated share',
+      vg_share_note: 'Simulated as the owner share ({p}%, assumed) of {s} KRW saved. Actual payment depends on the Year 2 profit-sharing model.',
+      ba_title: 'Before vs. after AI', ba_peak: 'Peak-hour charging share', ba_cost: 'Charging cost (4 wk)', ba_reach: 'Target battery reached',
+      hs_title: 'Charging history', hs_day: 'Day', hs_week: 'Week', hs_month: 'Month', hs_kwh: 'Energy', hs_n: 'Count', hs_cost: 'Cost',
+      hs_total: 'Total', hs_avg_kwh: 'Avg energy per {u}', hs_avg_cost: 'Avg cost per {u}', hs_u_day: 'day', hs_u_week: 'week', hs_u_month: 'month',
       nt_title: 'Notices', home_intro: 'Thank you for joining the AI-V2G pilot as a supporter. AI recommends good charging times from your car\'s driving and charging data.',
       pt_title: 'My pilot participation', pt_dep: 'Usual departure', pt_target: 'Target battery', pt_min: 'Minimum battery', pt_odo: 'Odometer', pt_v2g: 'Discharge (V2G) inference guidance',
       pt_edit: 'You can change these in My info.', pt_unset: 'Not set (defaults used)',
@@ -784,6 +808,37 @@ label.check input { width: 22px; height: 22px; flex: none; }
     box.appendChild(el('div', { class: 'card' }, [el('p', { text: t('home_intro') }),
       el('div', { class: 'ax-notice' }, [el('b', { text: t('premise') }), el('span', { text: t('data_note') })])]));
     var reg = rs && rs[0].ok ? rs[0].body.registration : null;
+    var rp = await getReport().catch(function () { return null; });
+    if (state.tab !== 'inbox' || !box.isConnected) return;
+    var rb = rp && rp.ok && rp.body.has_data ? rp.body : null;
+    var hero = document.getElementById('heroExtra');
+    if (hero && rb && rb.soc_now_pct != null) {
+      clear(hero);
+      hero.appendChild(el('div', { class: 'muted gap', text: t('hm_battery') }));
+      hero.appendChild(el('div', { class: 'big', text: Math.round(rb.soc_now_pct) + '%' }));
+      var bar = el('div', { class: 'bar' }); var fill = el('i', {}); fill.style.width = Math.max(0, Math.min(100, rb.soc_now_pct)) + '%'; bar.appendChild(fill);
+      hero.appendChild(bar);
+      var odo = (rb.odometer || []).slice(-1)[0];
+      hero.appendChild(el('div', { class: 'muted', text: t('hm_odo') + ' ' + (odo ? Number(odo.odometer_km).toLocaleString(t('locale')) + ' km' : t('hm_none'))
+        + ' · ' + t('hm_kmw') + ' ' + (rb.driving && rb.driving.km_per_week != null ? rb.driving.km_per_week + ' km' : t('hm_short')) }));
+    }
+    var soc = rb && rb.soc_now_pct != null ? Math.round(rb.soc_now_pct) : 50;
+    var g = await api('/owner/charging-guide?current_soc_pct=' + soc + '&lang=' + lang).catch(function () { return null; });
+    if (state.tab !== 'inbox' || !box.isConnected) return;
+    if (g && g.ok) {
+      var gb = g.body, wins = (gb.plan.charge || []).map(function (w) { return w.label; }).join(', ');
+      var goBtn = el('button', { class: 'primary', type: 'button', text: t('hm_go') });
+      goBtn.addEventListener('click', function () { state.tab = 'price'; renderHome(); });
+      box.insertBefore(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'chip', text: t('hm_ai') }), el('span', { class: 'muted', text: t('hm_ai_sub') })]),
+        el('div', { class: 'big gap', text: wins ? t('hm_rec', { w: wins }) : t('hm_norec') }),
+        el('div', { class: 'g2 gap' }, [
+          el('div', { class: 'box' }, [el('span', { class: 'l', text: t('hm_cost') }), el('span', { class: 'v', text: won(Math.max(0, gb.cost.optimized_krw)) })]),
+          el('div', { class: 'box up' }, [el('span', { class: 'l', text: t('hm_save') }), el('span', { class: 'v', text: t('hm_save_v', { v: Math.max(0, Math.round(gb.cost.saving_krw)).toLocaleString(t('locale')) }) })]),
+        ]),
+        goBtn,
+      ]), box.firstChild);
+    }
     if (reg) {
       var unset = t('pt_unset');
       box.appendChild(el('div', { class: 'card' }, [el('h2', { text: t('pt_title') }),
@@ -1048,6 +1103,15 @@ label.check input { width: 22px; height: 22px; flex: none; }
     ]);
     box.appendChild(form);
     box.appendChild(out);
+    var extra = el('div', {});
+    box.appendChild(extra);
+    Promise.all([getReport(), api('/owner/registration')]).then(function (rs) {
+      if (state.tab !== 'price' || !box.isConnected) return;
+      var rb = rs[0] && rs[0].ok ? rs[0].body : null, reg = rs[1] && rs[1].ok ? rs[1].body.registration : null;
+      extra.appendChild(minSocCard(reg ? reg.min_soc_pct : null, rb && rb.has_data ? rb.min_soc_suggestion_pct : null));
+      if (rb && rb.has_data && rb.recent && rb.recent.length) extra.appendChild(recentCard(rb.recent));
+      markKind(extra, rb && rb.is_real_data);
+    }).catch(function () { /* 보조 카드는 없어도 된다 */ });
     async function run() {
       go.disabled = true; clear(out);
       out.appendChild(el('p', { class: 'muted', text: t('calculating') }));
@@ -1095,6 +1159,21 @@ label.check input { width: 22px; height: 22px; flex: none; }
     box.appendChild(listCard(t('fc_lows'), f.charging_lows));
     box.appendChild(el('p', { class: 'muted', text: f.scope + '. ' + f.note }));   // 서버 제공 문구(한국어)
   }
+  var reportCache = { at: 0, lang: null, r: null };
+  async function getReport(force) {
+    if (!force && reportCache.r && reportCache.lang === lang && Date.now() - reportCache.at < 60000) return reportCache.r;
+    var r = await api('/owner/report?lang=' + lang);
+    reportCache = { at: Date.now(), lang: lang, r: r };
+    return r;
+  }
+  // 모의(합성) 데이터면 '실측' 배지를 '모의'로 바꾼다 — 실측이 아닌 값을 실측으로 보이지 않게(대시보드와 같은 원칙)
+  function markKind(box, isReal) {
+    if (isReal) return;
+    Array.prototype.forEach.call(box.querySelectorAll('[data-kind="actual"]'), function (n) { n.setAttribute('data-kind', 'sim'); });
+  }
+  function won(v) { return v == null ? '-' : Math.round(v).toLocaleString(t('locale')) + (lang === 'en' ? ' KRW' : '원'); }
+  function md(iso) { var d = new Date(iso); return (d.getMonth() + 1) + '/' + d.getDate(); }
+  function hhmm(iso) { return String(iso).slice(11, 16); }
   // ---------------------------------------------------------------- 화면: 리포트(AIV2GAPP 'AI 충전 분석' 이식)
   function metricBox(label, value, peer) {
     return el('div', { class: 'box' }, [
@@ -1105,7 +1184,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   }
   async function renderReport(box) {
     box.appendChild(el('p', { class: 'muted', text: t('loading') }));
-    var r = await api('/owner/report?lang=' + lang);
+    var r = await getReport();
     if (state.tab !== 'report' || !box.isConnected) return;
     clear(box);
     if (!r.ok) { box.appendChild(emptyTab('trend', t('rp_wait'), (r.body && r.body.detail) || '')); return; }
@@ -1113,6 +1192,26 @@ label.check input { width: 22px; height: 22px; flex: none; }
     if (b.has_data) {
       var m = b.metrics, c = b.compare || {}, d = b.driving || {};
       function peer(k, unit) { return c[k] && c[k].median != null ? c[k].median + unit : null; }
+      var ef = b.effect;
+      if (ef) {
+        box.appendChild(el('div', { class: 'card hero' }, [
+          el('h2', { text: t('vg_title'), 'data-kind': 'inferred' }),
+          el('p', { class: 'muted', text: t('vg_sub') }),
+          el('div', { class: 'g3' }, [
+            el('div', {}, [el('div', { class: 'muted', text: t('vg_n') }), el('div', { class: 'big', text: ef.sessions + t('rp_unit_times') })]),
+            el('div', {}, [el('div', { class: 'muted', text: t('vg_dis') }), el('div', { class: 'big', text: ef.discharge_kwh + ' kWh' })]),
+            el('div', {}, [el('div', { class: 'muted', text: t('vg_share') }), el('div', { class: 'big', text: won(ef.share.owner_krw) })]),
+          ]),
+          el('p', { class: 'hint', text: t('vg_share_note', { s: Math.round(ef.savings_krw).toLocaleString(t('locale')), p: ef.share.owner_pct }) }),
+        ]));
+        function ba(label, o, fmt) {
+          return kv(label, (o.before == null ? '-' : fmt(o.before)) + '  →  ' + (o.after == null ? '-' : fmt(o.after)));
+        }
+        var pct = function (v) { return v + '%'; };
+        box.appendChild(el('div', { class: 'card' }, [el('h2', { text: t('ba_title'), 'data-kind': 'inferred' }),
+          ba(t('ba_peak'), ef.peak_share_pct, pct), ba(t('ba_cost'), ef.cost_krw, won), ba(t('ba_reach'), ef.target_reach_pct, pct)]));
+      }
+      box.appendChild(historyCard(b.daily || [], b.as_of));
       box.appendChild(el('div', { class: 'card' }, [
         el('h2', { text: t('rp_title') }),
         el('p', { class: 'muted', text: t('rp_period') + ' ' + b.window.from + ' ~ ' + b.window.to }),
@@ -1149,11 +1248,106 @@ label.check input { width: 22px; height: 22px; flex: none; }
       btn.disabled = true;
       var res = await api('/owner/odometer', { method: 'POST', body: JSON.stringify({ odometer_km: Number(input.value) }) });
       btn.disabled = false;
-      if (res.ok) { msg.textContent = t('rp_odo_done'); renderHome(); }
+      if (res.ok) { msg.textContent = t('rp_odo_done'); await getReport(true); renderHome(); }
       else { msg.className = 'error'; msg.textContent = (res.body && typeof res.body.detail === 'string') ? res.body.detail : String(res.status); }
     });
     box.appendChild(odoCard);
     if (b.note) box.appendChild(el('p', { class: 'muted', text: b.note }));
+    markKind(box, b.is_real_data);
+  }
+  // 충전 기록 — 일(14칸)·주(8칸, 월요일 시작)·월(6칸) 막대 그래프(AIV2GAPP '충전 세션 기록')
+  var histState = { span: 'day', metric: 'kwh' };
+  function historyCard(daily, asOf) {
+    var card = el('div', { class: 'card' }, [el('h2', { text: t('hs_title'), 'data-kind': 'actual' })]);
+    var body = el('div', {});
+    function seg(items, key) {
+      var g = el('div', { class: 'chips' });
+      items.forEach(function (it) {
+        var b = el('button', { type: 'button', class: 'sm' + (histState[key] === it[0] ? ' solid' : ''), text: t(it[1]) });
+        b.addEventListener('click', function () { histState[key] = it[0]; draw(); });
+        g.appendChild(b);
+      });
+      return g;
+    }
+    function dstr(d) { return d.toISOString().slice(0, 10); }
+    function draw() {
+      clear(body);
+      body.appendChild(seg([['day', 'hs_day'], ['week', 'hs_week'], ['month', 'hs_month']], 'span'));
+      body.appendChild(seg([['kwh', 'hs_kwh'], ['n', 'hs_n'], ['cost', 'hs_cost']], 'metric'));
+      var end = new Date((asOf || dstr(new Date())) + 'T00:00:00Z'), buckets = [];
+      if (histState.span === 'day') {
+        for (var i = 13; i >= 0; i--) { var d = new Date(end); d.setUTCDate(d.getUTCDate() - i); var k = dstr(d);
+          buckets.push({ label: String(d.getUTCDate()), from: k, to: k }); }
+      } else if (histState.span === 'week') {
+        var mon = new Date(end); mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7));
+        for (var w = 7; w >= 0; w--) { var st = new Date(mon); st.setUTCDate(st.getUTCDate() - 7 * w); var en = new Date(st); en.setUTCDate(en.getUTCDate() + 6);
+          buckets.push({ label: (st.getUTCMonth() + 1) + '/' + st.getUTCDate(), from: dstr(st), to: dstr(en) }); }
+      } else {
+        for (var m = 5; m >= 0; m--) { var y = end.getUTCFullYear(), mo = end.getUTCMonth() - m; while (mo < 0) { mo += 12; y -= 1; }
+          var first = new Date(Date.UTC(y, mo, 1)), last = new Date(Date.UTC(y, mo + 1, 0));
+          buckets.push({ label: lang === 'en' ? String(mo + 1) : (mo + 1) + '월', from: dstr(first), to: dstr(last) }); }
+      }
+      var key = { kwh: 'kwh', n: 'sessions', cost: 'cost_krw' }[histState.metric], tot = { n: 0, kwh: 0, cost: 0 };
+      buckets.forEach(function (b) {
+        b.v = 0;
+        daily.forEach(function (r) { if (r.date >= b.from && r.date <= b.to) { b.v += r[key]; tot.n += r.sessions; tot.kwh += r.kwh; tot.cost += r.cost_krw; } });
+      });
+      var W = 340, H = 150, bw = W / buckets.length, max = Math.max.apply(null, buckets.map(function (b) { return b.v; }).concat([0.0001]));
+      var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': t('hs_title') });
+      svg.appendChild(svgEl('line', { x1: 0, y1: H - 18, x2: W, y2: H - 18, stroke: 'var(--border)' }));
+      buckets.forEach(function (b, i) {
+        var h = b.v / max * (H - 28), x = i * bw + bw * 0.18, wdt = bw * 0.64;
+        svg.appendChild(svgEl('rect', { x: x, y: H - 18 - h, width: wdt, height: Math.max(h, b.v ? 2 : 0), rx: 3, fill: 'var(--accent)' }));
+        var tx = svgEl('text', { x: x + wdt / 2, y: H - 4, 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--sub)' }); tx.textContent = b.label; svg.appendChild(tx);
+        if (buckets.length <= 8 && b.v) {
+          var lv = svgEl('text', { x: x + wdt / 2, y: H - 22 - h, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: 'var(--accent)' });
+          lv.textContent = histState.metric === 'kwh' ? b.v.toFixed(1) : Math.round(b.v).toLocaleString(t('locale')); svg.appendChild(lv);
+        }
+      });
+      body.appendChild(svg);
+      var u = t({ day: 'hs_u_day', week: 'hs_u_week', month: 'hs_u_month' }[histState.span]);
+      body.appendChild(el('div', { class: 'g3' }, [
+        el('div', { class: 'box' }, [el('span', { class: 'l', text: t('hs_total') }), el('span', { class: 'v', text: tot.n + t('rp_unit_times') })]),
+        el('div', { class: 'box' }, [el('span', { class: 'l', text: t('hs_avg_kwh', { u: u }) }), el('span', { class: 'v', text: (tot.kwh / buckets.length).toFixed(1) + ' kWh' })]),
+        el('div', { class: 'box' }, [el('span', { class: 'l', text: t('hs_avg_cost', { u: u }) }), el('span', { class: 'v', text: won(tot.cost / buckets.length) })]),
+      ]));
+    }
+    draw();
+    card.appendChild(body);
+    return card;
+  }
+  // 최근 충전 3회(AIV2GAPP '충전 플랜')
+  function recentCard(list) {
+    var card = el('div', { class: 'card' }, [el('h2', { text: t('r3_title'), 'data-kind': 'actual' }), el('p', { class: 'muted', text: t('r3_sub') })]);
+    list.forEach(function (r) {
+      card.appendChild(el('div', { class: 'kv' }, [
+        el('span', { text: md(r.start) + ' ' + hhmm(r.start) + '~' + hhmm(r.end) }),
+        el('span', { text: r.kwh + ' kWh · ' + won(r.cost_krw) + (r.won_per_kwh != null ? ' · ' + won(r.won_per_kwh) + '/kWh' : '') }),
+      ]));
+    });
+    return card;
+  }
+  // 최소 보장 배터리 — 제안값으로 한 번에 바꾸기(AIV2GAPP 'AI 분석' 카드의 바꾸기 버튼)
+  function minSocCard(current, suggestion) {
+    var input = el('input', { type: 'number', min: '10', max: '90', step: '5', inputmode: 'numeric', value: current == null ? '' : String(Math.round(current)), 'aria-label': t('ms_title') });
+    var msg = el('div', { class: 'okmsg', role: 'status' });
+    async function save(v) {
+      msg.className = 'okmsg'; msg.textContent = '';
+      var res = await api('/owner/profile', { method: 'PATCH', body: JSON.stringify({ min_soc_pct: Number(v) }) });
+      if (res.ok) { input.value = String(v); msg.textContent = t('ms_done'); await getReport(true); }
+      else { msg.className = 'error'; msg.textContent = (res.body && typeof res.body.detail === 'string') ? res.body.detail : String(res.status); }
+    }
+    var saveBtn = el('button', { type: 'button', class: 'sm solid', text: t('ms_save') });
+    saveBtn.addEventListener('click', function () { if (input.value !== '') save(input.value); });
+    var kids = [el('h2', { text: t('ms_title') }), el('p', { class: 'muted', text: t('ms_sub') }),
+      kv(t('ms_now'), current == null ? t('pt_unset') : Math.round(current) + '%'), el('div', { class: 'row gap' }, [input, saveBtn])];
+    if (suggestion != null && suggestion !== current) {
+      var sug = el('button', { type: 'button', class: 'primary', text: t('ms_sug', { p: suggestion }) });
+      sug.addEventListener('click', function () { save(suggestion); });
+      kids.push(sug);
+    }
+    kids.push(msg);
+    return el('div', { class: 'card' }, kids);
   }
   // 내 차량 일러스트 — 면 색으로 그린 전기차 옆모습(고정 SVG라 사용자 입력이 들어가지 않는다). 색은 테마 변수를 따른다.
   function carIllustration() {
@@ -1180,6 +1374,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
         el('h2', { text: t('my_car') }),
         el('div', { class: 'big', text: state.me.ev_id }),
         el('div', { class: 'muted', text: state.me.username + t('user_suffix') }),
+        el('div', { id: 'heroExtra' }),
       ]),
     ]));
     var box = el('div', {});

@@ -189,3 +189,11 @@ def test_every_screen_uses_the_shared_ax_v2g_theme():
     app_html = client.get("/app").text
     assert '<body class="fo">' in app_html                     # 서포터즈 앱(F.O) 모양
     assert "/owner/ask" not in app_html                         # 삭제된 질문 응답 API를 부르지 않는다
+
+
+def test_supporter_app_has_aiv2gapp_service_parts():
+    """AIV2GAPP 서포터즈 앱에서 옮긴 화면 부품 — 홈 추천 요약, 최소 배터리 바꾸기, 최근 충전 3회, V2G 기여(추론)·적용 전·후, 충전 기록."""
+    html = client.get("/app").text
+    for key in ("hm_rec:", "ms_sug:", "r3_title:", "vg_title:", "ba_title:", "hs_title:", "function markKind"):
+        assert key in html, key
+    assert "포인트" not in html and "미션" not in html                     # 리워드(포인트·미션)는 옮기지 않았다

@@ -78,3 +78,19 @@ def test_report_text_in_english():
     hangul = lambda s: any("\uac00" <= ch <= "\ud7a3" for ch in s)
     assert not any(hangul(i["title"] + i["text"]) for i in en["insights"])      # 영어 문장에 한글이 섞이지 않는다
     assert "simulated" in en["note"] and build_report("X", ev, _grid(), 60.0, lang="en")["message"].startswith("There are no")
+
+
+def test_report_includes_recent_history_and_inferred_effect():
+    ev = pd.concat([_ev("ME", {19, 20}), _ev("P1", {1, 2})])
+    ev["connected"] = ev["charging_kw"] > 0
+    ev["driving"] = False
+    r = build_report("ME", ev, _grid(), 60.0, target_soc_pct=80)
+    assert len(r["recent"]) == 3 and r["recent"][0]["kwh"] == 14.0 and r["recent"][0]["won_per_kwh"] == 100
+    assert r["recent"][0]["start"] > r["recent"][1]["start"]                      # 최근 것부터
+    assert len(r["daily"]) == 28 and r["daily"][0] == {"date": "2026-11-01", "sessions": 1, "kwh": 14.0, "cost_krw": 1400}
+    assert r["soc_now_pct"] == 60.0 and r["as_of"] == "2026-11-28"
+    eff = r["effect"]
+    if eff is not None:                                                            # 최적화 결과는 추론값으로 표시된다
+        assert eff["generation"] == "inferred" and eff["share"]["simulated"] is True
+        assert eff["share"]["owner_krw"] == round(eff["savings_krw"] * 0.5)
+        assert eff["peak_share_pct"]["before"] == 100.0                            # 19~20시 = 날짜별 수요 상위 25%
