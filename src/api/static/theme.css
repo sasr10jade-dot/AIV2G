@@ -69,6 +69,10 @@ button, input, select, textarea { font-family: inherit; }
 .ax-nav a:hover, .ax-nav button:hover { color: var(--text); }
 .ax-nav .active, .ax-nav [aria-current="page"], .ax-nav [aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: var(--shadow); border-color: var(--border); }
 .ax-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* 도구 버튼 묶음 — 오른쪽 끝에 한 줄로 고정, 폭이 모자라면 상태 칩을 다음 줄로 내린다 */
+.ax-tools { margin-left: auto; flex-wrap: nowrap; }
+.ax-tools button, .ax-pill { white-space: nowrap; }
+@media (max-width: 1600px) { .ax-header-inner > .ax-status:not(.ax-tools) { order: 4; width: 100%; } }
 .ax-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .ax-pill b { color: var(--text); }
 .ax-pill.mono { background: var(--surface-2); font-family: var(--mono); }
@@ -121,6 +125,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @media (max-width: 900px) {
   .ax-header-inner { padding: 12px 16px; }
   .ax-nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+  .ax-tools { flex-wrap: wrap; margin-left: 0; }
 }
 
 /* ---- 운영 보조 화면(웹앱 관리·가입 승인·개발용 진입·처리방침) — <body class="ax-page"> */

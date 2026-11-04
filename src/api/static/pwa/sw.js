@@ -5,7 +5,7 @@
  * 공용 기기에서 로그아웃한 뒤에도 개인 데이터가 캐시에 남는 일이 없게 하기 위함이다.
  * 껍데기를 바꾸면 CACHE 버전을 올려 이전 캐시를 폐기한다.
  */
-const CACHE = 'ai-v2g-owner-v6';
+const CACHE = 'ai-v2g-owner-v7';
 const SHELL = [
   '/app',
   '/theme.css',
