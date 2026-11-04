@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from src.acryl import link as acryl_link
 from src.timeutil import kst_now
@@ -384,6 +384,23 @@ def dashboard_data(
     except InvalidShareError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return payload
+
+
+@router.get(
+    "/dashboard/report.xlsx",
+    summary="결과 자료 엑셀 — 데이터 확보 현황·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료",
+    dependencies=[Depends(require_admin)],
+)
+def dashboard_report() -> Response:
+    """계획서 산출물(데이터 확보 보고서, 효용성 검증 결과, 이익공유 경제성 기초자료)의 근거 표를 엑셀 한 파일로 내려준다.
+    대시보드 기본 조건과 같은 계산 결과를 그대로 옮기므로 화면 숫자와 같다. 시트마다 데이터 성격(실측/모의)을 적는다."""
+    from src.reporting import build_results_workbook
+    payload = build_dashboard_payload(SimConfig(n_ev=30, n_chargers=150, weeks=21, charger_days=21 * 7, n_zones=4))
+    payload["profit_sharing"] = compute_profit_sharing(payload["revenue_comparison"]["savings_krw"], 50.0, 30.0, 20.0)
+    name = f"AIV2G_results_{kst_now():%Y%m%d}.xlsx"
+    return Response(build_results_workbook(payload),
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.get(

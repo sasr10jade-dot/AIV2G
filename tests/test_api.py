@@ -321,3 +321,17 @@ def test_root_redirect_is_dashboard_by_default_and_configurable(monkeypatch):
     assert client.get("/", follow_redirects=False).headers["location"] == "/dev"
     monkeypatch.setenv("ROOT_REDIRECT", "//evil.example")          # 외부 주소로는 보내지 않는다
     assert client.get("/", follow_redirects=False).headers["location"] == "/dashboard"
+
+
+def test_results_workbook_download_has_plan_deliverable_sheets():
+    """결과 자료 엑셀 — 데이터 확보 보고서·효용성 검증 결과·이익공유 기초자료의 근거 표(관리자 전용)."""
+    import io
+    from openpyxl import load_workbook
+    r = client.get("/dashboard/report.xlsx")
+    assert r.status_code == 200 and "spreadsheetml" in r.headers["content-type"]
+    wb = load_workbook(io.BytesIO(r.content))
+    assert wb.sheetnames == ["성과지표", "일자별 수집", "실증 인프라", "데이터 품질", "효용성 검증", "이익공유 기초자료"]
+    ws = wb["성과지표"]
+    assert "모의(합성)" in str(ws["A3"].value)                  # 합성 데이터는 실적이 아님을 표기
+    values = [c.value for row in wb["효용성 검증"].iter_rows() for c in row if c.value is not None]
+    assert "피크 시간대 충전 비중(%)" in values and "목표 배터리 도달률(%)" in values
