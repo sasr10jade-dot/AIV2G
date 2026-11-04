@@ -20,7 +20,7 @@ from src.auth.deps import require_admin
 from src.automation.model_registry import ModelRegistry
 from src.closed_loop import run_closed_loop_cycle
 from src.datagen.config import SimConfig
-from src.kpi import summarize_kpi
+from src.kpi import infra_status, summarize_kpi
 from src.model.charging_efficiency import NoLinkedSessionsError, compute_charging_efficiency
 from src.model.demand_forecast import train_forecast_model
 from src.optimizer.economics import EconomicsParams
@@ -163,7 +163,7 @@ def _cached_heavy_compute(
     # 사실상 같은 것을 다시 만드는 것이라(같은 cfg·target_col), 재사용해 중복 학습을 없앤다.
     closed_loop = run_closed_loop_cycle(cfg, target_col=target_col, before=forecast_result)
 
-    # EV Bot의 "통계 요약본" 근거 데이터 — 실제 새로 계산했을 때만 한 줄 남긴다
+    # 시나리오 실행 이력 — 실제 새로 계산했을 때만 한 줄 남긴다
     # (캐시 히트·워머의 재확인 호출은 여기 도달하지 않으므로 라이브 데모 자동새로고침
     # 으로 이력이 부풀지 않는다). pytest 실행 중에는 테스트용 소규모 시나리오가
     # 실사용자에게 보여줄 실제 curated.db 이력에 섞여 들어가지 않도록 건너뛴다
@@ -289,6 +289,7 @@ def build_dashboard_payload(
             "ev_model_count": kpi_summary.ev_model_count,
             "charger_type_count": kpi_summary.charger_type_count,
             "targets": kpi_summary.targets,
+            "infra": infra_status(ev_df, charger_df),   # 참여 장소·사업자별 충전기·활동 차량 현황
             "charger_utilization_avg_pct": avg_utilization_pct,
             "charger_utilization_peak_pct": peak_utilization_pct,
             "charger_utilization_peak_at": peak_utilization_at,

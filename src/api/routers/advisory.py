@@ -49,7 +49,7 @@ def issue(body: IssueIn, user: dict = Depends(require_admin)) -> dict:
     return {"advisory_id": advisory_id, "plan": plan}
 
 
-@router.get("/ai-ops-kpi", summary="AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율·EV Bot 호출(감사로그·동의 이력 집계)")
+@router.get("/ai-ops-kpi", summary="AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율(감사로그·동의 이력 집계)")
 def ai_ops_kpi_view(user: dict = Depends(require_admin)) -> dict:
     return ai_ops_kpi.compute()
 

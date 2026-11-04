@@ -44,6 +44,7 @@ CHARGER_SESSION_SCHEMA = [
     ColumnSpec("avg_power_kw", "float", min_value=0, required=False),
     ColumnSpec("stop_reason", "str", required=False),
     ColumnSpec("error_code", "str", required=False),
+    ColumnSpec("site_id", "str", required=False),           # 실증 참여 장소 — "참여 장소 3곳 이상" 집계
 ]
 
 GRID_SIGNAL_SCHEMA = [

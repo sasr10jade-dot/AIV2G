@@ -240,8 +240,7 @@
       stat('방전 추천 비율', pct(rec.v2g_recommended_rate), '방전 참여 중 안내 ' + pct(rec.participating_rate))]));
     panel.appendChild(el('div', { class: 'row' }, [
       stat('방전 참여 동의', v2g.granted_total + '건', '현재 유지 ' + v2g.active + '건 · 철회 ' + v2g.withdrawn + '건'),
-      stat('방전 참여 철회율', pct(v2g.withdrawal_rate), '철회 ÷ 동의'),
-      stat('EV Bot 호출', k.ev_bot.calls + '회', '질문·답변 본문은 저장하지 않음')]));
+      stat('방전 참여 철회율', pct(v2g.withdrawal_rate), '철회 ÷ 동의')]));
     var failed = Object.keys(rec.failed_checks || {});
     if (failed.length) panel.appendChild(el('div', { class: 'card', style: 'margin-top:10px' }, [el('div', { class: 'name', text: '실패한 안전 검증 항목' }),
       el('div', { class: 'muted', text: failed.map(function (f) { return f + ' ' + rec.failed_checks[f] + '건'; }).join(' · ') })]));

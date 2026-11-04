@@ -12,12 +12,120 @@
       "traffic": "개발계정 100회/일(공식 페이지 기준), 운영 단계는 심사 후 증량",
       "key_env": "KPX_SERVICE_KEY",
       "endpoint": null,
-      "params": {"key": "serviceKey", "date": "date", "page": "pageNo", "rows": "numOfRows", "format": "dataType"},
-      "items_path": ["response", "body", "items", "item"],
-      "code_path": ["response", "header", "resultCode"],
-      "ok_codes": ["00"],
-      "fields": {"date": "date", "hour": "hour", "region": "region", "mwh": "mwh"},
+      "params": {
+        "key": "serviceKey",
+        "date": "date",
+        "page": "pageNo",
+        "rows": "numOfRows",
+        "format": "dataType"
+      },
+      "items_path": [
+        "response",
+        "body",
+        "items",
+        "item"
+      ],
+      "code_path": [
+        "response",
+        "header",
+        "resultCode"
+      ],
+      "ok_codes": [
+        "00"
+      ],
+      "fields": {
+        "date": "date",
+        "hour": "hour",
+        "region": "region",
+        "mwh": "mwh"
+      },
       "hour_base": 1,
+      "spec_verified": false
+    },
+    "kma_asos_hourly": {
+      "label": "기상청 지상(종관, ASOS) 시간자료 조회서비스",
+      "dataset_url": "https://www.data.go.kr/data/15057210/openapi.do",
+      "provider": "기상청",
+      "format": "json",
+      "granularity": "관측소 단위(기본 156 광주) — 시간별",
+      "unit": "°C",
+      "coverage_note": "전날까지의 관측값만 제공(당일 자료 없음). 계획서 4.1 가 '외부환경: 기상' 수집 항목",
+      "key_env": "DATA_GO_KR_SERVICE_KEY",
+      "endpoint": "https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList",
+      "params": {
+        "key": "serviceKey",
+        "page": "pageNo",
+        "rows": "numOfRows",
+        "format": "dataType",
+        "station": "stnIds",
+        "start_date": "startDt",
+        "start_hour": "startHh",
+        "end_date": "endDt",
+        "end_hour": "endHh",
+        "fixed": {
+          "dataCd": "ASOS",
+          "dateCd": "HR"
+        }
+      },
+      "items_path": [
+        "response",
+        "body",
+        "items",
+        "item"
+      ],
+      "code_path": [
+        "response",
+        "header",
+        "resultCode"
+      ],
+      "ok_codes": [
+        "00"
+      ],
+      "fields": {
+        "time": "tm",
+        "temperature": "ta"
+      },
+      "hour_base": 0,
+      "spec_verified": false
+    },
+    "kasi_holidays": {
+      "label": "한국천문연구원 특일 정보(공휴일)",
+      "dataset_url": "https://www.data.go.kr/data/15012690/openapi.do",
+      "provider": "한국천문연구원",
+      "format": "json",
+      "granularity": "날짜(월 단위 조회)",
+      "unit": "",
+      "coverage_note": "법정 공휴일·대체공휴일. 계획서 4.1 가 '외부환경: 특일' 수집 항목",
+      "key_env": "DATA_GO_KR_SERVICE_KEY",
+      "endpoint": "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo",
+      "params": {
+        "key": "serviceKey",
+        "page": "pageNo",
+        "rows": "numOfRows",
+        "format": "_type",
+        "year": "solYear",
+        "month": "solMonth"
+      },
+      "items_path": [
+        "response",
+        "body",
+        "items",
+        "item"
+      ],
+      "code_path": [
+        "response",
+        "header",
+        "resultCode"
+      ],
+      "ok_codes": [
+        "00"
+      ],
+      "fields": {
+        "date": "locdate",
+        "name": "dateName",
+        "is_holiday": "isHoliday"
+      },
+      "hour_base": 0,
       "spec_verified": false
     }
   }

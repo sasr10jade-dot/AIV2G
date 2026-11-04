@@ -69,7 +69,7 @@ def test_demand_forecast_uses_cache_and_summarises(monkeypatch):
     og.reset_caches()
 
 
-# ------------------------------------------------------------ 엔드포인트·EV Bot 연결 --
+# ------------------------------------------------------------ 엔드포인트 --
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -186,15 +186,3 @@ def test_ai_ops_kpi_aggregates_safety_pass_and_withdrawal(owner_session):
     k = client.get("/advisory/ai-ops-kpi").json()
     assert k["recommendations"]["issued"] >= 1 and k["recommendations"]["safety_pass_rate"] == 1.0
     assert k["v2g_participation"]["granted_total"] >= 1 and k["v2g_participation"]["withdrawal_rate"] == 1.0
-
-
-def test_cached_forecast_never_blocks_the_bot_path(monkeypatch):
-    og.reset_caches()
-    started = []
-    monkeypatch.setattr(og, "_warm_forecast_async", lambda: started.append(True))
-    with pytest.raises(RuntimeError):                      # 캐시가 없으면 기다리지 않고 예외 → 예측 없이 답한다
-        og.cached_demand_forecast()
-    assert started == [True]
-    og._forecast_cache.update(at=og.time.monotonic(), data={"charging_peaks": [], "charging_lows": [], "note": "x"})
-    assert og.cached_demand_forecast()["note"] == "x"      # 캐시가 있으면 즉시 돌려준다
-    og.reset_caches()

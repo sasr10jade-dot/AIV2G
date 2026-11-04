@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -30,6 +30,8 @@ TARGET_EV_MODELS = 2          # 차종 2종 이상
 TARGET_CHARGERS = 150
 TARGET_CHARGER_TYPES = 2      # 충전기 2종 이상
 TARGET_OPERATORS = 3          # 참여의향서 확보 충전서비스 사업자(이브이시스·플러그링크·나이스인프라)
+TARGET_SITES = 3              # 도시형 실증 참여 장소 3곳 이상
+ACTIVE_WINDOW_DAYS = 7        # 활동 차량: 마지막 관측 시각 기준 최근 7일 안에 주행·충전·연결이 있었던 차량
 
 # 연차별 사업기간과 데이터 목표(연차별 미중복)
 PROJECT_YEARS = {
@@ -132,6 +134,7 @@ def plan_targets() -> dict:
     return {
         "ev": TARGET_EV, "ev_models": TARGET_EV_MODELS,
         "chargers": TARGET_CHARGERS, "charger_types": TARGET_CHARGER_TYPES, "operators": TARGET_OPERATORS,
+        "sites": TARGET_SITES,
         "records_by_year": {k: y["target"] for k, y in PROJECT_YEARS.items()},
         "records_total": TARGET_TOTAL_RECORDS,
     }
@@ -175,3 +178,51 @@ def summarize_kpi(
         provenance=provenance,
         targets=plan_targets(),
     )
+
+
+def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> dict:
+    """관리자 현황판(계획서 4.1 가: 서포터즈·차량, 충전소·충전기, 데이터 현황) — 참여 장소·사업자별 충전기·활동 차량.
+    장소·사업자 컬럼이 없는 데이터면 해당 목록은 비워 두고 count를 None으로 둔다(미집계)."""
+    def has(df, col):
+        return df is not None and not df.empty and col in df.columns
+
+    def group(col: str, key: str) -> list[dict]:
+        if not has(charger_df, col):
+            return []
+        df = charger_df.assign(_k=charger_df[col].fillna("미지정"))
+        energy = pd.to_numeric(df["energy_kwh"], errors="coerce").fillna(0) if "energy_kwh" in df.columns else None
+        out = []
+        for k, g in df.groupby("_k", sort=True):
+            row = {key: str(k), "chargers": int(g["charger_id"].nunique()),
+                   "sessions": int((energy.loc[g.index] > 0).sum()) if energy is not None else int(len(g))}
+            if "charger_type" in g.columns:
+                row["charger_types"] = {str(t): int(n) for t, n in
+                                        g.drop_duplicates("charger_id")["charger_type"].fillna("미지정").value_counts().sort_index().items()}
+            if key == "site_id" and "operator_id" in g.columns:
+                row["operators"] = sorted(str(o) for o in g["operator_id"].dropna().unique())
+            out.append(row)
+        return out
+
+    sites = group("site_id", "site_id")
+    operators = group("operator_id", "operator_id")
+
+    vehicles = {"total": 0, "active": 0, "active_window_days": ACTIVE_WINDOW_DAYS, "as_of": None, "by_model": {}}
+    if has(ev_df, "ev_id"):
+        vehicles["total"] = int(ev_df["ev_id"].nunique())
+        if "vehicle_model" in ev_df.columns:
+            vehicles["by_model"] = {str(m): int(n) for m, n in
+                                    ev_df.drop_duplicates("ev_id")["vehicle_model"].fillna("미지정").value_counts().sort_index().items()}
+        vd = _vehicle_days(ev_df)
+        if not vd.empty:
+            last = max(vd["_day"])
+            since = last - timedelta(days=ACTIVE_WINDOW_DAYS - 1)
+            vehicles["active"] = int(vd.loc[vd["_day"] >= since, "ev_id"].nunique())
+            vehicles["as_of"] = last.isoformat()
+
+    return {
+        "sites": sites,
+        "site_count": len([s for s in sites if s["site_id"] != "미지정"]) if sites else None,
+        "operators": operators,
+        "vehicles": vehicles,
+        "targets": {"sites": TARGET_SITES, "operators": TARGET_OPERATORS, "ev": TARGET_EV, "chargers": TARGET_CHARGERS},
+    }

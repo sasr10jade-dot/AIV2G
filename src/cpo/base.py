@@ -15,7 +15,7 @@ import pandas as pd
 # 어댑터가 반환해야 하는 표준 세션 컬럼 (session_id는 사업자 내부 ID — 전역 유일성은 sync에서 보장)
 SESSION_COLUMNS = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id"]
 # 계획서 4.1·13장 용역 수집 항목 중 사업자가 줄 수 있으면 받는 선택 컬럼(종료 시각·충전기 종류·커넥터·출력·종료 사유·오류 코드)
-OPTIONAL_COLUMNS = ["end_ts", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code"]
+OPTIONAL_COLUMNS = ["end_ts", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code", "site_id"]
 
 
 class CpoAdapter(ABC):

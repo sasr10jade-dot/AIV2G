@@ -21,6 +21,8 @@ from src.pipeline.kpx_ingest import KpxApiError, KpxNotConfigured, fetch_smp_hou
 from src.datagen.obd_emulator import generate_synthetic_obd_day
 from src.pipeline.obd_ingest import ObdColumnsMissingError, aggregate_obd_day_to_hourly, merge_hourly_rows_into_source
 from src.pipeline.quality import summarize, validate
+from src.pipeline import weather_holiday
+from src.pipeline.public_api import ApiNotConfigured, ApiResponseError
 
 router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_admin)])
 
@@ -230,6 +232,44 @@ def sync_kpx_smp(area: str = "mainland") -> dict:
         "synced_hours": len(smp_df),
         "note": note,
     }
+
+
+@router.get("/public-apis/status", summary="공개 데이터(기상·공휴일) 연동 준비 상태 — 키·명세 여부만, 값은 노출하지 않음")
+def public_api_status() -> dict:
+    return {"apis": weather_holiday.status()}
+
+
+@router.post("/sync-weather-holiday", summary="기상청 시간별 기온·한국천문연구원 공휴일을 grid_signal에 반영")
+def sync_weather_holiday(start: str, end: str, station: str = weather_holiday.DEFAULT_STATION) -> dict:
+    """계획서 4.1 가 '외부환경(기상·특일)' 공개 데이터를 받아 `grid_signal`의 `temperature_c`·`is_holiday`를 덮어쓴다.
+    기간은 날짜(YYYY-MM-DD)로 받고 최대 92일이다. 기온은 전날까지만 제공된다. `DATA_GO_KR_SERVICE_KEY`가 없으면 503."""
+    try:
+        d0, d1 = pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="start·end는 YYYY-MM-DD 형식이어야 합니다") from exc
+    if d1 < d0 or (d1 - d0).days > 91:
+        raise HTTPException(status_code=422, detail="기간은 시작일 이후 최대 92일까지입니다")
+    try:
+        temp = weather_holiday.fetch_hourly_temperature(d0, d1, station=station)
+        hol = weather_holiday.fetch_holidays(d0, d1)
+    except ApiNotConfigured as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (ApiResponseError, OSError) as exc:
+        raise HTTPException(status_code=502, detail=f"공개 데이터 호출 실패: {exc}") from exc
+
+    if source.GRID_CSV.exists():
+        grid_df = pd.read_csv(source.GRID_CSV, parse_dates=["timestamp"])
+    else:
+        rng = np.random.default_rng(SimConfig().random_seed)
+        grid_df = generate_grid_signal(SimConfig(), rng)
+    merged, stats = weather_holiday.merge_into_grid_signal(grid_df, temp, hol, d0, d1)
+    merged.to_csv(source.GRID_CSV, index=False)
+    if source.EV_CSV.exists():
+        source.mark_source("uploaded")
+        note = "반영 완료 — 이후 /dashboard, /forecast가 이 기온·공휴일을 사용합니다."
+    else:
+        note = "EV 실증 데이터가 아직 없어 grid_signal에 저장만 했습니다(대시보드 반영은 /ingest/upload-obd 이후)."
+    return {"status": "ok", "station": station, "fetched_hours": len(temp), **stats, "note": note}
 
 
 @router.delete("/upload", summary="업로드된 데이터 삭제 → 데모 모드로 복귀")

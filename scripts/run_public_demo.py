@@ -47,7 +47,7 @@ def main() -> int:
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
     from dotenv import load_dotenv
-    load_dotenv(ROOT / ".env")   # GEMINI_API_KEY·SESSION_SECRET 만 필요하다
+    load_dotenv(ROOT / ".env")   # SESSION_SECRET 등 공통 설정만 읽는다
     for key in ("DEMO_ADMIN_USERNAME", "DEMO_ADMIN_PASSWORD", "DEMO_OWNER_USERNAME", "DEMO_OWNER_PASSWORD", "SUPERADMIN_USERNAME", "SUPERADMIN_PASSWORD"):
         os.environ.pop(key, None)   # 간편 로그인·최고관리자 계정 자동 생성을 끈다
 
@@ -85,8 +85,8 @@ def main() -> int:
     args.creds.write_text(f"모바일(이용자): demo-owner / {owner_pw}\nPC·어드민(관리자): demo-admin / {admin_pw}\n최고관리자: demo-super / {super_pw}\n모바일 데모 링크 경로: /auth/demo-access?code={demo_code}\n", encoding="utf-8")
 
     from src.appadmin import service as appadmin
-    appadmin.notice_create("시범 운영 안내", "AI-V2G 내 차 시범 운영 중이에요. 궁금한 점은 EV Bot에게 물어보세요.", True, True, "public-demo-seed",
-                           "Pilot notice", "AI-V2G My Car is in a pilot run. Ask EV Bot if you have questions.")
+    appadmin.notice_create("시범 운영 안내", "AI-V2G 내 차 시범 운영 중이에요. 궁금한 점은 운영 담당자에게 문의해 주세요.", True, True, "public-demo-seed",
+                           "Pilot notice", "AI-V2G My Car is in a pilot run. Contact the operator if you have questions.")
     print(f"public demo store: {tmp} (계정 정보는 {args.creds} 에 저장)", flush=True)
 
     import uvicorn

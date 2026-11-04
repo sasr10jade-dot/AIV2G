@@ -153,9 +153,9 @@ def me(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
-@router.patch("/me/owned-vehicle", summary="\"내 차\" 등록 — EV Bot 개인화(차량 ID 자동입력)에 사용")
+@router.patch("/me/owned-vehicle", summary="\"내 차\" 등록 — 계정과 차량 ID 연결")
 def set_my_owned_vehicle(req: SetOwnedVehicleRequest, user: dict = Depends(get_current_user)) -> dict:
-    """로그인 계정에 차량 ID를 등록해두면, 대시보드가 EV Bot 질문마다 `ev_id`를 매번
+    """로그인 계정에 차량 ID를 등록해두면, 화면에서 `ev_id`를 매번
     직접 입력하지 않아도 자동으로 채워준다. 지금은 소유권 검증 없이 본인이 자유롭게
     등록하는 셀프서비스 필드다(PoC 범위) — 실제 서비스에서는 차량 등록 시 소유권
     확인 절차가 필요하다."""

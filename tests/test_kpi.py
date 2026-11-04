@@ -99,3 +99,28 @@ def test_official_counts_exclude_synthetic_tables():
     assert s.is_real is True and s.provenance == prov
     demo = kpi.summarize_kpi(ev, ch)
     assert demo.official_by_year[0].records == 0 and demo.is_real is False
+
+
+def test_infra_status_counts_sites_operators_and_active_vehicles():
+    from src.kpi import infra_status
+    ch = pd.DataFrame({
+        "charger_id": ["C1", "C2", "C3", "C3"], "operator_id": ["A", "B", "A", "A"],
+        "site_id": ["S1", "S2", "S3", "S3"], "charger_type": ["AC_SLOW", "DC_FAST", "AC_SLOW", "AC_SLOW"],
+        "energy_kwh": [5.0, 0.0, 7.0, 3.0],
+    })
+    ts = pd.to_datetime(["2026-11-01 08:00", "2026-11-20 08:00", "2026-11-14 09:00"])
+    ev = pd.DataFrame({"timestamp": ts, "ev_id": ["E1", "E2", "E3"], "vehicle_model": ["m1", "m2", "m1"],
+                       "driving": [True, True, False], "connected": [False, False, True], "charging_kw": [0.0, 0.0, 0.0]})
+    out = infra_status(ev, ch)
+    assert out["site_count"] == 3 and out["targets"]["sites"] == 3
+    a = next(o for o in out["operators"] if o["operator_id"] == "A")
+    assert a["chargers"] == 2 and a["sessions"] == 3 and a["charger_types"] == {"AC_SLOW": 2}
+    v = out["vehicles"]
+    assert v["total"] == 3 and v["by_model"] == {"m1": 2, "m2": 1}
+    assert v["as_of"] == "2026-11-20" and v["active"] == 2          # 11/14~11/20 안에 관측된 E2·E3
+
+
+def test_infra_status_without_site_column_is_not_counted():
+    from src.kpi import infra_status
+    out = infra_status(pd.DataFrame(), pd.DataFrame({"charger_id": ["C1"], "energy_kwh": [1.0]}))
+    assert out["site_count"] is None and out["sites"] == [] and out["vehicles"]["total"] == 0

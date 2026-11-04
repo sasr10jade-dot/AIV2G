@@ -79,7 +79,7 @@ def create_user(
         "role": role,
         "created_at": _now(),
         "created_by": created_by,
-        # "내 차" 개인화(EV Bot 등)를 위한 계정-차량 매핑 — 없으면 매번 ev_id를
+        # "내 차" 개인화를 위한 계정-차량 매핑 — 없으면 매번 ev_id를
         # 직접 입력해야 한다. 지금은 실제 소유권 검증 없이 자기 자신이 자유롭게
         # 설정하는 셀프서비스 필드다(PoC 범위 — 실제 서비스라면 소유권 검증 필요).
         "owned_ev_id": owned_ev_id,

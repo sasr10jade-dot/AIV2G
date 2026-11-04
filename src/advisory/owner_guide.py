@@ -1,4 +1,4 @@
-"""EV별 AI 추천 충전 시간 추론·산출(계획서 4.1 라.) — 모바일 '충전 시간'·'예측' 탭과 EV Bot의 근거 데이터.
+"""EV별 AI 추천 충전 시간 추론·산출(계획서 4.1 라.) — 모바일 '충전 시간'·'예측' 탭의 근거 데이터.
 
 한 차량의 "언제 충전하고(방전이 가능한 차량이면 언제 방전하면) 이득인가"를 계산한다. 최적화 함수
 (`soc_planner.plan_single_vehicle`, 시간대별 잔량·효율·열화·방전 횟수 상한 반영)를 그대로 쓰고, 입력만 이 서비스에 맞게 만든다.
@@ -306,25 +306,6 @@ _forecast_lock = threading.Lock()
 _forecast_cache: dict = {"at": 0.0, "data": None}
 
 
-_forecast_warming = threading.Event()
-
-
-def _warm_forecast_async() -> None:
-    """예측 요약을 백그라운드에서 한 번만 계산한다(요청 스레드를 붙잡지 않는다)."""
-    if _forecast_warming.is_set():
-        return
-    _forecast_warming.set()
-
-    def run() -> None:
-        try:
-            demand_forecast()
-        except Exception:   # noqa: BLE001
-            logging.getLogger(__name__).exception("수요 예측 요약 준비에 실패했습니다")
-        finally:
-            _forecast_warming.clear()
-
-    threading.Thread(target=run, daemon=True, name="forecast-warm").start()
-
 
 def warm_caches_async() -> None:
     """서버 기동 직후 차량 상태표와 수요 예측 요약을 백그라운드에서 미리 데운다 — 첫 이용자 요청이 수십 초 걸리지 않게."""
@@ -336,17 +317,6 @@ def warm_caches_async() -> None:
             logging.getLogger(__name__).exception("이용자 화면 캐시 예열에 실패했습니다")
 
     threading.Thread(target=run, daemon=True, name="owner-warm").start()
-
-
-def cached_demand_forecast() -> dict:
-    """EV Bot 경로용 — 예측 계산을 기다리지 않는다. 캐시가 있으면(오래됐어도) 돌려주고, 만료됐거나 없으면 백그라운드로
-    새로 데운다. 캐시가 아직 없으면 예외를 던져 호출 측이 예측 없이 답하게 한다(학습·재귀 예측에 수십 초가 걸린다)."""
-    data = _forecast_cache["data"]
-    if data is None or time.monotonic() - _forecast_cache["at"] > FORECAST_CACHE_TTL_S:
-        _warm_forecast_async()
-    if data is None:
-        raise RuntimeError("수요 예측 요약을 아직 준비하는 중이에요")
-    return data
 
 
 def _fetch_forecast(target: str) -> dict:
@@ -450,27 +420,3 @@ def localize(payload: dict, lang: str) -> dict:
         if k in out:
             out[k] = _en(out[k])
     return out
-
-
-# ------------------------------------------------------------------ EV Bot 근거 --
-
-def bot_facts(profile: dict, now: datetime | None = None, forecast_fn=cached_demand_forecast, participating: bool = True) -> dict:
-    """EV Bot에 넘길 요약 사실(본인 차량 기준). 계산 실패는 호출 측이 무시하고 일반 답변으로 진행한다."""
-    guide = build_guide(profile, GuideInputs(), now=now, participating=participating)
-    facts = {
-        "안내 조건": f"현재 배터리 {guide['inputs']['current_soc_pct']:.0f}%, 목표 {guide['inputs']['need_soc_pct']:.0f}%, "
-                  f"{pd.Timestamp(guide['period']['departure']).strftime('%m/%d %H시')} 출발 가정(기본값)",
-        "요금이 낮은 시간대": [f"{w['label']}(평균 {w['avg_krw_per_kwh']:.0f}원/kWh)" for w in guide["windows"]],
-        "추천 충전": [f"{p['label']} {p['kwh']}kWh" for p in guide["plan"]["charge"]],
-        "추천 방전": [f"{p['label']} {p['kwh']}kWh" for p in guide["plan"]["discharge"]] or "없음",
-        "예상 절감(가정값)": f"{guide['cost']['saving_krw']}원({guide['cost']['saving_pct']}%)",
-        "방전 판단": guide["v2g"]["reason"],
-    }
-    try:
-        fc = forecast_fn()
-        facts["충전 수요 높은 시간대(시뮬레이션 전체 기준)"] = [w["label"] for w in fc["charging_peaks"]]
-        facts["충전 수요 낮은 시간대(시뮬레이션 전체 기준)"] = [w["label"] for w in fc["charging_lows"]]
-        facts["예측 데이터 성격"] = fc["note"]
-    except Exception:   # noqa: BLE001 — 예측 모델이 없어도 충전 시간 안내는 계속한다
-        pass
-    return facts

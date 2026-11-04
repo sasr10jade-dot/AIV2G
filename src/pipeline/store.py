@@ -257,8 +257,8 @@ DASHBOARD_RUN_HISTORY_TABLE = "dashboard_run_history"
 
 def append_dashboard_run_history(record: dict, db_path=CURATED_DB) -> None:
     """대시보드가 시나리오를 실제로 새로 계산할 때마다(캐시 히트 시에는 호출되지
-    않음) 핵심 지표 한 줄을 누적 기록한다 — EV Bot이 "지난번보다 나아졌어?" 같은
-    추세 질문에 답할 근거 데이터가 된다. `write_table`과 달리 append이므로 매번
+    않음) 핵심 지표 한 줄을 누적 기록한다 — 실행 간 추세 비교의
+    근거 데이터가 된다. `write_table`과 달리 append이므로 매번
     테이블을 교체하지 않고 이력이 쌓인다."""
     con = sqlite3.connect(db_path)
     try:

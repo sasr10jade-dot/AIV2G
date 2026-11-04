@@ -7,6 +7,7 @@
   (이후 `write_table`이 새 컬럼을 포함해 만든다).
 
 사업수행계획서 v1.0 기준으로 새로 시작한 저장소라 v1~v4가 기준 스키마다.
+v5  charger_sessions.site_id(실증 참여 장소 — 계획서 "도시형 참여 장소 3곳 이상" 집계)
 v4  AI 예측모델(㈜아크릴) 연계 — 학습 데이터 제공 이력(dataset_exports), 예측 결과 수신(external_forecasts)
 v3  vehicle_registrations(서포터즈 가입 — 차량·페르소나·운행 입력, 번호판 암호화·블라인드 인덱스)
 v2  advisories(EV별 추천 충전 시간 발행·응답 기록)
@@ -156,9 +157,15 @@ def _v4(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_extfc_target ON external_forecasts (target, scope, timestamp)")
 
 
+def _v5(con: sqlite3.Connection) -> None:
+    existing = _columns(con, "charger_sessions")
+    if existing and "site_id" not in existing:
+        con.execute("ALTER TABLE charger_sessions ADD COLUMN site_id TEXT")
+
+
 MIGRATIONS = [
     (1, "ops_structure", _v1), (2, "advisories", _v2), (3, "vehicle_registrations", _v3),
-    (4, "acryl_forecast_link", _v4),
+    (4, "acryl_forecast_link", _v4), (5, "charger_site", _v5),
 ]
 LATEST_VERSION = MIGRATIONS[-1][0]
 

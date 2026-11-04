@@ -29,6 +29,15 @@ OPERATOR_IDS = ("CPO-A", "CPO-B", "CPO-C")
 CHARGER_TYPES = {"AC_SLOW": ("AC_SLOW", "AC_TYPE1", SESSION_KW), "DC_FAST": ("DC_FAST", "DC_COMBO1", FAST_KW)}
 
 
+# 도시형 실증 참여 장소(계획서: 3곳 이상, 공공기관·기업 빌딩·공용/노상) — 관리기관 협의 전이라 코드로 배정한다.
+SITE_IDS = ("SITE-01", "SITE-02", "SITE-03")
+
+
+def site_for_charger(charger_idx: int) -> str:
+    """사업자 3사가 장소마다 고르게 들어가도록 사업자 순환 단위로 장소를 바꾼다."""
+    return SITE_IDS[(charger_idx // len(OPERATOR_IDS)) % len(SITE_IDS)]
+
+
 def operator_for_charger(charger_idx: int) -> str:
     return OPERATOR_IDS[charger_idx % len(OPERATOR_IDS)]
 
@@ -79,6 +88,7 @@ def generate_charger_sessions(
         charger_id = f"CHG-{charger_idx + 1:04d}"
         zone = int(rng.integers(0, cfg.n_zones))
         operator_id = operator_for_charger(charger_idx)
+        site_id = site_for_charger(charger_idx)
         charger_type, connector_type, max_kw = charger_type_for(charger_idx)
         fast = charger_type == "DC_FAST"
         for day in range(cfg.charger_days):
@@ -103,7 +113,7 @@ def generate_charger_sessions(
                         f"SESS-{session_id:06d}", charger_id, zone,
                         start_ts, round(duration_h, 2), energy_kwh, ev_id, operator_id, "synthetic",
                         start_ts + pd.Timedelta(hours=duration_h), charger_type, connector_type,
-                        round(min(energy_kwh / duration_h, max_kw), 2), stop_reason, error_code,
+                        round(min(energy_kwh / duration_h, max_kw), 2), stop_reason, error_code, site_id,
                     )
                 )
                 session_id += 1
@@ -112,7 +122,7 @@ def generate_charger_sessions(
         rows,
         columns=["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id",
                  "operator_id", "source", "end_ts", "charger_type", "connector_type", "avg_power_kw",
-                 "stop_reason", "error_code"],
+                 "stop_reason", "error_code", "site_id"],
     )
     return df.sort_values("start_ts").reset_index(drop=True)
 
@@ -125,7 +135,7 @@ def build_charger_registry(cfg: SimConfig, charger_df: pd.DataFrame) -> pd.DataF
     for idx in range(cfg.n_chargers):
         cid = f"CHG-{idx + 1:04d}"
         charger_type, connector_type, max_kw = charger_type_for(idx)
-        rows.append((cid, operator_for_charger(idx), None, None, int(zone_of.get(cid, 0)), charger_type, connector_type, max_kw, 0, 1))
+        rows.append((cid, operator_for_charger(idx), None, site_for_charger(idx), int(zone_of.get(cid, 0)), charger_type, connector_type, max_kw, 0, 1))
     return pd.DataFrame(rows, columns=[
         "charger_id", "operator_id", "operator_name", "site_id", "zone",
         "charger_type", "connector_type", "max_kw", "v2g_capable", "active",

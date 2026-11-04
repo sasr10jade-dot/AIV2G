@@ -225,7 +225,7 @@ def test_summarize_session_plan_computes_real_revenue_from_schedule():
 
 def test_run_v2g_optimization_end_to_end_produces_explainable_session():
     """실제 시나리오 파이프라인으로 최적화까지 돌려서, 설명 가능한 세션이 최소 하나는
-    나와야 한다 — /copilot/explain-schedule이 의존하는 전체 경로의 통합 테스트."""
+    나와야 한다 — 세션별 계획 요약이 의존하는 전체 경로의 통합 테스트."""
     cfg = SimConfig(n_ev=5, weeks=2, n_chargers=5, charger_days=14, n_zones=2)
     rng = np.random.default_rng(cfg.random_seed)
     ev_df = generate_ev_telemetry(cfg, rng)
@@ -246,7 +246,7 @@ def test_run_v2g_optimization_end_to_end_produces_explainable_session():
 
 
 def test_plan_next_session_produces_future_predicted_plan():
-    """EV Bot이 '내일 몇 시에 나가면 언제 충전/방전해서 얼마 번다'를 답할 때 쓰는
+    """'내일 몇 시에 나가면 언제 충전/방전해서 얼마 번다'를 계산할 때 쓰는
     예측 기반 다음 세션 계획 — 이력 마지막 시각 이후, 예측 출차 시각까지의 구간을
     가상 세션으로 만들어 LP 최적화한 결과가 나와야 한다."""
     cfg = SimConfig(n_ev=2, weeks=8, n_chargers=2, charger_days=56, n_zones=1)
