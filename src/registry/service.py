@@ -162,6 +162,8 @@ def submit(username: str, plate: str, vehicle_model: str, occupation: str, sido:
                  op["departure_time"], op["target_soc_pct"], op["min_soc_pct"], op["odometer_km"],
                  consent_version, now, now),
             )
+            if op["odometer_km"] is not None:
+                log_odometer(con, username, op["odometer_km"], "signup", now)
             con.commit()
         except sqlite3.IntegrityError as exc:  # 동시 신청 경합 — 부분 유니크 인덱스가 최종 방어선
             con.rollback()
@@ -341,6 +343,44 @@ def active_for(username: str, con: sqlite3.Connection | None = None) -> dict | N
     return _row(r) if r else None
 
 
+def log_odometer(con: sqlite3.Connection, username: str, km: float, source: str, at: str | None = None) -> None:
+    """누적 주행거리 입력 이력 — 계기판 값이라 줄어들 수 없다(직전 값보다 작으면 거부)."""
+    last = con.execute("SELECT odometer_km FROM odometer_logs WHERE username=? ORDER BY recorded_at DESC, rowid DESC LIMIT 1",
+                       (username,)).fetchone()
+    if last and float(km) < float(last[0]):
+        raise RegistryError(f"누적 주행거리는 직전 입력({last[0]:,.0f}km)보다 작을 수 없습니다")
+    con.execute("INSERT INTO odometer_logs (username, recorded_at, odometer_km, source) VALUES (?,?,?,?)",
+                (username, at or _now(), float(km), source))
+
+
+def record_odometer(username: str, km: float) -> None:
+    """앱에서 누적 주행거리만 따로 기록한다(등록 정보의 최신 값도 함께 바꾼다)."""
+    km = _check_operating("odometer_km", km)
+    con = store.get_connection()
+    try:
+        if not con.execute("SELECT 1 FROM vehicle_registrations WHERE username=? AND status='approved'", (username,)).fetchone():
+            raise RegistryError("승인된 차량이 없습니다")
+        log_odometer(con, username, km, "app")
+        con.execute("UPDATE vehicle_registrations SET odometer_km=? WHERE username=? AND status='approved'", (km, username))
+        con.commit()
+    finally:
+        con.close()
+
+
+def odometer_history(username: str, con: sqlite3.Connection | None = None) -> list[dict]:
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        rows = con.execute("SELECT recorded_at, odometer_km, source FROM odometer_logs WHERE username=? ORDER BY recorded_at, rowid",
+                           (username,)).fetchall()
+    except sqlite3.OperationalError:   # 마이그레이션 전
+        rows = []
+    finally:
+        if own:
+            con.close()
+    return [{"recorded_at": r[0], "odometer_km": float(r[1]), "source": r[2]} for r in rows]
+
+
 def update_profile(username: str, updates: dict, con: sqlite3.Connection | None = None) -> list[tuple]:
     """정정 요청(차종·직업군·거주지·운행 입력). 바뀐 항목만 반영하고 (field, before, after) 목록을 돌려준다.
     번호판은 소유 확인이 필요해 여기서 바꿀 수 없다(관리자 재심사 경로)."""
@@ -371,6 +411,9 @@ def update_profile(username: str, updates: dict, con: sqlite3.Connection | None 
             _check_soc_order(merged["target_soc_pct"], merged["min_soc_pct"])
             con.execute(f"UPDATE vehicle_registrations SET {', '.join(sets)} WHERE registration_id=?",
                         (*args, current["registration_id"]))
+            for field, _before, after in changes:
+                if field == "odometer_km" and after is not None:
+                    log_odometer(con, username, after, "profile")
             con.commit()
         return changes
     finally:

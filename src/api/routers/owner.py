@@ -299,3 +299,36 @@ def demand_forecast(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = D
     except Exception as exc:   # noqa: BLE001 — 예측 모델이 아직 학습되지 않았을 수 있다
         logger.exception("수요 예측을 불러오지 못했습니다")
         raise HTTPException(status_code=503, detail="수요 예측을 아직 불러올 수 없어요.") from exc
+
+
+# ------------------------------------------------------------------ 내 충전 리포트 --
+
+class OdometerIn(BaseModel):
+    odometer_km: float = Field(..., ge=0, le=2_000_000)
+
+
+@router.post("/odometer", summary="누적 주행거리 기록(계기판 값) — 주간 주행·전비·1km당 요금 계산에 쓴다. 직전 값보다 작으면 거부")
+def record_odometer(body: OdometerIn, request: Request, user: dict = Depends(require_owner)) -> dict:
+    before = (registry.latest_for(user["username"]) or {}).get("odometer_km")
+    try:
+        registry.record_odometer(user["username"], body.odometer_km)
+    except registry.RegistryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    member_history.record(user["username"], user["username"], "profile_update",
+                          [("odometer_km", before, body.odometer_km)], ip=client_ip(request))
+    return {"odometer_km": body.odometer_km, "history": registry.odometer_history(user["username"])[-10:]}
+
+
+@router.get("/report", summary="내 충전 리포트 — 최근 4주 충전·주행 지표, 다른 실증 차량과 비교, 최소 보장 배터리 제안")
+def my_report(user: dict = Depends(require_owner)) -> dict:
+    from src.advisory import owner_report
+    from src.pipeline import source
+    ev_df, _ch, grid_df, _real = source.load_scenario()
+    reg = registry.latest_for(user["username"]) or {}
+    profile = owner_guide.vehicle_profile(user["username"], user["owned_ev_id"])
+    report = owner_report.build_report(user["owned_ev_id"], ev_df, grid_df, profile["battery_kwh"],
+                                       odometer=registry.odometer_history(user["username"]),
+                                       min_soc_pct=reg.get("min_soc_pct"), target_soc_pct=reg.get("target_soc_pct"))
+    report["odometer"] = registry.odometer_history(user["username"])[-5:]
+    report["is_real_data"] = bool(_real)
+    return report

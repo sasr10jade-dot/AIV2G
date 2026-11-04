@@ -180,7 +180,17 @@ def summarize_kpi(
     )
 
 
-def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> dict:
+def load_site_registry() -> dict:
+    """참여 장소 등록부(config/sites.json) — site_id → 이름·유형·주소·확정 여부."""
+    import json
+    from src.paths import PROJECT_ROOT
+    path = PROJECT_ROOT / "config" / "sites.json"
+    if not path.exists():
+        return {}
+    return {s["site_id"]: s for s in json.loads(path.read_text(encoding="utf-8")).get("sites", [])}
+
+
+def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, site_registry: dict | None = None) -> dict:
     """관리자 현황판(계획서 4.1 가: 서포터즈·차량, 충전소·충전기, 데이터 현황) — 참여 장소·사업자별 충전기·활동 차량.
     장소·사업자 컬럼이 없는 데이터면 해당 목록은 비워 두고 count를 None으로 둔다(미집계)."""
     def has(df, col):
@@ -204,6 +214,9 @@ def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> dict:
         return out
 
     sites = group("site_id", "site_id")
+    for row in sites:
+        meta = (site_registry or {}).get(row["site_id"], {})
+        row.update({k: meta.get(k) for k in ("name", "type", "address", "confirmed")})
     operators = group("operator_id", "operator_id")
 
     vehicles = {"total": 0, "active": 0, "active_window_days": ACTIVE_WINDOW_DAYS, "as_of": None, "by_model": {}}
@@ -226,3 +239,67 @@ def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame) -> dict:
         "vehicles": vehicles,
         "targets": {"sites": TARGET_SITES, "operators": TARGET_OPERATORS, "ev": TARGET_EV, "chargers": TARGET_CHARGERS},
     }
+
+
+PACE_WINDOW_DAYS = 14     # 수집 속도: 마지막 관측일 기준 최근 14일 평균
+ROSTER_WINDOW_DAYS = 28   # 차량별 현황: 최근 4주
+
+
+def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessions: bool = True,
+                      count_vehicle_days: bool = True, days: int = 60) -> dict:
+    """데이터 현황판(계획서 리스크 대응: '데이터 현황판으로 목표 대비 수집 속도 관리') — 일자별 유효 건수,
+    현재 속도로 연차 종료일까지 수집했을 때의 예상 건수, 경고, 차량별 최근 4주 현황.
+    count_*=False인 표(합성)는 0으로 세어 성과 실적과 같은 기준을 쓴다."""
+    sess = _session_dates(charger_df) if count_sessions else pd.Series([], dtype="object")
+    vd = _vehicle_days(ev_df) if count_vehicle_days else pd.DataFrame(columns=["ev_id", "_day"])
+    s_daily = sess.value_counts() if len(sess) else pd.Series(dtype=int)
+    v_daily = vd["_day"].value_counts() if not vd.empty else pd.Series(dtype=int)
+    all_days = sorted(set(s_daily.index) | set(v_daily.index))
+    out: dict = {"daily": [], "pace": None, "warnings": [], "roster": []}
+    if all_days:
+        last = all_days[-1]
+        span = [last - timedelta(days=i) for i in range(days - 1, -1, -1)]
+        out["daily"] = [{"date": d.isoformat(), "charger_sessions": int(s_daily.get(d, 0)),
+                         "vehicle_days": int(v_daily.get(d, 0))} for d in span]
+        recent = [r["charger_sessions"] + r["vehicle_days"] for r in out["daily"][-PACE_WINDOW_DAYS:]]
+        per_day = sum(recent) / len(recent)
+        key = project_year_of(last) or next((k for k, y in PROJECT_YEARS.items() if last < y["start"]), None)
+        if key:
+            y = PROJECT_YEARS[key]
+            counted = int((sess.map(project_year_of) == key).sum()) + (int((vd["_day"].map(project_year_of) == key).sum()) if not vd.empty else 0)
+            remaining = max(0, (y["end"] - max(last, y["start"] - timedelta(days=1))).days)
+            expected = int(round(counted + per_day * remaining))
+            out["pace"] = {"year": key, "label": y["label"], "as_of": last.isoformat(), "per_day": round(per_day, 1),
+                           "counted": counted, "remaining_days": remaining, "expected": expected, "target": y["target"],
+                           "expected_pct": round(expected / y["target"] * 100, 1),
+                           "per_day_needed": round(max(0, y["target"] - counted) / remaining, 1) if remaining else None}
+            if expected < y["target"]:
+                out["warnings"].append(f"현재 수집 속도(하루 {per_day:.0f}건)로는 {y['label']} 종료 시 {expected:,}건 — 목표 {y['target']:,}건 미달 예상")
+
+    # 차량별 최근 4주 현황(출처와 무관하게 — 운영 점검용)
+    if ev_df is not None and not ev_df.empty and "ev_id" in ev_df.columns:
+        df = ev_df.assign(_day=pd.to_datetime(ev_df["timestamp"]).dt.date)
+        last = df["_day"].max()
+        since = last - timedelta(days=ROSTER_WINDOW_DAYS - 1)
+        win = df[df["_day"] >= since]
+        active_since = last - timedelta(days=ACTIVE_WINDOW_DAYS - 1)
+        act = _vehicle_days(ev_df)
+        last_seen = act.groupby("ev_id")["_day"].max() if not act.empty else pd.Series(dtype="object")
+        for ev_id, g in df.groupby("ev_id", sort=True):
+            w = win[win["ev_id"] == ev_id]
+            charge_days = int(w.loc[w["charging_kw"] > 0, "_day"].nunique()) if not w.empty else 0
+            seen = last_seen.get(ev_id)
+            soc = g.sort_values("timestamp")["soc_pct"].iloc[-1] if "soc_pct" in g.columns else None
+            out["roster"].append({
+                "ev_id": str(ev_id),
+                "vehicle_model": str(g["vehicle_model"].iloc[0]) if "vehicle_model" in g.columns else None,
+                "active": bool(seen is not None and seen >= active_since),
+                "last_seen": seen.isoformat() if seen is not None else None,
+                "charge_days_4w": charge_days,
+                "charge_per_week": round(charge_days / (ROSTER_WINDOW_DAYS / 7), 1),
+                "last_soc_pct": None if soc is None or pd.isna(soc) else round(float(soc), 1),
+            })
+        n_active = sum(r["active"] for r in out["roster"])
+        if n_active < TARGET_EV:
+            out["warnings"].append(f"활동 차량 {n_active}대 — 계획서 기준 {TARGET_EV}대 미달(예비 참여자 대체 검토)")
+    return out

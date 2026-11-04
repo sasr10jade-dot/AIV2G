@@ -178,12 +178,14 @@ def test_owner_session_on_admin_pages_goes_to_login_with_a_reason_not_silently_t
 
 
 def test_every_screen_uses_the_shared_ax_v2g_theme():
-    """모든 화면이 /theme.css(AX·V2G 디자인 시스템)를 불러오고, 실측·추론 구분 표시를 쓴다."""
+    """모든 화면이 /theme.css(AIV2GAPP 기준 서비스 디자인 시스템)를 불러오고, 실측·추론 구분 표시를 쓴다."""
     r = client.get("/theme.css")
     assert r.status_code == 200 and "text/css" in r.headers["content-type"]
-    assert "--accent: #2563eb" in r.text and 'h2[data-kind="inferred"]::after' in r.text
+    assert "--accent: #1F5EDB" in r.text and "--navy: #0F2A5C" in r.text and 'h2[data-kind="inferred"]::after' in r.text
     for path in ("/login", "/dashboard", "/admin", "/approvals", "/dev", "/app", "/privacy-policy"):
         assert '<link rel="stylesheet" href="/theme.css"' in client.get(path).text, path
     dash = client.get("/dashboard").text
     assert 'class="ax-header"' in dash and 'class="ax-notice"' in dash and 'data-kind="inferred"' in dash
-    assert "/owner/ask" not in client.get("/app").text          # 서버에서 삭제된 EV Bot을 부르지 않는다
+    app_html = client.get("/app").text
+    assert '<body class="fo">' in app_html                     # 서포터즈 앱(F.O) 모양
+    assert "/owner/ask" not in app_html                         # 서버에서 삭제된 EV Bot을 부르지 않는다

@@ -20,7 +20,7 @@ from src.auth.deps import require_admin
 from src.automation.model_registry import ModelRegistry
 from src.closed_loop import run_closed_loop_cycle
 from src.datagen.config import SimConfig
-from src.kpi import infra_status, summarize_kpi
+from src.kpi import collection_status, infra_status, load_site_registry, summarize_kpi
 from src.model.charging_efficiency import NoLinkedSessionsError, compute_charging_efficiency
 from src.model.demand_forecast import train_forecast_model
 from src.optimizer.economics import EconomicsParams
@@ -289,7 +289,8 @@ def build_dashboard_payload(
             "ev_model_count": kpi_summary.ev_model_count,
             "charger_type_count": kpi_summary.charger_type_count,
             "targets": kpi_summary.targets,
-            "infra": infra_status(ev_df, charger_df),   # 참여 장소·사업자별 충전기·활동 차량 현황
+            "infra": infra_status(ev_df, charger_df, load_site_registry()),   # 참여 장소·사업자별 충전기·활동 차량 현황
+            "collection": _collection(ev_df, charger_df, kpi_summary.provenance),   # 데이터 현황판(일자별·수집 속도·차량별)
             "charger_utilization_avg_pct": avg_utilization_pct,
             "charger_utilization_peak_pct": peak_utilization_pct,
             "charger_utilization_peak_at": peak_utilization_at,
@@ -322,6 +323,16 @@ def build_dashboard_payload(
         "renewable": build_renewable_summary(grid_df, window_days=CHART_WINDOW_DAYS),
     }
 
+
+
+def _collection(ev_df, charger_df, provenance: dict) -> dict:
+    """실측 표만 세어 성과 실적 기준으로 보여 준다. 실측 표가 하나도 없으면(데모) 전체를 세어 '모의 미리보기'로 표시한다."""
+    sessions = provenance.get("charger_sessions") == "measured"
+    vehicle_days = provenance.get("ev_telemetry") == "measured"
+    preview = not (sessions or vehicle_days)
+    out = collection_status(ev_df, charger_df, count_sessions=sessions or preview, count_vehicle_days=vehicle_days or preview)
+    out["preview"] = preview
+    return out
 
 @router.get("/dashboard", response_class=FileResponse, include_in_schema=False)
 def dashboard_page() -> FileResponse:

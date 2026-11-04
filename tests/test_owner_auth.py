@@ -15,8 +15,9 @@ OWNER_ALLOWED = {
     # owner 전용 경로 — 모두 세션의 차량으로만 동작한다
     ("GET", "/signup/options"), ("GET", "/owner/registration"), ("GET", "/owner/history"),
     ("GET", "/owner/my-data"), ("PATCH", "/owner/profile"), ("POST", "/owner/password"),
-    ("POST", "/owner/account/withdraw"), ("POST", "/owner/ask"),   # 마이페이지 — 본인 정보만(빈 본문은 422로 막힘)   # 가입 선택지(공개)·내 승인 상태(승인 전에도 가능)
+    ("POST", "/owner/account/withdraw"),   # 마이페이지 — 본인 정보만(빈 본문은 422로 막힘)   # 가입 선택지(공개)·내 승인 상태(승인 전에도 가능)
     ("GET", "/owner/charging-guide"), ("GET", "/owner/demand-forecast"),   # 본인 차량·집계 예측만
+    ("GET", "/owner/report"), ("POST", "/owner/odometer"),             # 내 충전 리포트·누적 주행거리 기록(본인 차량만)
     ("GET", "/owner/consent/v2g"), ("PUT", "/owner/consent/v2g"),   # 방전 참여 켜기·즉시 중지(본인 차량만)
     ("GET", "/owner/notices"), ("GET", "/owner/app-content"),       # 공지·문구(공통)
 }

@@ -38,6 +38,7 @@ def withdraw_member(username: str, ip: str | None = None) -> dict:
         for ev_id in ev_ids:
             if ev_id.startswith(AUTO_EV_PREFIX):   # 앱 가입 차량: 이 회원 전용 기록이라 함께 삭제
                 summary["advisories"] += con.execute("DELETE FROM advisories WHERE ev_id=?", (ev_id,)).rowcount
+        summary["odometer_logs"] = con.execute("DELETE FROM odometer_logs WHERE username=?", (username,)).rowcount
         summary["registrations"] = con.execute("DELETE FROM vehicle_registrations WHERE username=?",
                                                (username,)).rowcount
         con.commit()

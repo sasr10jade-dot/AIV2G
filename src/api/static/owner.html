@@ -79,7 +79,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .gap { margin-top: 16px !important; }
 .error { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 10px; }
 .tabs {
-  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr);
+  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
   background: color-mix(in srgb, var(--card) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
 }
 .tab { min-height: 58px; background: none; border: 0; border-top: 2px solid transparent; margin-top: -1px; cursor: pointer; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; position: relative; }
@@ -144,7 +144,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 </style>
 <link rel="stylesheet" href="/theme.css" />
 </head>
-<body>
+<body class="fo">
 <div class="app">
   <header class="topbar">
     <div class="brand"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b></span></div>
@@ -171,6 +171,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     <button class="tab" role="tab" data-tab="inbox" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg><span data-i18n="tab_inbox">홈</span></button>
     <button class="tab" role="tab" data-tab="price" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13h6l-1 8 8-10h-6z"/></svg><span data-i18n="tab_price">충전 시간</span></button>
     <button class="tab" role="tab" data-tab="forecast" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg><span data-i18n="tab_forecast">예측</span></button>
+    <button class="tab" role="tab" data-tab="report" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span data-i18n="tab_report">리포트</span></button>
   </nav>
 
 </div>
@@ -191,7 +192,13 @@ label.check input { width: 22px; height: 22px; flex: none; }
       offline: '오프라인입니다. 연결되면 최신 정보를 불러옵니다.',
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
       install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.',
-      premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측',
+      premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트',
+      rp_title: '최근 4주 내 충전', rp_ai: 'AI 충전 분석', rp_odo: '누적 주행거리 기록', rp_odo_btn: '기록하기',
+      rp_odo_hint: '계기판의 누적 주행거리(ODO)를 적어 주세요. 2번 이상 기록하면 주간 주행거리·전비·1km당 요금을 계산해요.',
+      rp_odo_done: '기록했어요.', rp_wait: '리포트를 준비하고 있어요', rp_peer: '다른 서포터즈', rp_none: '아직 기록 없음',
+      rp_m_week: '주 충전 횟수', rp_m_avg: '1회 평균 충전량', rp_m_kwhw: '주간 충전량', rp_m_peak: '피크 시간 충전 비중',
+      rp_m_won: '1kWh당 요금', rp_m_kmw: '주간 주행거리', rp_m_kmkwh: '1kWh당 주행', rp_m_wonkm: '1km당 요금',
+      rp_period: '기간', rp_unit_times: '회', rp_recent: '최근 기록',
       nt_title: '공지사항', home_intro: 'AI-V2G 실증 서포터즈로 참여해 주셔서 고마워요. 내 차의 운행·충전 데이터로 AI가 충전하기 좋은 시간을 추천해요.',
       pt_title: '내 실증 참여', pt_dep: '평소 출발 시각', pt_target: '목표 배터리', pt_min: '최소 보장 배터리', pt_odo: '누적 주행거리', pt_v2g: '방전(V2G) 추론 안내',
       pt_edit: '내 정보에서 바꿀 수 있어요.', pt_unset: '미입력(기본값 사용)',
@@ -246,7 +253,13 @@ label.check input { width: 22px; height: 22px; flex: none; }
       offline: 'You are offline. Latest data loads once you reconnect.',
       install_hint: 'Add to your home screen to use it like an app.',
       install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.',
-      premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast',
+      premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast', tab_report: 'Report',
+      rp_title: 'My charging, last 4 weeks', rp_ai: 'AI charging analysis', rp_odo: 'Log odometer', rp_odo_btn: 'Save',
+      rp_odo_hint: 'Enter the odometer reading. With two or more entries we calculate weekly distance, efficiency and cost per km.',
+      rp_odo_done: 'Saved.', rp_wait: 'Preparing your report', rp_peer: 'Other supporters', rp_none: 'No entries yet',
+      rp_m_week: 'Charges per week', rp_m_avg: 'Avg energy per charge', rp_m_kwhw: 'Energy per week', rp_m_peak: 'Peak-hour share',
+      rp_m_won: 'Cost per kWh', rp_m_kmw: 'Distance per week', rp_m_kmkwh: 'km per kWh', rp_m_wonkm: 'Cost per km',
+      rp_period: 'Period', rp_unit_times: '', rp_recent: 'Recent entries',
       nt_title: 'Notices', home_intro: 'Thank you for joining the AI-V2G pilot as a supporter. AI recommends good charging times from your car\'s driving and charging data.',
       pt_title: 'My pilot participation', pt_dep: 'Usual departure', pt_target: 'Target battery', pt_min: 'Minimum battery', pt_odo: 'Odometer', pt_v2g: 'Discharge (V2G) inference guidance',
       pt_edit: 'You can change these in My info.', pt_unset: 'Not set (defaults used)',
@@ -786,6 +799,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     inbox: renderInbox,
     price: renderPrice,
     forecast: renderForecast,
+    report: renderReport,
   };
 
   // ---------------------------------------------------------------- 화면: 충전 시간 · 예측
@@ -1081,6 +1095,66 @@ label.check input { width: 22px; height: 22px; flex: none; }
     box.appendChild(listCard(t('fc_lows'), f.charging_lows));
     box.appendChild(el('p', { class: 'muted', text: f.scope + '. ' + f.note }));   // 서버 제공 문구(한국어)
   }
+  // ---------------------------------------------------------------- 화면: 리포트(AIV2GAPP 'AI 충전 분석' 이식)
+  function metricBox(label, value, peer) {
+    return el('div', { class: 'box' }, [
+      el('span', { class: 'l', text: label }),
+      el('span', { class: 'v', text: value == null ? '-' : String(value) }),
+      el('span', { class: 'l', text: peer == null ? '' : t('rp_peer') + ' ' + peer }),
+    ]);
+  }
+  async function renderReport(box) {
+    box.appendChild(el('p', { class: 'muted', text: t('loading') }));
+    var r = await api('/owner/report');
+    if (state.tab !== 'report' || !box.isConnected) return;
+    clear(box);
+    if (!r.ok) { box.appendChild(emptyTab('trend', t('rp_wait'), (r.body && r.body.detail) || '')); return; }
+    var b = r.body;
+    if (b.has_data) {
+      var m = b.metrics, c = b.compare || {}, d = b.driving || {};
+      function peer(k, unit) { return c[k] && c[k].median != null ? c[k].median + unit : null; }
+      box.appendChild(el('div', { class: 'card' }, [
+        el('h2', { text: t('rp_title') }),
+        el('p', { class: 'muted', text: t('rp_period') + ' ' + b.window.from + ' ~ ' + b.window.to }),
+        el('div', { class: 'g2' }, [
+          metricBox(t('rp_m_week'), m.per_week == null ? null : m.per_week + t('rp_unit_times'), peer('per_week', t('rp_unit_times'))),
+          metricBox(t('rp_m_avg'), m.avg_kwh == null ? null : m.avg_kwh + ' kWh', peer('avg_kwh', ' kWh')),
+          metricBox(t('rp_m_kwhw'), m.kwh_per_week == null ? null : m.kwh_per_week + ' kWh', null),
+          metricBox(t('rp_m_peak'), m.peak_share_pct == null ? null : m.peak_share_pct + '%', peer('peak_share_pct', '%')),
+          metricBox(t('rp_m_won'), m.won_per_kwh == null ? null : m.won_per_kwh + (lang === 'en' ? ' KRW' : '원'), peer('won_per_kwh', lang === 'en' ? ' KRW' : '원')),
+          metricBox(t('rp_m_kmw'), d.km_per_week == null ? null : d.km_per_week + ' km', null),
+          metricBox(t('rp_m_kmkwh'), d.km_per_kwh == null ? null : d.km_per_kwh + ' km', null),
+          metricBox(t('rp_m_wonkm'), d.won_per_km == null ? null : d.won_per_km + (lang === 'en' ? ' KRW' : '원'), null),
+        ]),
+      ]));
+      var ai = el('div', { class: 'card' }, [el('h2', { text: t('rp_ai'), 'data-kind': 'inferred' })]);
+      (b.insights || []).forEach(function (it) {
+        ai.appendChild(el('div', { class: 'ins' }, [el('b', { text: it.title }), el('p', { text: it.text })]));
+      });
+      box.appendChild(ai);
+    } else {
+      box.appendChild(emptyTab('trend', t('rp_wait'), b.message || ''));
+    }
+    var input = el('input', { type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': t('rp_odo') });
+    var msg = el('div', { class: 'okmsg', role: 'status' });
+    var btn = el('button', { class: 'primary', type: 'button', text: t('rp_odo_btn') });
+    var odoCard = el('div', { class: 'card' }, [el('h2', { text: t('rp_odo') }), el('p', { class: 'muted', text: t('rp_odo_hint') }), input, btn, msg]);
+    var recent = (b.odometer || []).slice().reverse();
+    odoCard.appendChild(el('p', { class: 'muted gap', text: t('rp_recent') }));
+    if (!recent.length) odoCard.appendChild(el('div', { class: 'muted', text: t('rp_none') }));
+    recent.forEach(function (o) { odoCard.appendChild(kv(String(o.recorded_at).slice(0, 10), Number(o.odometer_km).toLocaleString(t('locale')) + ' km')); });
+    btn.addEventListener('click', async function () {
+      msg.className = 'okmsg'; msg.textContent = '';
+      if (input.value === '') return;
+      btn.disabled = true;
+      var res = await api('/owner/odometer', { method: 'POST', body: JSON.stringify({ odometer_km: Number(input.value) }) });
+      btn.disabled = false;
+      if (res.ok) { msg.textContent = t('rp_odo_done'); renderHome(); }
+      else { msg.className = 'error'; msg.textContent = (res.body && typeof res.body.detail === 'string') ? res.body.detail : String(res.status); }
+    });
+    box.appendChild(odoCard);
+    if (b.note) box.appendChild(el('p', { class: 'muted', text: b.note }));
+  }
   // 내 차량 일러스트 — 면 색으로 그린 전기차 옆모습(고정 SVG라 사용자 입력이 들어가지 않는다). 색은 테마 변수를 따른다.
   function carIllustration() {
     var wrap = el('div', { class: 'car', 'aria-hidden': 'true' });
@@ -1100,7 +1174,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
   }
   function renderHome() {
     clear(view);
-    view.appendChild(el('div', { class: 'card carcard' }, [
+    view.appendChild(el('div', { class: 'card carcard hero' }, [
       carIllustration(),
       el('div', { class: 'carinfo' }, [
         el('h2', { text: t('my_car') }),

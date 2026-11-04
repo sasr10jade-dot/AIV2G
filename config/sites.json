@@ -1,0 +1,8 @@
+{
+  "_comment": "도시형 실증 참여 장소(계획서: 3곳 이상, 공공기관·기업 빌딩·공용/노상 인프라). 관리기관 협의로 확정 전이라 이름·주소는 예시다. site_id는 충전 세션의 site_id와 같아야 집계된다.",
+  "sites": [
+    {"site_id": "SITE-01", "name": "공공기관 청사 주차장", "type": "공공기관", "address": "광주광역시 (확정 전 예시)", "confirmed": false},
+    {"site_id": "SITE-02", "name": "기업 빌딩 주차장", "type": "기업 빌딩", "address": "전라남도 나주시 빛가람동 (확정 전 예시)", "confirmed": false},
+    {"site_id": "SITE-03", "name": "도시 공용 충전소", "type": "공용·노상", "address": "광주광역시 (확정 전 예시)", "confirmed": false}
+  ]
+}

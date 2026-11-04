@@ -124,3 +124,27 @@ def test_infra_status_without_site_column_is_not_counted():
     from src.kpi import infra_status
     out = infra_status(pd.DataFrame(), pd.DataFrame({"charger_id": ["C1"], "energy_kwh": [1.0]}))
     assert out["site_count"] is None and out["sites"] == [] and out["vehicles"]["total"] == 0
+
+
+def test_collection_status_projects_year_end_and_warns():
+    from src.kpi import collection_status
+    days = pd.date_range("2026-12-01", "2026-12-14", freq="D")
+    ch = pd.DataFrame({"start_ts": days, "energy_kwh": 5.0, "charger_id": "C1"})            # 하루 1건
+    ev = pd.DataFrame({"timestamp": days, "ev_id": "E1", "vehicle_model": "m", "driving": True,
+                       "connected": False, "charging_kw": 0.0, "soc_pct": 50.0})               # 하루 1건
+    out = collection_status(ev, ch, days=14)
+    p = out["pace"]
+    assert p["year"] == "Y1" and p["per_day"] == 2.0 and p["counted"] == 28
+    assert p["remaining_days"] == (pd.Timestamp("2027-04-15") - pd.Timestamp("2026-12-14")).days
+    assert p["expected"] == 28 + 2 * p["remaining_days"] and p["expected"] < 4000
+    assert any("미달 예상" in w for w in out["warnings"]) and any("활동 차량 1대" in w for w in out["warnings"])
+    assert len(out["daily"]) == 14 and out["daily"][-1] == {"date": "2026-12-14", "charger_sessions": 1, "vehicle_days": 1}
+    r = out["roster"][0]
+    assert r["ev_id"] == "E1" and r["active"] is True and r["last_soc_pct"] == 50.0
+
+
+def test_collection_status_excludes_synthetic_tables():
+    from src.kpi import collection_status
+    ch = pd.DataFrame({"start_ts": pd.to_datetime(["2026-12-01"]), "energy_kwh": [5.0], "charger_id": ["C1"]})
+    out = collection_status(pd.DataFrame(), ch, count_sessions=False)
+    assert out["daily"] == [] and out["pace"] is None

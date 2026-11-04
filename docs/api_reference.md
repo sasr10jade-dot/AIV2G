@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 0.4.0 · 엔드포인트 76개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 0.4.0 · 엔드포인트 80개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -24,7 +24,7 @@
 | POST | `/auth/login` | 공개(로그인 불필요) | 로그인 |
 | POST | `/auth/logout` | 공개(로그인 불필요) | 로그아웃 |
 | GET | `/auth/me` | 로그인 필요 | 현재 로그인 사용자 정보 |
-| PATCH | `/auth/me/owned-vehicle` | 로그인 필요 | "내 차" 등록 — EV Bot 개인화(차량 ID 자동입력)에 사용 |
+| PATCH | `/auth/me/owned-vehicle` | 로그인 필요 | "내 차" 등록 — 계정과 차량 ID 연결 |
 | POST | `/auth/quick-login` | 공개(로그인 불필요) | 데모용 빠른 로그인 — .env에 설정된 역할별 계정으로 즉시 로그인 |
 | GET | `/auth/quick-login/available` | 공개(로그인 불필요) | 빠른 로그인이 설정된 역할 — 화면이 버튼 표시 여부를 정하는 데 사용 |
 | GET | `/auth/users` | 최고관리자 | 계정 목록 (최고관리자 전용) |
@@ -48,10 +48,12 @@
 | GET | `/owner/me` | 이용자(차량이 연결된 차량 등록자) | 내 계정·연결 차량 정보 |
 | GET | `/owner/my-data` | 이용자 계정(승인 전 포함) | 내 개인정보 열람 — 보유 중인 정보와 동의·이력 현황 |
 | GET | `/owner/notices` | 이용자(차량이 연결된 차량 등록자) | 공지사항(공개된 것만, 고정 먼저) |
+| POST | `/owner/odometer` | 이용자(차량이 연결된 차량 등록자) | 누적 주행거리 기록(계기판 값) — 주간 주행·전비·1km당 요금 계산에 쓴다. 직전 값보다 작으면 거부 |
 | POST | `/owner/password` | 이용자 계정(승인 전 포함) | 비밀번호 변경 |
 | PATCH | `/owner/profile` | 이용자 계정(승인 전 포함) | 내 정보 정정 — 차종·직업군·거주지·운행 입력(출발 시각·목표/최소 배터리·누적 주행거리). 번호판은 관리자 재심사 |
 | GET | `/owner/registration` | 이용자 계정(승인 전 포함) | 내 차량 등록 상태(승인 대기·승인·반려) |
 | POST | `/owner/registration` | 이용자 계정(승인 전 포함) | 반려된 뒤 차량 정보를 고쳐 다시 신청 |
+| GET | `/owner/report` | 이용자(차량이 연결된 차량 등록자) | 내 충전 리포트 — 최근 4주 충전·주행 지표, 다른 실증 차량과 비교, 최소 보장 배터리 제안 |
 
 ## admin
 
@@ -74,7 +76,7 @@
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
 | GET | `/advisory` | 관리자 이상(관리자·최고관리자) | 추천 목록과 수용률 |
-| GET | `/advisory/ai-ops-kpi` | 관리자 이상(관리자·최고관리자) | AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율·EV Bot 호출(감사로그·동의 이력 집계) |
+| GET | `/advisory/ai-ops-kpi` | 관리자 이상(관리자·최고관리자) | AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율(감사로그·동의 이력 집계) |
 | POST | `/advisory/issue` | 관리자 이상(관리자·최고관리자) | 추천 계획 생성·발행 |
 | POST | `/advisory/{advisory_id}/respond` | 관리자 이상(관리자·최고관리자) | 차주 응답 기록(accepted/declined/expired) |
 
@@ -129,9 +131,11 @@
 | GET | `/ingest/batch/status` | 관리자 이상(관리자·최고관리자) | 최근 OBD 일일 배치 결과(도착 대조·격리·모드) |
 | POST | `/ingest/generate` | 관리자 이상(관리자·최고관리자) | 합성 데모 데이터 생성 |
 | POST | `/ingest/obd-emulator/run` | 관리자 이상(관리자·최고관리자) | 가상 실증차량 OBD 배치를 합성해 실제 파이프라인으로 흘려보냄 |
+| GET | `/ingest/public-apis/status` | 관리자 이상(관리자·최고관리자) | 공개 데이터(기상·공휴일) 연동 준비 상태 — 키·명세 여부만, 값은 노출하지 않음 |
 | POST | `/ingest/run` | 관리자 이상(관리자·최고관리자) | raw → curated 파이프라인 실행 |
 | GET | `/ingest/status` | 관리자 이상(관리자·최고관리자) | 현재 데이터 소스 모드 확인 (데모/실증) |
 | POST | `/ingest/sync-kpx-smp` | 관리자 이상(관리자·최고관리자) | 한국전력거래소(KPX) 실시간 SMP를 grid_signal.price_krw_per_kwh에 반영 |
+| POST | `/ingest/sync-weather-holiday` | 관리자 이상(관리자·최고관리자) | 기상청 시간별 기온·한국천문연구원 공휴일을 grid_signal에 반영 |
 | DELETE | `/ingest/upload` | 관리자 이상(관리자·최고관리자) | 업로드된 데이터 삭제 → 데모 모드로 복귀 |
 | POST | `/ingest/upload` | 관리자 이상(관리자·최고관리자) | 실증 데이터 업로드 (품질검증 통과 시 반영) |
 | POST | `/ingest/upload-obd` | 관리자 이상(관리자·최고관리자) | 실증 차량 OBD 배치 업로드 (원본 1Hz 로그 → 시간당 자동 집계) |
