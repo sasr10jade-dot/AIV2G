@@ -43,7 +43,6 @@
   :root[data-theme="dark"] a.btn.primary, :root[data-theme="dark"] button.btn.primary { color: #0b1220; }
   button.btn:disabled { opacity: .5; cursor: default; }
   hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0 18px; }
-  .more { display: flex; flex-wrap: wrap; gap: 8px 10px; }
   .status { font-size: 13px; color: var(--muted); margin-top: 22px; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9cedd; margin-right: 6px; }
   .dot.ok { background: #2fb67c; } .dot.bad { background: #d9534f; }
@@ -88,14 +87,6 @@
     </section>
   </div>
 
-  <hr />
-  <div class="more">
-    <a class="btn" href="/approvals">가입 승인</a>
-    <a class="btn" href="/login">로그인</a>
-    <a class="btn" href="/docs" target="_blank" rel="noopener">API 문서</a>
-    <a class="btn" href="/privacy-policy" target="_blank" rel="noopener">개인정보 처리방침</a>
-    <a class="btn" href="/health" target="_blank" rel="noopener">상태 확인</a>
-  </div>
   <div class="err" id="err" role="alert"></div>
   <div class="status"><span class="dot" id="dot"></span><span id="st">서버 확인 중…</span></div>
   <div class="status" id="who" hidden>현재 로그인: <b id="whoName"></b> <button class="btn" type="button" id="logout" style="margin-left:8px; padding:4px 10px">로그아웃</button></div>
