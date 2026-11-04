@@ -1,0 +1,25 @@
+// AI-V2G 서포터즈 안드로이드 앱 — 서포터즈 웹앱(/app)을 앱 안 WebView로 띄운다.
+// TWA(크롬 위임) 대신 WebView를 쓰는 이유: ngrok 무료 주소의 경고 화면을 고유 User-Agent로 건너뛰고, 주소창 없이 전체 화면으로 열기 위해서다.
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 36
+    namespace "kr.aiv2g.supporter"
+    defaultConfig {
+        applicationId "kr.aiv2g.supporter"
+        minSdkVersion 24
+        targetSdkVersion 36
+        versionCode 2
+        versionName "1.1.0"
+        buildConfigField "String", "START_URL", '"https://stem-shifter-selected.ngrok-free.dev/app"'
+        buildConfigField "String", "USER_AGENT", '"AIV2G-Supporter-App/1.1 (Android)"'
+    }
+    buildFeatures { buildConfig true }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
