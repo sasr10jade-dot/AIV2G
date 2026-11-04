@@ -174,8 +174,25 @@ body.ax-page .name { font-weight: 700; }
 
 /* ---- 서포터즈 앱(F.O) — <body class="fo"> : AIV2GAPP app.html 모양 */
 body.fo { background: var(--bg); }
-body.fo .topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--border); min-height: 60px; }
-body.fo .brand { font-size: 17px; font-weight: 800; }
+/* 헤더: 높이 고정·한 줄 — 내용이 화면보다 넓어 좌우로 밀리거나, 로그인 후 버튼이 생기며 높이가 바뀌어 흔들리지 않게 */
+body.fo { overflow-x: clip; }
+body.fo .topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--border);
+  height: 56px; min-height: 56px; padding: 0 12px; gap: 6px; flex-wrap: nowrap; box-sizing: border-box; }
+body.fo .brand { font-size: 16px; font-weight: 800; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; }
+body.fo .brand > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+body.fo .tools { flex: none; gap: 2px; flex-wrap: nowrap; }
+body.fo .seg button { min-height: 30px; min-width: 32px; padding: 0 6px; font-size: 11px; letter-spacing: 0; }
+body.fo .topbar .iconbtn { min-width: 0; min-height: 40px; padding: 0 6px; font-size: 12px; letter-spacing: 0; white-space: nowrap; }
+body.fo .topbar .ax-switch { gap: 0; padding: 4px; }
+body.fo .topbar .ax-switch-label { display: none; }
+body.fo .topbar .ax-switch-track { width: 40px; height: 22px; }
+body.fo .topbar .ax-switch-knob { width: 16px; height: 16px; font-size: 10px; }
+body.fo .topbar .ax-switch[aria-checked="true"] .ax-switch-knob { left: 21px; }
+body.fo main, body.fo .card { min-width: 0; max-width: 100%; }
+@media (max-width: 380px) {           /* 아주 좁은 폰: 로고 글자를 숨기고 배지만 */
+  body.fo .brand > span:last-child { display: none; }
+  body.fo .topbar { padding: 0 8px; }
+}
 body.fo .brand b { color: var(--text); }
 body.fo .brand .ax-logo-badge { background: var(--navy); color: #fff; }
 body.fo main { padding: 16px 20px 24px; }
