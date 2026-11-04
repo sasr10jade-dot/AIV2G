@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "kr.aiv2g.supporter",
-      "sha256_cert_fingerprints": ["2A:CC:31:F2:78:ED:49:10:44:10:77:56:5F:F3:69:C5:C4:4A:D2:31:E7:6F:49:52:B2:2D:8A:79:07:88:EE:ED"]
+      "sha256_cert_fingerprints": ["D3:0D:D4:B8:2C:B2:49:F7:39:40:ED:F7:8B:C1:6C:D6:C5:8A:E0:EB:FB:7A:8C:EC:EE:6A:EC:BE:86:AC:5D:DD"]
     }
   }
 ]
