@@ -12,7 +12,7 @@ from src.paths import PROJECT_ROOT
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app  # noqa: E402
+from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app, cpo  # noqa: E402
 from src.auth.store import ensure_bootstrap_super_admin  # noqa: E402
 
 TAGS_METADATA = [
@@ -30,6 +30,7 @@ TAGS_METADATA = [
     {"name": "models", "description": "예측 모델 레지스트리 조회 (Monitoring 레이어 입력)."},
     {"name": "dashboard", "description": "실시간 웹 대시보드 데이터 (KPI·차트·Closed-loop 통합)."},
     {"name": "acryl", "description": "참여기관 ㈜아크릴 AI 예측모델 연계 — 학습용 정제 데이터 제공(가명처리)과 예측 추론 결과 수신(일 배치). `/partner/acryl/*`은 기관 연계 토큰 전용."},
+    {"name": "cpo", "description": "충전서비스 사업자(CPO 3사: 나이스인프라·플러그링크·이브이시스) 연계 — 데이터 명세서(계획서 13장 산출물), 일 단위 세션 수신 REST API, 수집 현황 모니터링."},
 ]
 
 app = FastAPI(
@@ -95,6 +96,7 @@ app.include_router(signup.router)
 app.include_router(registrations.router)
 app.include_router(admin_app.router)
 app.include_router(acryl.router)
+app.include_router(cpo.router, prefix="/cpo", tags=["cpo"])
 
 dashboard.start_cache_warmer()
 if "pytest" not in __import__("sys").modules:

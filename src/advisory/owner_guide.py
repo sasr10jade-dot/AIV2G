@@ -272,7 +272,34 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
         reason = (f"방전 보상단가(최고 {max_sell:.0f}원/kWh)가 손익분기(약 {breakeven:.0f}원/kWh)보다 낮아서 방전은 추천하지 않아요."
                   if max_sell <= breakeven else "이번 조건에서는 방전해도 이득이 크지 않아서 추천하지 않아요.")
 
+    # AI Agent 기반 결과 근거 설명형 텍스트 생성 (계획서 4.1 라)
+    charge_intervals = _intervals(times, charge, buy)
+    chg_windows_str = ""
+    if charge_intervals:
+        w_strs = [f"{w['start'].split('T')[1][:5]}~{w['end'].split('T')[1][:5]}" for w in charge_intervals if 'start' in w and 'end' in w]
+        chg_windows_str = ", ".join(w_strs)
+
+    saving_val = round(saving)
+    saving_pct_val = round(saving / baseline_cost * 100, 1) if baseline_cost > 1e-9 else 0.0
+
+    exp_parts = []
+    if chg_windows_str:
+        exp_parts.append(f"AI 에이전트가 {chg_windows_str} 구간의 충전을 추천합니다.")
+        exp_parts.append("해당 시간대는 요금이 가장 저렴한 심야 경부하 구간이며 계통 전력수요가 낮아 비용과 계통 부하를 동시에 줄입니다.")
+    else:
+        exp_parts.append("현재 배터리 잔량으로 다음 일정 운행이 가능하여 즉시 충전을 권장하지 않습니다.")
+
+    if saving_val > 0:
+        exp_parts.append(f"일반 즉시 충전 대비 약 {saving_val:,}원({saving_pct_val}%)의 충전비용 절감 효과가 추론됩니다(모의).")
+    exp_parts.append(f"출발 예정 시각({dep.strftime('%H:%M')})까지 목표 배터리({need_soc:.0f}%)를 안전하게 충전합니다.")
+
+    if recommended and revenue > 0:
+        exp_parts.append(f"전력 피크 시간대 V2G 방전 참여를 통해 약 {round(revenue):,}원의 추가 편익이 산출되었습니다(추론 잠재량).")
+
+    ai_agent_explanation = " ".join(exp_parts)
+
     return {
+        "ai_agent_explanation": ai_agent_explanation,
         "vehicle": {k: profile[k] for k in ("label", "battery_kwh", "v2g_capable", "demo") if k in profile},
         "period": {"start": start.isoformat(), "departure": dep.isoformat(), "hours": n},
         "inputs": {"current_soc_pct": soc0, "need_soc_pct": need_soc, "min_soc_pct": reserve_pct,

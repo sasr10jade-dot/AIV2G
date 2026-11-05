@@ -1007,6 +1007,15 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var plan = g.plan;
     box.appendChild(v2gCard(g));
     var head = el('div', { class: 'card' }, [el('h2', { text: t('rec_charge'), 'data-kind': 'inferred' })]);
+    if (g.ai_agent_explanation) {
+      head.appendChild(el('div', {
+        class: 'ai-banner',
+        style: 'background:rgba(47,91,255,0.08); border-left:4px solid var(--accent); padding:10px 12px; border-radius:6px; margin:8px 0 12px; font-size:13.5px; line-height:1.5; color:var(--text);'
+      }, [
+        el('b', { style: 'color:var(--accent); display:block; margin-bottom:4px;', text: '🤖 AI 에이전트 추천 근거 (계획서 4.1 라)' }),
+        el('span', { text: g.ai_agent_explanation })
+      ]));
+    }
     if (plan.charge.length) {
       plan.charge.forEach(function (p) {
         head.appendChild(el('div', { class: 'big', text: rangeLabel(p) + ' · ' + p.kwh + ' kWh' }));
