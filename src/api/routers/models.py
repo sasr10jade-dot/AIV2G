@@ -10,7 +10,7 @@ router = APIRouter(prefix="/models", tags=["models"])
 KNOWN_TARGETS = ["ev_charging_demand_kw", "ev_available_v2g_kwh"]
 
 
-@router.get("/card", summary="AI 기반 최적 V2G 예측모델 모델 카드 (공식 산출물)")
+@router.get("/card", summary="AI 기반 최적 V2G 예측모델 모델 카드 (공식 산출물)", dependencies=[Depends(require_admin)])
 def get_model_card() -> dict:
     """사업수행계획서 1차년도 성과지표 산출물인 AI 모델 설명 자료(Model Card)를 반환합니다."""
     return build_model_card()

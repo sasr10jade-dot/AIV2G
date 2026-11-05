@@ -12,10 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from src.paths import PROJECT_ROOT
+
+from src.auth.deps import require_admin
 
 router = APIRouter()
 CPO_CONFIG_PATH = PROJECT_ROOT / "config" / "cpo_sources.json"
@@ -46,7 +48,7 @@ def load_cpo_config() -> dict:
     return json.loads(CPO_CONFIG_PATH.read_text(encoding="utf-8"))
 
 
-@router.get("/specs", summary="CPO 데이터 및 API 명세서 (계획서 13장 산출물)")
+@router.get("/specs", summary="CPO 데이터 및 API 명세서 (계획서 13장 산출물)", dependencies=[Depends(require_admin)])
 def get_cpo_specifications():
     """사업수행계획서 13장 용역 산출물에 해당하는 CPO 연계 데이터 명세서 및 API 명세서를 반환합니다."""
     cfg = load_cpo_config()
@@ -101,7 +103,7 @@ def get_cpo_specifications():
     }
 
 
-@router.get("/status", summary="CPO 3사 연계 및 수집 현황")
+@router.get("/status", summary="CPO 3사 연계 및 수집 현황", dependencies=[Depends(require_admin)])
 def get_cpo_status():
     """CPO 3사(나이스인프라·플러그링크·이브이시스)의 데이터 연계 상태 및 일별 수집 통계를 반환합니다."""
     cfg = load_cpo_config()

@@ -98,5 +98,5 @@ def test_shipped_config_lists_three_operators_all_disabled():
     import src.cpo.adapters as ad
     data = json.loads(ad.CPO_CONFIG.read_text(encoding="utf-8"))
     real = [s for s in data["sources"] if s["type"] != "mock"]
-    assert [s["operator_id"] for s in real] == ["CPO-A", "CPO-B", "CPO-C"]
+    assert [s["operator_id"] for s in real] == ["niceinfra", "pluglink", "evsis"]
     assert load_adapters() == []                                   # 용역 체결 전에는 모두 꺼져 있다

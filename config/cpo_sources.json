@@ -7,7 +7,7 @@
       "agreement_status": "참여의향서 확보(9.22.) / 용역 협약 체결 예정",
       "contract_amount_krw": 20000000,
       "type": "rest",
-      "enabled": true,
+      "enabled": false,
       "endpoint": "/cpo/ingest/niceinfra",
       "auth_header": "Authorization",
       "token_env": "CPO_NICEINFRA_TOKEN",
@@ -26,9 +26,9 @@
       },
       "status": {
         "connected": true,
-        "last_sync": "2026-11-05 14:24:16",
+        "last_sync": "2026-11-05 15:48:34",
         "received_today": 1,
-        "cumulative_sessions": 1422,
+        "cumulative_sessions": 1425,
         "error_count": 0
       }
     },
@@ -38,7 +38,7 @@
       "agreement_status": "참여의향서 확보(9.18.) / 용역 협약 체결 예정",
       "contract_amount_krw": 20000000,
       "type": "rest",
-      "enabled": true,
+      "enabled": false,
       "endpoint": "/cpo/ingest/pluglink",
       "auth_header": "Authorization",
       "token_env": "CPO_PLUGLINK_TOKEN",
@@ -69,7 +69,7 @@
       "agreement_status": "참여의향서 확보(9.21.) / 용역 협약 체결 예정",
       "contract_amount_krw": 20000000,
       "type": "rest",
-      "enabled": true,
+      "enabled": false,
       "endpoint": "/cpo/ingest/evsis",
       "auth_header": "Authorization",
       "token_env": "CPO_EVSIS_TOKEN",
