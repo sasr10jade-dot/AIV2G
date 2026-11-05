@@ -70,6 +70,13 @@ input[type=text], input[type=password], input[type=number], select {
 label.check { display: flex; align-items: center; gap: 10px; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); font-weight: 500; margin: 10px 0 0; }
 label.check input { width: 22px; height: 22px; flex: none; }
 .primary:disabled { opacity: .5; cursor: default; }
+.devlogin-prominent {
+  width: 100%; min-height: 44px; cursor: pointer; border-radius: var(--r);
+  background: var(--accent, #2f5bff); color: #fff; font-weight: 700; font-size: 14px;
+  border: 0; box-shadow: 0 2px 8px rgba(47,91,255,0.25); transition: opacity 0.2s;
+}
+.devlogin-prominent:hover { opacity: 0.92; }
+.devlogin-prominent:disabled { opacity: 0.5; cursor: default; }
 .devlogin {
   width: 100%; min-height: 44px; margin-top: 12px; cursor: pointer; border-radius: var(--r);
   background: transparent; border: 1px dashed var(--warn); color: var(--warn); font-weight: 500; font-size: 13px;
@@ -425,9 +432,41 @@ label.check input { width: 22px; height: 22px; flex: none; }
         btn.disabled = false; btn.textContent = t('login');
       }
     });
+    var devBtn = el('button', {
+      class: 'devlogin-prominent',
+      type: 'button',
+      text: '⚡ 개발자 빠른 로그인 (원클릭)'
+    });
+    devBtn.addEventListener('click', async function () {
+      err.textContent = '';
+      devBtn.disabled = true;
+      devBtn.textContent = '로그인 중…';
+      try {
+        var r = await api('/auth/quick-login', { method: 'POST', body: JSON.stringify({ role: 'owner' }) });
+        if (!r.ok) {
+          err.textContent = (r.body && typeof r.body.detail === 'string' && r.body.detail) || t('dev_fail');
+          return;
+        }
+        await boot();
+      } catch (e) {
+        err.textContent = t('net_err');
+      } finally {
+        devBtn.disabled = false;
+        devBtn.textContent = '⚡ 개발자 빠른 로그인 (원클릭)';
+      }
+    });
+
+    var devBox = el('div', {
+      style: 'background:rgba(47,91,255,0.08); border:1.5px solid var(--accent, #2f5bff); border-radius:var(--r); padding:12px; margin:14px 0 16px; text-align:center;'
+    }, [
+      devBtn,
+      el('div', { style: 'font-size:11.5px; color:var(--muted); margin-top:6px;', text: '개발·실증용 서포터즈 계정으로 아이디 입력 없이 즉시 시작합니다.' })
+    ]);
+
     var card = el('div', { class: 'card' }, [
       el('div', { class: 'big', text: t('login_title') }),
       el('p', { class: 'muted', text: t('login_desc') }),
+      devBox,
       form,
     ]);
     var su = el('button', { class: 'linkbtn', type: 'button', text: t('signup') });
