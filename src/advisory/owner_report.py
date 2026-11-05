@@ -17,6 +17,7 @@ from datetime import timedelta
 
 import pandas as pd
 
+from src.automation import issues
 from src.datagen.config import SimConfig
 from src.optimizer.economics import EconomicsParams
 from src.optimizer.effect_metrics import compute_effect_metrics, peak_hours
@@ -107,7 +108,10 @@ def _my_effect(ev_rows: pd.DataFrame, grid_df: pd.DataFrame, target_soc_pct: flo
     target = (target_soc_pct or 90.0) / 100
     try:
         run = run_v2g_optimization(ev_rows, grid_df, SimConfig(), target_soc=target, economics=economics)
-    except Exception:   # noqa: BLE001 — 최적화가 안 풀려도 리포트의 나머지는 보여 준다
+    except Exception as exc:   # noqa: BLE001 — 최적화가 안 풀려도 리포트의 나머지는 보여 준다
+        ev = str(ev_rows["ev_id"].iloc[0]) if "ev_id" in ev_rows else None
+        issues.record("optimize", f"내 충전 리포트 적용 전·후 최적화 실패: {type(exc).__name__}",
+                      detail={"ev_id": ev, "error": str(exc)[:200]})
         return None
     if not run["sessions"]:
         return None

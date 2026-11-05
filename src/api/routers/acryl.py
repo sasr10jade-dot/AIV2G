@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from src.acryl import link
+from src.automation import issues
 from src.auth.deps import client_ip, require_admin
 from src.datagen.config import SimConfig
 from src.pipeline.source import load_scenario
@@ -146,6 +147,8 @@ def partner_receive_forecasts(body: ForecastBatchIn, request: Request, actor: st
     try:
         result = link.receive_forecast_batch(body.model_dump())
     except link.LinkError as exc:
+        issues.record("external_forecast", f"예측 결과 배치 거부: {exc}", kind="data",
+                      detail={"batch_id": body.batch_id, "target": body.target, "model_version": body.model_version})
         _err(exc)
     audit.log(actor, "acryl_forecast_receive", target=body.batch_id,
               detail={"target": body.target, "model_version": body.model_version, "points": result["points"],

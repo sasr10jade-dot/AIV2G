@@ -151,6 +151,22 @@ def build_results_workbook(payload: dict) -> bytes:
         _table(ws, ["주체", "비율(%)", "배분액(원)"],
                [[names.get(k, k), ps["shares_pct"][k], ps["amounts_krw"][k]] for k in ps.get("shares_pct", {})], "배분 시험")
 
+    # 7. 모델링 예외 기록
+    mi = payload.get("modeling_issues")
+    if mi is not None:
+        ws = _sheet(wb, "예외·오류 기록", "모델링 과정의 데이터·오류·예외상황 기록(계획서 4.1 다)", [
+            f"생성 시각: {payload.get('generated_at', '')}",
+            "같은 단계·같은 원인은 한 줄로 묶고 발생 횟수를 센다. 조치 완료 뒤 다시 생기면 새 줄(재발)로 남는다.",
+            "이 표는 대시보드 계산이 아니라 운영 중 실제로 쌓인 기록이다."])
+        sm = mi.get("summary") or {}
+        _table(ws, ["단계", "미조치(건)", "미조치 발생 횟수", "조치 완료(건)"],
+               [[b["label"], b["open"], b["occurrences"], b["resolved"]] for b in (sm.get("by_stage") or {}).values()]
+               + [["합계", sm.get("open", 0), sm.get("occurrences", 0), sm.get("resolved", 0)]], "단계별 현황")
+        _table(ws, ["번호", "단계", "종류", "내용", "횟수", "처음 발생", "마지막 발생", "상태", "개선 조치", "조치자", "조치 시각"],
+               [[x["issue_id"], x["stage_label"], x["kind_label"], x["message"], x["count"], x["first_seen"], x["last_seen"],
+                 "조치 완료" if x["status"] == "resolved" else "미조치", x.get("resolution_note"), x.get("resolved_by"), x.get("resolved_at")]
+                for x in mi.get("items") or []], "기록 목록")
+
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()

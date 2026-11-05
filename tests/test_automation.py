@@ -57,3 +57,8 @@ def test_run_cycle_promotes_or_rejects_when_drift_triggered(tmp_path, medium_cfg
         else:
             assert cycle["action"] == "REJECTED_KEEP_ACTIVE"
             assert registry.active_version() == 1
+        # 계획서 4.1 다 — 드리프트·승격 거부는 모델링 예외 기록에 남는다
+        from src.automation import issues
+        stages = [(x["stage"], x["kind"]) for x in issues.list_issues()]
+        assert ("retrain", "data") in stages
+        assert (("retrain", "exception") in stages) == (cycle["action"] == "REJECTED_KEEP_ACTIVE")

@@ -7,6 +7,7 @@
   (이후 `write_table`이 새 컬럼을 포함해 만든다).
 
 사업수행계획서 v1.0 기준으로 새로 시작한 저장소라 v1~v4가 기준 스키마다.
+v9  modeling_issues(모델링 예외 기록 — 계획서 4.1 다 "데이터·오류·예외상황을 수집하여 개선에 활용")
 v8  vehicle_registrations 예비 참여자(reserve·reserved_at·reserve_note) — 계획서 "이탈 시 예비 참여자 대체"
 v7  dataset_exports 파기 확인(destroyed_at·destroyed_by·destruction_note) — 계획서 6장 "참여기관은 사업 종료 시 파기"
 v6  odometer_logs(서포터즈 누적 주행거리 입력 이력 — 주간 주행·전비·1km당 요금 계산)
@@ -192,10 +193,32 @@ def _v8(con: sqlite3.Connection) -> None:
             con.execute(f"ALTER TABLE vehicle_registrations ADD COLUMN {name} {typ}")
 
 
+def _v9(con: sqlite3.Connection) -> None:
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS modeling_issues (
+            issue_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            fingerprint     TEXT NOT NULL,
+            stage           TEXT NOT NULL,
+            kind            TEXT NOT NULL CHECK (kind IN ('error', 'exception', 'data')),
+            message         TEXT NOT NULL,
+            detail          TEXT,
+            count           INTEGER NOT NULL DEFAULT 1,
+            first_seen      TEXT NOT NULL,
+            last_seen       TEXT NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+            resolved_at     TEXT,
+            resolved_by     TEXT,
+            resolution_note TEXT
+        )"""
+    )
+    con.execute("CREATE INDEX IF NOT EXISTS ix_issues_open ON modeling_issues (fingerprint, status)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_issues_seen ON modeling_issues (status, last_seen)")
+
+
 MIGRATIONS = [
     (1, "ops_structure", _v1), (2, "advisories", _v2), (3, "vehicle_registrations", _v3),
     (4, "acryl_forecast_link", _v4), (5, "charger_site", _v5), (6, "odometer_logs", _v6),
-    (7, "export_destruction", _v7), (8, "registration_reserve", _v8),
+    (7, "export_destruction", _v7), (8, "registration_reserve", _v8), (9, "modeling_issues", _v9),
 ]
 LATEST_VERSION = MIGRATIONS[-1][0]
 

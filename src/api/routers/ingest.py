@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from src.automation import issues
 from src.timeutil import kst_now
 from src.auth.deps import require_admin
 from src.datagen import generate
@@ -205,6 +206,7 @@ def sync_kpx_smp(area: str = "mainland") -> dict:
     except KpxNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except KpxApiError as exc:
+        issues.record("public_data", f"전력거래소 SMP 호출 실패: {exc}")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     if source.GRID_CSV.exists():
@@ -255,6 +257,7 @@ def sync_weather_holiday(start: str, end: str, station: str = weather_holiday.DE
     except ApiNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (ApiResponseError, OSError) as exc:
+        issues.record("public_data", f"기상·공휴일 공개 데이터 호출 실패: {type(exc).__name__}", detail={"error": str(exc)[:200]})
         raise HTTPException(status_code=502, detail=f"공개 데이터 호출 실패: {exc}") from exc
 
     if source.GRID_CSV.exists():
@@ -286,6 +289,7 @@ async def upload_public_csv(kind: str, file: UploadFile = File(..., description=
     try:
         series = public_csv.parse_hourly(content, region=(region or "").strip() or None)
     except public_csv.CsvFormatError as exc:
+        issues.record("public_data", f"공개 데이터 CSV 형식 오류: {exc}", kind="data", detail={"kind": kind})
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if source.GRID_CSV.exists():
         grid_df = pd.read_csv(source.GRID_CSV, parse_dates=["timestamp"])

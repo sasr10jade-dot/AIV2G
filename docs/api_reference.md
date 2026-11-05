@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 0.4.0 · 엔드포인트 85개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 0.4.0 · 엔드포인트 87개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -64,6 +64,8 @@
 | GET | `/admin/app-content` | 관리자 이상(관리자·최고관리자) | 수정할 수 있는 앱 문구와 현재 적용값 |
 | DELETE | `/admin/app-content/{key}` | 관리자 이상(관리자·최고관리자) | 앱 문구를 기본값으로 되돌리기 |
 | PUT | `/admin/app-content/{key}` | 관리자 이상(관리자·최고관리자) | 앱 문구 수정(한국어·영어) |
+| GET | `/admin/modeling-issues` | 관리자 이상(관리자·최고관리자) | 모델링 예외 기록 — 예측·최적화·수집 단계의 오류·예외상황(계획서 4.1 다) |
+| POST | `/admin/modeling-issues/{issue_id}/resolve` | 관리자 이상(관리자·최고관리자) | 모델링 예외 조치 완료 — 원인·개선 조치를 적어 닫는다 |
 | GET | `/admin/notices` | 관리자 이상(관리자·최고관리자) | 공지사항 목록(비공개 포함) |
 | POST | `/admin/notices` | 관리자 이상(관리자·최고관리자) | 공지사항 등록 |
 | DELETE | `/admin/notices/{notice_id}` | 관리자 이상(관리자·최고관리자) | 공지사항 삭제 |
@@ -180,7 +182,7 @@ AI 최적 V2G 의사결정 (WS3/WS4) — 일반충전 vs 최적화 PoC 비교.
 |---|---|---|---|
 | GET | `/dashboard/charging-efficiency` | 관리자 이상(관리자·최고관리자) | 차량(OBD) 충전량 vs 충전기 계측 충전량 비교 — 충전 효율(손실률) 추정 |
 | GET | `/dashboard/data` | 관리자 이상(관리자·최고관리자) | 대시보드 전체 데이터 — KPI/PoC비교/예측적합도/Closed-loop |
-| GET | `/dashboard/report.xlsx` | 관리자 이상(관리자·최고관리자) | 결과 자료 엑셀 — 데이터 확보 현황·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료 |
+| GET | `/dashboard/report.xlsx` | 관리자 이상(관리자·최고관리자) | 결과 자료 엑셀 — 데이터 확보 현황·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료·모델링 예외 기록 |
 
 ## acryl
 

@@ -41,6 +41,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.paths import DATA_DIR, PROJECT_ROOT
+from src.automation import issues
 from src.pipeline import schema as schema_module
 from src.pipeline import source
 from src.pipeline.obd_ingest import (
@@ -344,6 +345,8 @@ def process_file(
                            processed_ts=_now_iso(), detail=str(exc)[:300])
             _quarantine(paths, archived, "unparsable", {"file": path.name, "detail": str(exc)}, move=False)
             result.update(status="quarantined", reason="unparsable", detail=str(exc)[:200])
+            issues.record("ingest", f"원천 파일을 해석할 수 없음: {type(exc).__name__}", kind="data",
+                          detail={"ev_id": ev_id, "date": result["date"], "error": str(exc)[:200]})
             return result
 
         # 3) 품질 게이트(결측 1% 미만·중복 0·범위위반 0)
@@ -361,6 +364,8 @@ def process_file(
                            processed_ts=_now_iso(), rows=0, detail="유효한 SOC 시간 행 없음")
             _quarantine(paths, archived, "no_valid_hours", {"file": path.name, "hours_total": hours_total}, move=False)
             result.update(status="quarantined", reason="no_valid_hours", rows=0)
+            issues.record("ingest", "원천 파일에 유효한 배터리(SOC) 시간 행이 없음", kind="data",
+                          detail={"ev_id": ev_id, "date": result["date"], "hours_total": hours_total})
             return result
         hourly = valid
         quality = validate(hourly, "ev_telemetry", schema_module.EV_TELEMETRY_SCHEMA, dedup_keys=["ev_id", "timestamp"])
@@ -373,6 +378,8 @@ def process_file(
                            processed_ts=_now_iso(), rows=len(hourly), detail="품질 게이트 실패")
             _quarantine(paths, archived, "quality_gate", {"file": path.name, "quality": result["quality"]}, move=False)
             result.update(status="quarantined", reason="quality_gate")
+            issues.record("ingest", "품질 기준 미달(결측·범위 위반·중복)", kind="data",
+                          detail={"ev_id": ev_id, "date": result["date"], "quality": result["quality"]})
             return result
 
         # 4) staging 저장 (shadow든 live든 항상 남긴다)
@@ -396,6 +403,8 @@ def process_file(
         return result
     except Exception as exc:  # 예기치 못한 오류도 배치를 멈추지 않는다 — 원인은 리포트에 남긴다
         result.update(status="error", detail=f"{type(exc).__name__}: {exc}"[:300])
+        issues.record("ingest", f"원천 파일 처리 중 예기치 못한 오류: {type(exc).__name__}",
+                      detail={"date": result.get("date"), "error": str(exc)[:200]})
         return result
 
 

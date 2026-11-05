@@ -15,6 +15,7 @@ from src.api.routers.auth import validate_password_strength
 from src.auth import store as auth_store
 from src.auth.deps import client_ip, require_owner, require_owner_account
 from src.advisory import owner_guide, service as advisory
+from src.automation import issues
 from src.privacy import audit, consent, member_history
 from src.appadmin import service as appadmin
 from src.auth import throttle
@@ -233,8 +234,12 @@ def _audit_guide(user: dict, guide: dict) -> None:   # 추천 기록 번호는 g
     입력 조건과 검증 통과 여부·실패 항목만 담고, 번호판 등 식별정보는 넣지 않는다. 기록 실패가 이용자 응답을
     막지 않도록 예외는 삼키고 로그로만 남긴다.
     """
+    safety = guide.get("safety") or {}
+    if safety.get("fallback") or safety.get("passed") is False:
+        failed = sorted(c["id"] for c in safety.get("checks", []) if not c.get("ok"))
+        issues.record("safety", f"안전 검증 실패({', '.join(failed) or '항목 없음'}) — 방전 없는 계획으로 복귀", kind="exception",
+                      detail={"ev_id": user["owned_ev_id"], "inputs": guide.get("inputs")})
     try:
-        safety = guide.get("safety") or {}
         plan = guide.get("plan") or {}
         guide["guide_id"] = advisory.issue(user["owned_ev_id"], {
             "charge": plan.get("charge", []), "discharge": plan.get("discharge", []), "period": guide.get("period"),
@@ -298,6 +303,7 @@ def demand_forecast(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = D
         return owner_guide.localize(owner_guide.demand_forecast(), lang)
     except Exception as exc:   # noqa: BLE001 — 예측 모델이 아직 학습되지 않았을 수 있다
         logger.exception("수요 예측을 불러오지 못했습니다")
+        issues.record("forecast", f"수요 예측을 불러오지 못함: {type(exc).__name__}", detail={"error": str(exc)[:200]})
         raise HTTPException(status_code=503, detail="수요 예측을 아직 불러올 수 없어요.") from exc
 
 

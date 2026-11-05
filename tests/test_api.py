@@ -330,7 +330,7 @@ def test_results_workbook_download_has_plan_deliverable_sheets():
     r = client.get("/dashboard/report.xlsx")
     assert r.status_code == 200 and "spreadsheetml" in r.headers["content-type"]
     wb = load_workbook(io.BytesIO(r.content))
-    assert wb.sheetnames == ["성과지표", "일자별 수집", "실증 인프라", "데이터 품질", "효용성 검증", "이익공유 기초자료"]
+    assert wb.sheetnames == ["성과지표", "일자별 수집", "실증 인프라", "데이터 품질", "효용성 검증", "이익공유 기초자료", "예외·오류 기록"]
     ws = wb["성과지표"]
     assert "모의(합성)" in str(ws["A3"].value)                  # 합성 데이터는 실적이 아님을 표기
     values = [c.value for row in wb["효용성 검증"].iter_rows() for c in row if c.value is not None]

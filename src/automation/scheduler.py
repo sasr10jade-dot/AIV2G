@@ -20,6 +20,7 @@ from src.datagen.grid import generate_grid_signal
 from src.pipeline.store import build_city_hourly
 from src.model.demand_forecast import train_forecast_model, TEST_HOURS
 from src.model.features import build_features
+from . import issues
 from .model_registry import ModelRegistry
 
 DRIFT_TRIGGER_PCT = 20.0
@@ -68,6 +69,8 @@ def run_cycle(
     }
     if not cycle["retrain_triggered"]:
         return cycle
+    issues.record("retrain", f"예측 오차 증가(드리프트 {DRIFT_TRIGGER_PCT:.0f}% 초과)로 재학습 실행", kind="data",
+                  detail={"target": target_col, "week": cfg_new.weeks, "drift_pct": cycle["drift_pct"]})
 
     candidate = train_forecast_model(city_hourly, target_col)
     cycle["candidate_mae"] = candidate.mae
@@ -82,5 +85,8 @@ def run_cycle(
         cycle["active_version_after"] = version
     else:
         cycle["action"] = "REJECTED_KEEP_ACTIVE"
+        issues.record("retrain", "재학습 후보가 기존 모델보다 충분히 낫지 않아 승격 거부(기존 모델 유지)", kind="exception",
+                      detail={"target": target_col, "week": cfg_new.weeks, "stale_mae": cycle["stale_mae"],
+                              "candidate_mae": candidate.mae, "improvement_pct": round(improvement_pct, 1)})
 
     return cycle

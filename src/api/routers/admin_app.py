@@ -1,11 +1,12 @@
-"""웹앱 관리 API(관리자) — 서포터즈 공지사항, 앱 안내 문구.
+"""웹앱 관리 API(관리자) — 서포터즈 공지사항, 앱 안내 문구, 모델링 예외 기록.
 
 이용자 모바일 앱은 `/owner/notices`·`/owner/app-content`로 읽는다.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.appadmin import service
+from src.automation import issues
 from src.auth.deps import require_admin
 from src.privacy import audit
 
@@ -19,6 +20,10 @@ class NoticeIn(BaseModel):
     published: bool = True
     title_en: str | None = Field(None, max_length=service.MAX_TITLE)
     body_en: str | None = Field(None, max_length=service.MAX_BODY)
+
+
+class ResolveIn(BaseModel):
+    note: str = Field(..., min_length=2, max_length=300, description="원인과 개선 조치(예: 입력 범위 검사 추가, v3 재학습)")
 
 
 class ContentIn(BaseModel):
@@ -76,3 +81,23 @@ def reset_content(key: str, user: dict = Depends(require_admin)) -> dict:
     _run(service.content_reset, key)
     audit.log(user["username"], "admin_content_reset", target=key)
     return {"status": "ok"}
+
+
+@router.get("/modeling-issues", summary="모델링 예외 기록 — 예측·최적화·수집 단계의 오류·예외상황(계획서 4.1 다)")
+def list_modeling_issues(status: str = Query("open", pattern="^(open|resolved|all)$"),
+                         stage: str | None = Query(None, max_length=40)) -> dict:
+    try:
+        items = issues.list_issues(status, stage)
+    except issues.IssueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"summary": issues.summary(), "stages": issues.STAGES, "kinds": issues.KINDS, "items": items}
+
+
+@router.post("/modeling-issues/{issue_id}/resolve", summary="모델링 예외 조치 완료 — 원인·개선 조치를 적어 닫는다")
+def resolve_modeling_issue(issue_id: int, body: ResolveIn, user: dict = Depends(require_admin)) -> dict:
+    try:
+        item = issues.resolve(issue_id, user["username"], body.note)
+    except issues.IssueError as exc:
+        raise HTTPException(status_code=409 if "이미" in str(exc) else 422, detail=str(exc)) from exc
+    audit.log(user["username"], "modeling_issue_resolve", target=str(issue_id), detail={"note": item["resolution_note"]})
+    return item

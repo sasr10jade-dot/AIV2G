@@ -393,7 +393,7 @@ def dashboard_data(
 
 @router.get(
     "/dashboard/report.xlsx",
-    summary="결과 자료 엑셀 — 데이터 확보 현황·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료",
+    summary="결과 자료 엑셀 — 데이터 확보 현황·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료·모델링 예외 기록",
     dependencies=[Depends(require_admin)],
 )
 def dashboard_report() -> Response:
@@ -402,6 +402,8 @@ def dashboard_report() -> Response:
     from src.reporting import build_results_workbook
     payload = build_dashboard_payload(SimConfig(n_ev=30, n_chargers=150, weeks=21, charger_days=21 * 7, n_zones=4))
     payload["profit_sharing"] = compute_profit_sharing(payload["revenue_comparison"]["savings_krw"], 50.0, 30.0, 20.0)
+    from src.automation import issues
+    payload["modeling_issues"] = {"summary": issues.summary(), "items": issues.list_issues("all", limit=1000)}
     name = f"AIV2G_results_{kst_now():%Y%m%d}.xlsx"
     return Response(build_results_workbook(payload),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
