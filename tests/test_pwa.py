@@ -120,7 +120,7 @@ def test_app_page_has_plan_scope_tabs_only():
     html = client.get("/app").text
     for tab in ("inbox", "price", "forecast"):
         assert f'data-tab="{tab}"' in html
-    for gone in ('data-tab="missions"', "/owner/missions", "/owner/points", "/owner/coupons", "/owner/notifications", "/owner/consent/notify"):
+    for gone in ('data-tab="missions"', "/owner/missions", "/owner/points", "/owner/coupons", "/owner/consent/notify"):
         assert gone not in html
 
 

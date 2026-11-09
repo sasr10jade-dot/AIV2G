@@ -43,7 +43,9 @@
       "confirmed": false,
       "name_en": "Public Agency Complex Station",
       "address_en": "Naebang-ro, Seo-gu, Gwangju",
-      "note": "주간 업무시간 행정 부하 집중, 심야 경부하 충전 유도 최적"
+      "note": "주간 업무시간 행정 부하 집중, 심야 경부하 충전 유도 최적",
+      "lat": 35.1595,
+      "lng": 126.8526
     },
     {
       "site_id": "SITE-02",
@@ -87,7 +89,9 @@
       "confirmed": false,
       "name_en": "Enterprise Office Building Station",
       "address_en": "Bitgaram-dong, Naju-si, Jeollanam-do",
-      "note": "출퇴근형 및 업무용 차량 비중 높음, 오후 피크 분산형 V2G 효과 탁월"
+      "note": "출퇴근형 및 업무용 차량 비중 높음, 오후 피크 분산형 V2G 효과 탁월",
+      "lat": 35.0258,
+      "lng": 126.7832
     },
     {
       "site_id": "SITE-03",
@@ -131,7 +135,9 @@
       "confirmed": false,
       "name_en": "Urban Public Hub Charging Station",
       "address_en": "Cheomdan-gwagi-ro, Buk-gu, Gwangju",
-      "note": "도심 공용 급속 회전율 중심, 야간 택시/배달 플릿 충전 대기 수요 연계"
+      "note": "도심 공용 급속 회전율 중심, 야간 택시/배달 플릿 충전 대기 수요 연계",
+      "lat": 35.2173,
+      "lng": 126.8514
     }
   ]
 }

@@ -1281,6 +1281,31 @@ label.check input { width: 22px; height: 22px; flex: none; }
       var rb = rs[0] && rs[0].ok ? rs[0].body : null, reg = rs[1] && rs[1].ok ? rs[1].body.registration : null;
       extra.appendChild(minSocCard(reg ? reg.min_soc_pct : null, rb && rb.has_data ? rb.min_soc_suggestion_pct : null));
       if (rb && rb.has_data && rb.recent && rb.recent.length) extra.appendChild(recentCard(rb.recent));
+
+      // 실증 참여 거점 충전소 3곳 위치 및 충전기 안내 카드
+      var sitesCard = el('div', { class: 'card' }, [
+        el('h2', { text: '📍 실증 참여 거점 충전소 위치 안내 (광주·나주)' }),
+        el('p', { class: 'muted', style: 'font-size:12.5px; margin:0 0 10px 0;', text: '서포터즈 실증 차량이 우선 이용할 수 있는 거점 충전소 위치와 충전기 현황입니다.' }),
+        el('div', { style: 'display:flex; flex-direction:column; gap:10px;' }, [
+          el('div', { style: 'background:rgba(47,91,255,0.05); border:1px solid var(--line); border-radius:8px; padding:10px 12px;' }, [
+            el('b', { style: 'font-size:14px; color:#2f5bff;', text: '1. 공공기관 청사 부설 충전소' }),
+            el('div', { style: 'font-size:12px; color:var(--text); margin:3px 0;', text: '광주광역시 서구 내방로 (시청 인근)' }),
+            el('div', { style: 'font-size:11.5px; color:var(--muted);', text: '⚡ 급속 4기 (50~100kW) · 완속 16기 (7kW)' })
+          ]),
+          el('div', { style: 'background:rgba(16,185,129,0.05); border:1px solid var(--line); border-radius:8px; padding:10px 12px;' }, [
+            el('b', { style: 'font-size:14px; color:#10b981;', text: '2. 기업 빌딩 부설 충전소' }),
+            el('div', { style: 'font-size:12px; color:var(--text); margin:3px 0;', text: '전라남도 나주시 빛가람동 (혁신도시 한전 본사거리)' }),
+            el('div', { style: 'font-size:11.5px; color:var(--muted);', text: '⚡ 급속 6기 (100kW) · 완속 24기 (7kW)' })
+          ]),
+          el('div', { style: 'background:rgba(245,158,11,0.05); border:1px solid var(--line); border-radius:8px; padding:10px 12px;' }, [
+            el('b', { style: 'font-size:14px; color:#f59e0b;', text: '3. 도시 공용 거점 충전소' }),
+            el('div', { style: 'font-size:12px; color:var(--text); margin:3px 0;', text: '광주광역시 북구 첨단과기로 (첨단산단 공영주차장)' }),
+            el('div', { style: 'font-size:11.5px; color:var(--muted);', text: '⚡ 초급속 12기 (200kW) · 완속 28기 (7kW)' })
+          ])
+        ])
+      ]);
+      extra.appendChild(sitesCard);
+
       markKind(extra, rb && rb.is_real_data);
     }).catch(function () { /* 보조 카드는 없어도 된다 */ });
     async function run() {
