@@ -338,3 +338,81 @@ def my_report(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = Depends
     report["odometer"] = registry.odometer_history(user["username"])[-5:]
     report["is_real_data"] = bool(_real)
     return report
+
+
+# ------------------------------------------------------------- 알림함 (충전시간 안내 & 혼잡회피) --
+
+_READ_NOTIFS: set[str] = set()
+
+
+def _get_user_notifications(username: str, ev_id: str, lang: str = "ko") -> list[dict]:
+    """사업수행계획서(B2C 서비스 목업: 충전시간 안내 및 혼잡 회피 알림)에 따른 알림 목록 생성."""
+    from datetime import datetime
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    is_ko = lang == "ko"
+
+    items = [
+        {
+            "id": f"notif-charge-{ev_id}",
+            "type": "charge_window",
+            "title": "오늘의 최적 충전 시간 안내" if is_ko else "Optimal Charging Window",
+            "body": "오늘 23:00~05:00 심야 경부하 시간대에 충전하시면 요금을 최대 30% 이상 절감할 수 있어요." if is_ko
+                    else "Charging between 23:00 and 05:00 saves over 30% during off-peak hours.",
+            "time_range": "23:00 ~ 05:00",
+            "created_at": now_str,
+            "read": f"notif-charge-{ev_id}" in _READ_NOTIFS,
+            "action_tab": "price",
+            "tag": "추천" if is_ko else "Recommended"
+        },
+        {
+            "id": f"notif-peak-{ev_id}",
+            "type": "peak_avoid",
+            "title": "전력 피크 시간대 충전 회피 안내" if is_ko else "Peak Hour Avoidance Alert",
+            "body": "오후 14:00~17:00는 전력수요 피크 시간대입니다. 충전을 피하시면 도시 계통 안정화에 기여합니다." if is_ko
+                    else "14:00~17:00 is peak power demand. Avoiding charging helps grid stability.",
+            "time_range": "14:00 ~ 17:00",
+            "created_at": now_str,
+            "read": f"notif-peak-{ev_id}" in _READ_NOTIFS,
+            "action_tab": "forecast",
+            "tag": "주의" if is_ko else "Notice"
+        },
+        {
+            "id": f"notif-welcome-{ev_id}",
+            "type": "welcome",
+            "title": "AI-V2G 서포터즈 차량 연결 완료" if is_ko else "Vehicle Connected",
+            "body": f"서포터즈 실증 차량({ev_id}) 연동이 정상 완료되었습니다. 매일 맞춤형 충전 분석을 제공합니다." if is_ko
+                    else f"Vehicle ({ev_id}) is connected. Daily optimized insights are active.",
+            "time_range": None,
+            "created_at": now_str,
+            "read": f"notif-welcome-{ev_id}" in _READ_NOTIFS,
+            "action_tab": "inbox",
+            "tag": "안내" if is_ko else "Info"
+        }
+    ]
+    return items
+
+
+@router.get("/notifications", summary="내 알림함 — 충전시간 안내 및 혼잡 회피 알림 목록")
+def list_notifications(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = Depends(require_owner)) -> dict:
+    ev_id = user["owned_ev_id"]
+    notifs = _get_user_notifications(user["username"], ev_id, lang)
+    unread = sum(1 for n in notifs if not n["read"])
+    return {
+        "notifications": notifs,
+        "total_count": len(notifs),
+        "unread_count": unread
+    }
+
+
+@router.post("/notifications/{notif_id}/read", summary="알림 개별 읽음 처리")
+def mark_notification_read(notif_id: str, user: dict = Depends(require_owner)) -> dict:
+    _READ_NOTIFS.add(notif_id)
+    return {"status": "ok", "read_id": notif_id}
+
+
+@router.post("/notifications/read-all", summary="알림 전체 읽음 처리")
+def mark_all_notifications_read(user: dict = Depends(require_owner)) -> dict:
+    notifs = _get_user_notifications(user["username"], user["owned_ev_id"])
+    for n in notifs:
+        _READ_NOTIFS.add(n["id"])
+    return {"status": "ok", "read_count": len(notifs)}

@@ -19,6 +19,81 @@
   try { t = localStorage.getItem('ai-v2g-theme'); l = localStorage.getItem('ai-v2g-lang'); } catch (e) { t = null; l = null; }
   document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
   document.documentElement.setAttribute('lang', l === 'en' ? 'en' : 'ko');   // 기본 한국어
+
+  // 알림함 모달 제어 및 뱃지 업데이트
+  async function updateNotifBadge() {
+    try {
+      var r = await api('/owner/notifications?lang=' + lang);
+      if (r.ok && r.body) {
+        var badge = document.getElementById('notifBadge');
+        if (badge) {
+          if (r.body.unread_count > 0) {
+            badge.textContent = r.body.unread_count;
+            badge.style.display = 'block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function openNotifModal() {
+    var modal = document.getElementById('notifModal');
+    var list = document.getElementById('notifList');
+    modal.hidden = false;
+    clear(list);
+    list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:16px;', text: t('loading') }));
+    try {
+      var r = await api('/owner/notifications?lang=' + lang);
+      clear(list);
+      if (!r.ok || !r.body || !r.body.notifications || !r.body.notifications.length) {
+        list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:20px;', text: '도착한 알림이 없습니다.' }));
+        return;
+      }
+      r.body.notifications.forEach(function (n) {
+        var item = el('div', {
+          class: 'card',
+          style: 'padding:12px; margin-bottom:10px; cursor:pointer; background:' + (n.read ? 'var(--card)' : 'rgba(47,91,255,0.05)') + '; border-left:4px solid ' + (n.type === 'peak_avoid' ? '#f77f00' : 'var(--accent)') + ';'
+        }, [
+          el('div', { style: 'display:flex; justify-content:space-between; margin-bottom:4px;' }, [
+            el('b', { style: 'font-size:14px;', text: n.title }),
+            el('span', { class: 'tag ' + (n.read ? 'gray' : 'navy'), text: n.tag })
+          ]),
+          el('p', { style: 'font-size:12.5px; margin:0 0 6px 0; color:var(--text);', text: n.body }),
+          el('div', { style: 'font-size:11px; color:var(--muted); display:flex; justify-content:space-between;' }, [
+            el('span', { text: n.time_range ? '시간대: ' + n.time_range : '' }),
+            el('span', { text: n.created_at })
+          ])
+        ]);
+        item.addEventListener('click', async function () {
+          await api('/owner/notifications/' + n.id + '/read', { method: 'POST' });
+          item.style.background = 'var(--card)';
+          updateNotifBadge();
+          if (n.action_tab && n.action_tab !== state.tab) {
+            modal.hidden = true;
+            state.tab = n.action_tab;
+            renderHome();
+          }
+        });
+        list.appendChild(item);
+      });
+    } catch (e) {
+      clear(list);
+      list.appendChild(el('div', { class: 'error', text: '알림을 불러오지 못했습니다.' }));
+    }
+  }
+
+  document.getElementById('notifBtn').addEventListener('click', openNotifModal);
+  document.getElementById('notifCloseBtn').addEventListener('click', function () {
+    document.getElementById('notifModal').hidden = true;
+  });
+  document.getElementById('notifReadAllBtn').addEventListener('click', async function () {
+    await api('/owner/notifications/read-all', { method: 'POST' });
+    openNotifModal();
+    updateNotifBadge();
+  });
+
 })();
 </script>
 <style>
@@ -161,6 +236,10 @@ label.check input { width: 22px; height: 22px; flex: none; }
         <button type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
       <button class="ax-switch" id="themeBtn" type="button" role="switch" aria-checked="false" data-i18n-aria="theme" aria-label="다크 모드"><span class="ax-switch-track" aria-hidden="true"><span class="ax-switch-knob"></span></span><span class="ax-switch-label"></span></button>
+      <button class="iconbtn" id="notifBtn" type="button" aria-label="알림" hidden style="position:relative; padding:6px 10px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span id="notifBadge" style="position:absolute; top:2px; right:4px; background:#e63946; color:#fff; border-radius:10px; font-size:10px; font-weight:700; min-width:16px; height:16px; line-height:16px; text-align:center; display:none;"></span>
+      </button>
       <button class="iconbtn" id="meBtn" type="button" data-i18n="me_btn" hidden>내 정보</button>
       <button class="iconbtn" id="logoutBtn" type="button" data-i18n="logout" hidden>로그아웃</button>
     </div>
@@ -174,6 +253,20 @@ label.check input { width: 22px; height: 22px; flex: none; }
   </div>
 
   <main id="view"></main>
+
+  <!-- 알림함 모달 레이어 -->
+  <div id="notifModal" class="modal-overlay" hidden>
+    <div class="modal-card" style="max-height:85vh; display:flex; flex-direction:column; padding:0;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border);">
+        <h2 style="margin:0; font-size:17px;">🔔 알림함 (충전시간·피크회피)</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="notifReadAllBtn" class="linkbtn" style="font-size:12px;">모두 읽음</button>
+          <button id="notifCloseBtn" class="modal-close" style="font-size:22px; background:none; border:0; cursor:pointer;" aria-label="닫기">×</button>
+        </div>
+      </div>
+      <div id="notifList" class="modal-body" style="overflow-y:auto; padding:12px 16px;"></div>
+    </div>
+  </div>
 
   <nav class="tabs" id="tabs" role="tablist" aria-label="메뉴" data-i18n-aria="menu" hidden>
     <button class="tab" role="tab" data-tab="inbox" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg><span data-i18n="tab_inbox">홈</span></button>
@@ -606,6 +699,11 @@ label.check input { width: 22px; height: 22px; flex: none; }
   function renderPending(reg, stillMsg) {
     state.me = null;
     tabs.hidden = true; logoutBtn.hidden = false; meBtn.hidden = false;
+    var notifBtn = document.getElementById('notifBtn');
+    if (notifBtn) {
+      notifBtn.hidden = false;
+      updateNotifBadge();
+    }
     clear(view);
     var rejected = reg && reg.status === 'rejected';
     var rows = [];
@@ -847,6 +945,28 @@ label.check input { width: 22px; height: 22px; flex: none; }
     try { rs = await Promise.all([api('/owner/registration'), api('/owner/consent/v2g')]); } catch (e) { rs = null; }
     if (state.tab !== 'inbox' || !box.isConnected) return;   // 불러오는 사이 다른 탭으로 이동
     clear(box);
+    // 상단 충전시간 안내 알림 하이라이트 카드 (계획서 B2C 서비스 목업)
+    var notifAlertCard = el('div', {
+      class: 'card',
+      style: 'background:rgba(47,91,255,0.06); border:1.5px solid var(--accent); position:relative; padding:14px; margin-bottom:12px;'
+    }, [
+      el('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;' }, [
+        el('span', { class: 'chip', style: 'background:var(--accent); color:#fff; font-size:11px;', text: '🔔 충전시간 알림' }),
+        el('span', { class: 'muted', style: 'font-size:12px; font-weight:600;', text: '23:00 ~ 05:00 권장' })
+      ]),
+      el('div', { class: 'big', style: 'font-size:16px; margin:4px 0;', text: '오늘 밤 23:00~05:00 충전을 추천해요' }),
+      el('p', { class: 'muted', style: 'font-size:12.5px; margin:0 0 10px 0;', text: '심야 경부하 요금 적용으로 일반 충전 대비 최대 30% 이상 충전 비용을 절감할 수 있습니다.' })
+    ]);
+    var toPriceBtn = el('button', {
+      class: 'primary',
+      type: 'button',
+      style: 'padding:8px 12px; font-size:13px; width:100%;',
+      text: '충전 시간 및 스케줄 확인하기'
+    });
+    toPriceBtn.addEventListener('click', function () { state.tab = 'price'; renderHome(); });
+    notifAlertCard.appendChild(toPriceBtn);
+    box.appendChild(notifAlertCard);
+
     box.appendChild(el('div', { class: 'card' }, [el('p', { text: t('home_intro') }),
       el('div', { class: 'ax-notice' }, [el('b', { text: t('premise') }), el('span', { text: t('data_note') })])]));
     var reg = rs && rs[0].ok ? rs[0].body.registration : null;
@@ -1552,6 +1672,81 @@ label.check input { width: 22px; height: 22px; flex: none; }
 
   applyStatic();
   boot();
+
+  // 알림함 모달 제어 및 뱃지 업데이트
+  async function updateNotifBadge() {
+    try {
+      var r = await api('/owner/notifications?lang=' + lang);
+      if (r.ok && r.body) {
+        var badge = document.getElementById('notifBadge');
+        if (badge) {
+          if (r.body.unread_count > 0) {
+            badge.textContent = r.body.unread_count;
+            badge.style.display = 'block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function openNotifModal() {
+    var modal = document.getElementById('notifModal');
+    var list = document.getElementById('notifList');
+    modal.hidden = false;
+    clear(list);
+    list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:16px;', text: t('loading') }));
+    try {
+      var r = await api('/owner/notifications?lang=' + lang);
+      clear(list);
+      if (!r.ok || !r.body || !r.body.notifications || !r.body.notifications.length) {
+        list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:20px;', text: '도착한 알림이 없습니다.' }));
+        return;
+      }
+      r.body.notifications.forEach(function (n) {
+        var item = el('div', {
+          class: 'card',
+          style: 'padding:12px; margin-bottom:10px; cursor:pointer; background:' + (n.read ? 'var(--card)' : 'rgba(47,91,255,0.05)') + '; border-left:4px solid ' + (n.type === 'peak_avoid' ? '#f77f00' : 'var(--accent)') + ';'
+        }, [
+          el('div', { style: 'display:flex; justify-content:space-between; margin-bottom:4px;' }, [
+            el('b', { style: 'font-size:14px;', text: n.title }),
+            el('span', { class: 'tag ' + (n.read ? 'gray' : 'navy'), text: n.tag })
+          ]),
+          el('p', { style: 'font-size:12.5px; margin:0 0 6px 0; color:var(--text);', text: n.body }),
+          el('div', { style: 'font-size:11px; color:var(--muted); display:flex; justify-content:space-between;' }, [
+            el('span', { text: n.time_range ? '시간대: ' + n.time_range : '' }),
+            el('span', { text: n.created_at })
+          ])
+        ]);
+        item.addEventListener('click', async function () {
+          await api('/owner/notifications/' + n.id + '/read', { method: 'POST' });
+          item.style.background = 'var(--card)';
+          updateNotifBadge();
+          if (n.action_tab && n.action_tab !== state.tab) {
+            modal.hidden = true;
+            state.tab = n.action_tab;
+            renderHome();
+          }
+        });
+        list.appendChild(item);
+      });
+    } catch (e) {
+      clear(list);
+      list.appendChild(el('div', { class: 'error', text: '알림을 불러오지 못했습니다.' }));
+    }
+  }
+
+  document.getElementById('notifBtn').addEventListener('click', openNotifModal);
+  document.getElementById('notifCloseBtn').addEventListener('click', function () {
+    document.getElementById('notifModal').hidden = true;
+  });
+  document.getElementById('notifReadAllBtn').addEventListener('click', async function () {
+    await api('/owner/notifications/read-all', { method: 'POST' });
+    openNotifModal();
+    updateNotifBadge();
+  });
+
 })();
 </script>
 </body>
