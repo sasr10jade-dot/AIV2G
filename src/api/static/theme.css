@@ -418,21 +418,26 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   flex: 1;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .ax-layout { flex-direction: column; }
   .ax-sidebar {
-    position: relative;
+    position: sticky;
+    top: 0;
     width: 100%;
     height: auto;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
+    padding: 10px 14px;
+    gap: 8px;
+    z-index: 60;
   }
-  .ax-sidebar .ax-nav { flex-direction: row; flex-wrap: wrap; }
+  .ax-sidebar .ax-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .ax-sidebar .ax-nav a { padding: 6px 10px; font-size: 12px; }
+  .ax-sidebar-status { display: none !important; }
   .ax-content { margin-left: 0; }
-  .ax-topbar { padding: 10px 16px; }
-  .ax-main-body { padding: 14px 16px 24px; }
+  .ax-topbar { padding: 8px 14px; }
+  .ax-main-body { padding: 12px 14px 24px; }
 }
 
 body.ax-page {

@@ -12,43 +12,33 @@
 })();
 </script>
 <style>
-  :root {
-    --surface-page: #f9f9f7; --surface-card: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
-    --text-muted: #898781; --border: rgba(11, 11, 11, 0.10); --teal: #00897B; --bad: #d03b3b;
-  }
-  :root[data-theme="dark"] {
-    --surface-page: #0d0d0d; --surface-card: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
-    --text-muted: #898781; --border: rgba(255, 255, 255, 0.10);
-  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--surface-page); color: var(--text-primary);
-         font-family: "Noto Sans KR", "Noto Sans", "Malgun Gothic", sans-serif; padding: 0 !important; margin: 0 !important; }
-  .wrap { max-width: 1000px; margin: 0 auto; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  body.ax-page { margin: 0 !important; padding: 0 !important; background: var(--bg); color: var(--text); }
   h1 { font-size: 20px; margin: 0; }
-  .sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-  a.nav, button { border: 1px solid var(--border); background: var(--surface-card); color: var(--text-primary);
-                  border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; text-decoration: none; }
-  button.ok { background: var(--teal); border-color: var(--teal); color: #fff; }
-  button.no { color: var(--bad); }
-  button:disabled { opacity: .5; cursor: default; }
-  .links { display: flex; gap: 8px; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .tabs button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-page); }
-  .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; }
+  .tabs button { border: 1px solid var(--border); background: var(--card); color: var(--text);
+                 border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: var(--navy); color: #fff; font-weight: 700; }
+  #panel button { border: 1px solid var(--border); background: var(--card); color: var(--text);
+                  border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  #panel button.ok { background: #1F5EDB; border-color: #1F5EDB; color: #fff; }
+  #panel button.no { color: #d03b3b; }
+  #panel button:disabled { opacity: .5; cursor: default; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; }
   .row { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
   .grow { flex: 1; min-width: 180px; }
   .name { font-weight: 600; }
-  .muted { font-size: 12.5px; color: var(--text-muted); }
-  label.f { display: block; font-size: 12px; color: var(--text-secondary); margin: 10px 0 4px; }
-  input[type=text], textarea { width: 100%; background: var(--surface-page); border: 1px solid var(--border); border-radius: 6px;
-                               color: var(--text-primary); padding: 8px 10px; font-size: 13px; font-family: inherit; }
+  .muted { font-size: 12.5px; color: var(--muted); }
+  label.f { display: block; font-size: 12px; color: var(--text); margin: 10px 0 4px; }
+  input[type=text], textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+                               color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit; }
   textarea { min-height: 90px; resize: vertical; }
   .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); }
-  .tag.on { color: var(--teal); } .tag.off { color: var(--text-muted); } .tag.bad { color: var(--bad); }
-  .empty { padding: 36px; text-align: center; color: var(--text-muted); }
+  .tag.on { color: #10b981; } .tag.off { color: var(--muted); } .tag.bad { color: #d03b3b; }
+  .empty { padding: 36px; text-align: center; color: var(--muted); }
   .msg { font-size: 13px; min-height: 20px; margin-bottom: 10px; }
-  .msg.err { color: var(--bad); }
+  .msg.err { color: #d03b3b; }
   .body-text { white-space: pre-wrap; font-size: 13.5px; margin: 8px 0 0; }
 </style>
 <link rel="stylesheet" href="/theme.css" />
@@ -81,8 +71,10 @@
     <header class="ax-topbar">
       <div class="ax-header" style="display:none"></div>
       <div class="ax-tools" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-        <a href="/dashboard" style="text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12.5px;">대시보드로 복귀</a>
+        <span id="user-badge" style="font-size:12.5px; font-weight:600; color:var(--text); padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px;"></span>
+        <a href="/dashboard" style="text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12.5px;">운영 대시보드</a>
         <a href="/docs" target="_blank" rel="noopener" style="text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12.5px;">API 문서</a>
+        <button id="logout-btn" type="button" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; cursor:pointer;">로그아웃</button>
       </div>
     </header>
 
@@ -363,6 +355,11 @@
     try { me = await api('/auth/me'); } catch (e) { me = null; }
     if (!me || !me.ok) { location.href = '/login?next=/admin'; return; }
     if (me.body.role === 'owner') { location.href = '/login?next=/admin&reason=owner'; return; }
+    var roleLabel = me.body.role === 'super_admin' ? '최고관리자' : '관리자';
+    var ub = document.getElementById('user-badge');
+    if (ub) ub.textContent = me.body.username + ' (' + roleLabel + ')';
+    var lo = document.getElementById('logout-btn');
+    if (lo) lo.addEventListener('click', async function () { await api('/auth/logout', { method: 'POST' }); location.href = '/login'; });
     render();
   })();
 })();
