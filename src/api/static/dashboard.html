@@ -445,13 +445,12 @@
     <div class="load-progress-track"><div class="load-progress-bar"></div></div>
     <span class="load-progress-label"></span>
   </div>
-  <div id="status-line" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px 10px; margin: -8px 0 16px;">
-    <span id="updated"></span>
-  </div>
-
   <div class="card" id="exec-summary-card">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-      <h2 data-i18n style="margin:0">핵심 요약</h2>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <h2 data-i18n style="margin:0">핵심 요약</h2>
+        <span id="updated" class="tag gray" style="font-size:12px; font-weight:normal; letter-spacing:0; padding:4px 8px; border-radius:4px;"></span>
+      </div>
       <a class="preset-btn" href="/dashboard/report.xlsx" download data-i18n data-i18n-title title="계획서 산출물(데이터 확보 현황·효용성 검증·이익공유 기초자료)의 근거 표를 엑셀로 내려받습니다">⬇ 결과 자료(엑셀)</a>
     </div>
     <p class="card-what" data-i18n>이 화면은 <b>실증 차량 30대·충전기 150기의 데이터를 모아, 꽂자마자 충전하는 일반 충전과 AI가 시간을 골라 충전하는 방식을 비교</b>하는 운영 화면입니다. 아래는 계획서 순서대로 ① 데이터 수집 → ② AI 예측 → ③ 효과 검증 → ④ 이익공유 기초자료로 이어집니다. 이 요약의 숫자는 아래 카드에서 그대로 가져온 값입니다.</p>
