@@ -412,23 +412,33 @@
 <link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
-<div class="wrap">
-  <header class="ax-header">
-    <div class="ax-header-inner">
-      <a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> <span data-i18n>허브 실증</span></span><span class="ax-tag">V1.0</span></a>
-      <nav class="ax-nav" aria-label="화면">
-        <a href="/dashboard" aria-current="page" data-i18n>운영 대시보드</a>
-        <a id="approvals-link" href="/approvals" data-i18n>가입 승인</a>
-        <a id="admin-link" href="/admin" data-i18n>웹앱 관리</a>
-        <a id="api-link" href="/docs" target="_blank" rel="noopener" data-i18n>API 안내</a>
-      </nav>
+<div class="ax-layout">
+  <!-- 좌측 LNB 사이드바 (좌측메뉴 이미지 메뉴 일체) -->
+  <aside class="ax-sidebar">
+    <a class="ax-logo" href="/dashboard">
+      <span class="ax-logo-badge">AX</span>
+      <span><b>AX·V2G</b> <span data-i18n>허브 실증</span></span>
+      <span class="ax-tag">V1.0</span>
+    </a>
+    <nav class="ax-nav" aria-label="화면">
+      <a href="/dashboard" aria-current="page" data-i18n>운영 대시보드</a>
+      <a id="approvals-link" href="/approvals" data-i18n>가입 승인</a>
+      <a id="admin-link" href="/admin" data-i18n>웹앱 관리</a>
+      <a id="api-link" href="/docs" target="_blank" rel="noopener" data-i18n>API 안내</a>
+    </nav>
+  </aside>
+
+  <!-- 우측 본문 및 상단 탑 바 -->
+  <div class="ax-content">
+    <!-- 상단 탑 바 (그 외 모든 상태 뱃지 및 도구/유틸리티 버튼) -->
+    <header class="ax-topbar"><div class="ax-header" style="display:none"></div>
       <div class="ax-status">
         <span class="ax-pill"><span class="ax-dot" id="hdr-ev-dot"></span><b id="hdr-ev">EV -/30</b></span>
         <span class="ax-pill"><span class="ax-dot accent"></span><b id="hdr-chg">충전기 -/150</b></span>
         <span class="ax-pill mono" id="hdr-data">데이터 -</span>
         <span id="source-badge"></span>
       </div>
-      <div class="ax-status ax-tools">
+      <div class="ax-tools">
         <button id="refresh" data-i18n>새로고침</button>
         <button id="live-demo-toggle" data-i18n data-i18n-title title="5초마다 화면을 다시 불러옵니다 — 데이터는 전일 수집분의 익일 배치 기준이며 실시간 수집이 아닙니다">▶ 자동 새로고침</button>
         <button id="guide-btn" data-i18n>이용 가이드</button>
@@ -438,8 +448,9 @@
         <button id="account-mgmt-btn" hidden data-i18n>계정관리</button>
         <button id="logout-btn" hidden data-i18n>로그아웃</button>
       </div>
-    </div>
-  </header>
+    </header>
+
+    <div class="ax-main-body">
   <div class="ax-notice"><b data-i18n>ⓘ 수행전제</b><span data-i18n>실증 차량·충전기에 양방향 방전 설비가 없고 방전 정산 제도가 마련되지 않아, 방전은 실측 충전·운행 데이터를 바탕으로 AI가 추론합니다. 모든 화면에서 실측(실선·검정 배지)과 추론(점선·파란 점선 배지)을 구분하며, 합성(모의) 데이터는 성과 실적에 넣지 않습니다.</span></div>
   <div id="load-progress" class="load-progress" hidden>
     <div class="load-progress-track"><div class="load-progress-bar"></div></div>
@@ -858,6 +869,8 @@
     </div>
   </div>
 
+    </div>
+  </div>
 </div>
 
 <script>

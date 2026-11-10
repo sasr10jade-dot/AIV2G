@@ -254,3 +254,160 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
 .ax-switch[aria-checked="true"] .ax-switch-knob { left: 23px; color: var(--navy); }
 .ax-switch[aria-checked="true"] .ax-switch-knob::before { content: "☾"; }
 .ax-header .ax-switch, .ax-header .ax-switch:hover { border: 0; background: transparent; padding: 4px 6px; color: #fff; }
+
+/* ---- 좌측 LNB 사이드바 + 상단 유틸리티 Topbar 레이아웃 ---- */
+.ax-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.ax-sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--navy, #14213d);
+  color: #fff;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 14px;
+  gap: 22px;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  overflow-y: auto;
+}
+
+.ax-sidebar .ax-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 6px;
+  font-size: 15px;
+}
+
+.ax-sidebar .ax-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ax-sidebar .ax-nav a {
+  display: block;
+  padding: 11px 14px;
+  border-radius: 8px;
+  color: #DCE6FA;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ax-sidebar .ax-nav a:hover {
+  background: #1A3B78;
+  color: #fff;
+}
+
+.ax-sidebar .ax-nav [aria-current="page"],
+.ax-sidebar .ax-nav a.active {
+  background: #1F5EDB !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.ax-content {
+  margin-left: 230px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.ax-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--card, #fff);
+  border-bottom: 1px solid var(--border);
+  padding: 11px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.ax-topbar .ax-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ax-topbar .ax-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.ax-topbar button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ax-topbar button:hover {
+  background: var(--tint);
+  border-color: var(--accent);
+}
+
+.ax-topbar .ax-switch, .ax-topbar .ax-switch:hover {
+  border: 0;
+  background: transparent;
+  padding: 4px 6px;
+}
+
+.ax-topbar .ax-pill {
+  background: var(--tint);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.ax-topbar .ax-pill b {
+  color: var(--text);
+}
+
+.ax-main-body {
+  padding: 18px 24px 40px;
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .ax-layout { flex-direction: column; }
+  .ax-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+  .ax-sidebar .ax-nav { flex-direction: row; flex-wrap: wrap; }
+  .ax-content { margin-left: 0; }
+  .ax-topbar { padding: 10px 16px; }
+  .ax-main-body { padding: 14px 16px 24px; }
+}
