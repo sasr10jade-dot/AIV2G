@@ -407,8 +407,6 @@
     display: block; margin-top: 4px; font-size: 12px; color: var(--text-secondary);
   }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <link rel="stylesheet" href="/theme.css" />
 </head>
 <body>
@@ -449,8 +447,7 @@
       </div>
     </header>
 
-    <div class="ax-main-body">
-  <div class="ax-notice"><b data-i18n>ⓘ 수행전제</b><span data-i18n>실증 차량·충전기에 양방향 방전 설비가 없고 방전 정산 제도가 마련되지 않아, 방전은 실측 충전·운행 데이터를 바탕으로 AI가 추론합니다. 모든 화면에서 실측(실선·검정 배지)과 추론(점선·파란 점선 배지)을 구분하며, 합성(모의) 데이터는 성과 실적에 넣지 않습니다.</span></div>
+    <div class="ax-main-body"><div class="ax-notice" style="display:none"></div>
   <div id="load-progress" class="load-progress" hidden>
     <div class="load-progress-track"><div class="load-progress-bar"></div></div>
     <span class="load-progress-label"></span>
@@ -647,16 +644,38 @@
     </div>
     <p class="card-what" data-i18n>계획서의 실증 자원(참여 장소 3곳 이상, 충전사업자 3사·충전기 150기, 서포터즈 차량 30대)이 지금 얼마나 확보·가동되고 있는지 보여 줍니다. 장소 이름·주소는 관리기관 협의 전 예시입니다.</p>
     <div style="margin:16px 0 20px 0;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <h3 class="sub-h" style="margin:0;" data-i18n>🗺️ 광주·나주 실증 거점 및 충전기 관제 지도 (OpenStreetMap)</h3>
-        <span class="tag navy" data-i18n>실증 참여 장소 3곳 · CPO 150기 연계 관제</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+        <h3 class="sub-h" style="margin:0;" data-i18n>📍 실증 참여 거점 충전소 및 CPO 150기 인프라 목록</h3>
+        <span class="tag navy" data-i18n>실증 참여 장소 3곳 · CPO 150기 연계</span>
       </div>
-      <div id="infra-map" style="width:100%; height:380px; border-radius:8px; border:1px solid var(--line); z-index:1;"></div>
-      <div style="display:flex; gap:16px; font-size:12px; color:var(--muted); margin-top:8px; flex-wrap:wrap;">
-        <span>🔵 <b>거점 1:</b> 공공기관 청사 (광주 서구)</span>
-        <span>🟢 <b>거점 2:</b> 기업 빌딩 (나주 혁신도시)</span>
-        <span>🟠 <b>거점 3:</b> 도시 공용 충전소 (광주 첨단)</span>
-        <span>⚡ <b>CPO 150기:</b> 나이스인프라·플러그링크·이브이시스 권역 분포</span>
+      <div class="tiles" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">
+        <div class="tile" style="border-left:4px solid #2f5bff; background:var(--bg); text-align:left;">
+          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🔵 거점 1: 공공기관 청사 부설 충전소</span>
+          <div style="font-size:12px; color:var(--muted); margin:4px 0;">광주광역시 서구 내방로 (광주광역시청 인근)</div>
+          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
+            <div>• 계약전력: <b>500 kW</b> (수전용량 750 kVA)</div>
+            <div>• 충전기: <b>급속 4기 (50~100kW) · 완속 16기 (7kW)</b></div>
+            <div>• 감축목표: <b>피크 45.0 kW 저감</b></div>
+          </div>
+        </div>
+        <div class="tile" style="border-left:4px solid #10b981; background:var(--bg); text-align:left;">
+          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🟢 거점 2: 기업 빌딩 부설 충전소</span>
+          <div style="font-size:12px; color:var(--muted); margin:4px 0;">전남 나주시 빛가람동 (빛가람혁신도시 기업거리)</div>
+          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
+            <div>• 계약전력: <b>800 kW</b> (수전용량 1,000 kVA)</div>
+            <div>• 충전기: <b>급속 6기 (100kW) · 완속 24기 (7kW)</b></div>
+            <div>• 감축목표: <b>피크 75.0 kW 저감</b></div>
+          </div>
+        </div>
+        <div class="tile" style="border-left:4px solid #f59e0b; background:var(--bg); text-align:left;">
+          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🟠 거점 3: 도시 공용 거점 충전소</span>
+          <div style="font-size:12px; color:var(--muted); margin:4px 0;">광주광역시 북구 첨단과기로 (첨단국가산단 공영)</div>
+          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
+            <div>• 계약전력: <b>1,200 kW</b> (수전용량 1,500 kVA)</div>
+            <div>• 충전기: <b>초급속 12기 (200kW) · 완속 28기 (7kW)</b></div>
+            <div>• 감축목표: <b>피크 110.0 kW 저감</b></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1488,65 +1507,6 @@ function renderInfra(data) {
     : `<tbody><tr><td>${t('충전 데이터에 사업자 정보가 없습니다.')}</td></tr></tbody>`;
   const roster = ((data.kpi || {}).collection || {}).roster || [];
   const v = inf.vehicles || {};
-  // Leaflet OSM 지도 렌더링
-  if (typeof L !== 'undefined' && document.getElementById('infra-map')) {
-    if (!window._infraMapInstance) {
-      const map = L.map('infra-map').setView([35.105, 126.825], 11);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      }).addTo(map);
-      window._infraMapInstance = map;
-
-      // 실증 참여 장소 3곳 마커
-      const sites = inf.sites || [];
-      const colors = ['#2f5bff', '#10b981', '#f59e0b'];
-      sites.forEach((s, idx) => {
-        if (s.lat && s.lng) {
-          const marker = L.circleMarker([s.lat, s.lng], {
-            radius: 9,
-            fillColor: colors[idx % colors.length],
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
-          }).addTo(map);
-          marker.bindPopup(`
-            <div style="font-family:sans-serif; min-width:200px;">
-              <h4 style="margin:0 0 4px; font-size:14px; color:#14213d;"><b>${s.name || s.site_id}</b></h4>
-              <p style="margin:0 0 6px; font-size:11.5px; color:#666;">${s.address || ''}</p>
-              <div style="font-size:12px; line-height:1.5;">
-                <div>• 계약전력: <b>${s.contract_power_kw || '-'} kW</b></div>
-                <div>• 충전기: <b>${s.chargers ? `급속 ${s.chargers.rapid_count}기 / 완속 ${s.chargers.slow_count}기 (총 ${s.chargers.total_count}기)` : '-'}</b></div>
-                <div>• 감축목표: <b>${s.peak_reduction_target_kw || '-'} kW</b></div>
-              </div>
-            </div>
-          `);
-        }
-      });
-
-      // CPO 150기 권역별 충전기 클러스터 표시 (광주 서구·북구, 나주 혁신도시)
-      const cpoClusters = [
-        { name: '광주 도심 권역 (나이스인프라 50기)', lat: 35.155, lng: 126.850, count: 50, color: '#3b82f6' },
-        { name: '광주 첨단·북구 권역 (플러그링크 50기)', lat: 35.215, lng: 126.855, count: 50, color: '#6366f1' },
-        { name: '나주 혁신도시 권역 (이브이시스 50기)', lat: 35.028, lng: 126.785, count: 50, color: '#0ea5e9' }
-      ];
-      cpoClusters.forEach(cl => {
-        L.circle([cl.lat, cl.lng], {
-          radius: 2200,
-          color: cl.color,
-          fillColor: cl.color,
-          fillOpacity: 0.15,
-          weight: 1.5,
-          dashArray: '4, 4'
-        }).addTo(map).bindPopup(`<b>${cl.name}</b><br>운영 충전기: <b>${cl.count}기</b><br>API 자동수집 상태: <b>정상 연계중</b>`);
-      });
-    } else {
-      setTimeout(() => { window._infraMapInstance.invalidateSize(); }, 200);
-    }
-  }
-
   document.getElementById('infra-roster-title').textContent = `${t('서포터즈 차량별 현황 (최근 4주)')} — ${t('활동')} ${v.active || 0}/${v.total || 0}${LANG === 'en' ? '' : '대'}`
     + (v.by_model ? ` · ${Object.entries(v.by_model).map(([m, n]) => `${m} ${n}`).join(', ')}` : '');
   document.getElementById('infra-roster').innerHTML = roster.length

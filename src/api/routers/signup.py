@@ -46,6 +46,7 @@ class SignupIn(BaseModel):
     occupation: str = Field(..., max_length=20)
     sido: str = Field(..., max_length=20)
     sigungu: str = Field(..., max_length=30)
+    dong: str | None = Field("", max_length=30, description="거주지 동·읍·면(선택)")
     consent: bool = Field(..., description="개인정보 수집·이용 동의(필수)")
     # 계획서 4.1 서포터즈 입력(선택) — 최적화가 차량 운행에 지장 없는 범위에서 결과를 내는 기준
     departure_time: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="평소 출발 시각(HH:MM)")
@@ -72,6 +73,7 @@ def signup_options() -> dict:
         "occupations": [{"id": k, "label": v} for k, v in options.OCCUPATIONS.items()],
         "sido": list(options.SIDO),
         "sigungu_by_sido": options.load_regions(),   # 시·도를 고르면 해당 시·군·구만 선택지로 보여 준다
+        "dong_by_sigungu": options.load_dongs(),     # 시·군·구를 고르면 해당 동·읍·면 선택지
         "consent": {"version": options.CONSENT_VERSION, "text": options.CONSENT_TEXT,
                     "policy_url": options.POLICY_URL, "policy_version": options.POLICY_VERSION},
     }
@@ -86,6 +88,8 @@ def signup(body: SignupIn, request: Request) -> dict:
         # 계정을 만들기 전에 입력 검증을 먼저 끝낸다(실패 시 남는 계정이 없게)
         service.validate_profile(body.plate, body.vehicle_model, body.occupation, body.sido, body.sigungu)
         operating = service.operating_inputs(body.departure_time, body.target_soc_pct, body.min_soc_pct, body.odometer_km)
+        if body.dong:
+            operating["dong"] = body.dong.strip()
         auth_store.create_user(body.username, body.password, "owner", created_by="signup", allow_unlinked_owner=True)
     except (service.RegistryError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

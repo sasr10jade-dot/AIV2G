@@ -620,6 +620,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       occ: select('su_o', o.occupations, function (x) { return x.label; }, function (x) { return x.id; }),
       sido: select('su_s', o.sido, function (x) { return x; }, function (x) { return x; }),
       sigungu: el('select', { id: 'su_g', required: '', disabled: '' }, [el('option', { value: '', text: t('su_sigungu_first') })]),
+      dong: el('select', { id: 'su_d', disabled: '' }, [el('option', { value: '', text: '동·읍·면 선택' })]),
       consent: el('input', { type: 'checkbox', id: 'su_c' }),
       dep: el('input', { type: 'time', id: 'su_dep' }),
       target: el('input', { type: 'number', id: 'su_tg', min: '20', max: '100', inputmode: 'numeric' }),
@@ -628,12 +629,24 @@ label.check input { width: 22px; height: 22px; flex: none; }
     };
     // 시·도를 고르면 그 시·도의 시·군·구만 선택지로 채운다(서버 검증과 같은 목록)
     var byProv = o.sigungu_by_sido || {};
+    var byDong = o.dong_by_sigungu || {};
     f.sido.addEventListener('change', function () {
       clear(f.sigungu);
+      clear(f.dong);
+      f.dong.appendChild(el('option', { value: '', text: '동·읍·면 선택' }));
+      f.dong.disabled = true;
       var names = byProv[f.sido.value] || [];
       f.sigungu.appendChild(el('option', { value: '', text: names.length ? t('su_pick') : t('su_sigungu_first') }));
       names.forEach(function (n) { f.sigungu.appendChild(el('option', { value: n, text: n })); });
       f.sigungu.disabled = !names.length;
+    });
+    f.sigungu.addEventListener('change', function () {
+      clear(f.dong);
+      var key = f.sido.value + ':' + f.sigungu.value;
+      var dongs = byDong[key] || [];
+      f.dong.appendChild(el('option', { value: '', text: dongs.length ? '동·읍·면 선택' : '선택 가능한 동 없음' }));
+      dongs.forEach(function (d) { f.dong.appendChild(el('option', { value: d, text: d })); });
+      f.dong.disabled = !dongs.length;
     });
     var err = el('div', { class: 'error', role: 'alert', text: message || '' });
     var btn = el('button', { class: 'primary', type: 'submit', text: t('su_submit') });
@@ -647,6 +660,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       el('label', { for: 'su_o', text: t('su_occ') }), f.occ,
       el('label', { for: 'su_s', text: t('su_sido') }), f.sido,
       el('label', { for: 'su_g', text: t('su_sigungu') }), f.sigungu,
+      el('label', { for: 'su_d', text: '동·읍·면 (시·군·구·동 선택)' }), f.dong,
       el('h2', { class: 'gap', text: t('su_op_title') }), el('p', { class: 'muted hint', text: t('su_op_hint') }),
       el('label', { for: 'su_dep', text: t('su_dep') }), f.dep,
       el('label', { for: 'su_tg', text: t('su_target') }), f.target,
@@ -667,7 +681,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       try {
         var r = await api('/signup', { method: 'POST', body: JSON.stringify(Object.assign({
           username: f.user.value.trim(), password: f.pass.value, vehicle_model: f.model.value, plate: f.plate.value.trim(),
-          occupation: f.occ.value, sido: f.sido.value, sigungu: f.sigungu.value, consent: f.consent.checked },
+          occupation: f.occ.value, sido: f.sido.value, sigungu: f.sigungu.value, dong: f.dong.value.trim(), consent: f.consent.checked },
           operatingBody(f.dep.value, f.target.value, f.minsoc.value, f.odo.value))) });
         if (!r.ok) {
           var d = r.body && r.body.detail;

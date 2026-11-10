@@ -46,6 +46,14 @@ def load_regions() -> dict[str, list[str]]:
     return _regions_cache
 
 
+def load_dongs() -> dict[str, list[str]]:
+    """{시·도:시·군·구: [동·읍·면]} — config/regions.json의 dongs 매핑."""
+    try:
+        return json.loads(REGIONS_CONFIG.read_text(encoding="utf-8")).get("dongs", {})
+    except Exception:
+        return {}
+
+
 def sigungu_allowed(sido: str, sigungu: str) -> bool:
     """선택한 시·도에 있는 시·군·구인가. 시·도가 목록에 없으면(설정 누락) 판단하지 않고 통과시킨다."""
     names = load_regions().get(sido)

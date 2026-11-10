@@ -346,12 +346,55 @@ _READ_NOTIFS: set[str] = set()
 
 
 def _get_user_notifications(username: str, ev_id: str, lang: str = "ko") -> list[dict]:
-    """사업수행계획서(B2C 서비스 목업: 충전시간 안내 및 혼잡 회피 알림)에 따른 알림 목록 생성."""
+    """사업수행계획서(B2C 서비스 목업: 충전시간 안내 및 혼잡 회피 알림, 거주지 기준 추천 충전소) 알림 목록 생성."""
     from datetime import datetime
+    from src.registry import service as registry
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     is_ko = lang == "ko"
 
+    reg = registry.latest_for(username) or {}
+    sido = str(reg.get("sido") or "")
+    sigungu = str(reg.get("sigungu") or "")
+    dong = str(reg.get("dong") or "")
+
+    # 거주지 정보 기반 가장 인접한 실증 거점 충전소 매핑
+    if "나주" in sigungu or "전라남도" in sido or "빛가람" in dong:
+        site_name = "기업 빌딩 부설 충전소"
+        site_addr = "전남 나주시 빛가람동 (한전 본사거리)"
+        site_spec = "급속 6기 (100kW) · 완속 24기 (7kW)"
+        loc_desc = f"{sigungu} {dong}".strip() or "나주시"
+    elif "북구" in sigungu or "광산구" in sigungu or "첨단" in dong or "오룡" in dong:
+        site_name = "도시 공용 거점 충전소"
+        site_addr = "광주광역시 북구 첨단과기로 (첨단산단 공영)"
+        site_spec = "초급속 12기 (200kW) · 완속 28기 (7kW)"
+        loc_desc = f"{sigungu} {dong}".strip() or "광주 북구·광산구"
+    else:
+        site_name = "공공기관 청사 부설 충전소"
+        site_addr = "광주광역시 서구 내방로 (시청 인근)"
+        site_spec = "급속 4기 (50~100kW) · 완속 16기 (7kW)"
+        loc_desc = f"{sigungu} {dong}".strip() or "광주 서구·도심"
+
+    site_title = f"📍 [거주지 맞춤] 추천 충전소: {site_name}" if is_ko else f"📍 Tailored Station: {site_name}"
+    site_body = (
+        f"회원님의 거주지({loc_desc}) 기준 가장 인접한 실증 충전소는 '{site_name}'({site_addr})입니다. "
+        f"{site_spec}가 가동 중이며 심야 시간대 충전 시 가장 유리해요."
+    ) if is_ko else (
+        f"Based on your location ({loc_desc}), the nearest pilot charging hub is '{site_name}' ({site_addr}). "
+        f"Equipped with {site_spec}."
+    )
+
     items = [
+        {
+            "id": f"notif-site-{ev_id}",
+            "type": "site_recommend",
+            "title": site_title,
+            "body": site_body,
+            "time_range": "23:00 ~ 05:00 권장",
+            "created_at": now_str,
+            "read": f"notif-site-{ev_id}" in _READ_NOTIFS,
+            "action_tab": "price",
+            "tag": "맞춤" if is_ko else "Tailored"
+        },
         {
             "id": f"notif-charge-{ev_id}",
             "type": "charge_window",
