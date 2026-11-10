@@ -406,29 +406,40 @@
   .load-progress-label {
     display: block; margin-top: 4px; font-size: 12px; color: var(--text-secondary);
   }
-  /* 핵심 LNB 레이아웃 인라인 보장 (새로고침 없이도 즉각 고정 렌더링) */
+    /* 핵심 LNB 레이아웃 인라인 보장 (프리미엄 슬라이딩 트랜지션) */
   .ax-layout { display: flex; min-height: 100vh; background: var(--bg); }
   .ax-sidebar {
-    width: 230px; flex-shrink: 0; background: var(--navy, #14213d); color: #fff;
+    width: 230px; min-width: 230px; flex-shrink: 0; background: var(--navy, #14213d); color: #fff;
     position: fixed; left: 0; top: 0; bottom: 0; z-index: 50;
     display: flex; flex-direction: column; align-items: stretch; text-align: left;
-    padding: 22px 14px; gap: 22px; box-shadow: 2px 0 10px rgba(0,0,0,0.12); overflow-y: auto;
+    padding: 18px 14px; gap: 18px; box-shadow: 2px 0 12px rgba(0,0,0,0.15); overflow-y: auto; overflow-x: hidden;
+    transform: translateX(0); opacity: 1; visibility: visible;
+    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease;
+    will-change: transform;
   }
-  .ax-sidebar .ax-logo { display: flex; align-items: center; justify-content: flex-start; gap: 8px; color: #fff; text-decoration: none; padding: 4px 6px; font-size: 15px; }
-  .ax-sidebar .ax-nav { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-  .ax-sidebar .ax-nav a { display: flex; align-items: center; justify-content: flex-start; text-align: left; padding: 11px 14px; border-radius: 8px; color: #DCE6FA; font-size: 14px; font-weight: 500; text-decoration: none; }
+  .ax-sidebar .ax-logo { display: flex; align-items: center; justify-content: flex-start; gap: 8px; color: #fff; text-decoration: none; font-size: 15px; }
+  .ax-sidebar .ax-nav { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+  .ax-sidebar .ax-nav a { display: flex; align-items: center; justify-content: flex-start; text-align: left; padding: 10px 14px; border-radius: 8px; color: #DCE6FA; font-size: 13.5px; font-weight: 500; text-decoration: none; }
   .ax-sidebar .ax-nav [aria-current="page"], .ax-sidebar .ax-nav a.active { background: #1F5EDB !important; color: #fff !important; font-weight: 700; }
   .ax-sidebar-status .ax-pill { width: 100%; justify-content: flex-start; text-align: left; box-sizing: border-box; }
-  .ax-content { margin-left: 230px; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
-  .ax-topbar { position: sticky; top: 0; z-index: 40; background: var(--card); border-bottom: 1px solid var(--border); padding: 11px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ax-content {
+    margin-left: 230px; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg);
+    transition: margin-left 0.28s cubic-bezier(0.25, 1, 0.5, 1); will-change: margin-left;
+  }
+  .ax-topbar { position: sticky; top: 0; z-index: 40; background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .ax-main-body { padding: 18px 24px 40px; flex: 1; }
+  .ax-layout.sidebar-collapsed .ax-sidebar {
+    transform: translateX(-100%); box-shadow: none; opacity: 0; pointer-events: none; visibility: hidden;
+    transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.22s ease, visibility 0.28s;
+  }
+  .ax-layout.sidebar-collapsed .ax-content { margin-left: 0 !important; width: 100% !important; }
   @media (max-width: 768px) {
     .ax-layout { flex-direction: column; }
     .ax-sidebar { position: sticky; top: 0; width: 100%; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 10px 14px; gap: 8px; z-index: 60; }
     .ax-sidebar .ax-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
     .ax-sidebar .ax-nav a { padding: 6px 10px; font-size: 12px; }
-    .ax-sidebar-status { display: none !important; }
-    .ax-content { margin-left: 0; }
+    .ax-sidebar-status, .ax-sidebar-toggle-btn { display: none !important; }
+    .ax-content { margin-left: 0 !important; }
     .ax-topbar { padding: 8px 14px; }
     .ax-main-body { padding: 12px 14px 24px; }
   }

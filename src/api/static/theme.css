@@ -240,9 +240,10 @@ body.ax-page .wrap {
   position: relative;
 }
 
-/* 좌측 LNB 사이드바 */
+/* 좌측 LNB 사이드바 — 프리미엄 슬라이딩 트랜지션 (230px 고정 폭 유지로 텍스트 찌그러짐 원천 차단) */
 .ax-sidebar {
   width: 230px;
+  min-width: 230px;
   flex-shrink: 0;
   background: var(--navy, #14213d);
   color: #fff;
@@ -257,9 +258,16 @@ body.ax-page .wrap {
   text-align: left;
   padding: 18px 14px;
   gap: 18px;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  box-shadow: 2px 0 12px rgba(0,0,0,0.15);
   overflow-y: auto;
-  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), padding 0.22s ease;
+  overflow-x: hidden;
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+              box-shadow 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.25s ease;
+  will-change: transform;
 }
 
 /* 사이드바 헤더 (로고 및 숨김 토글) */
@@ -306,7 +314,7 @@ body.ax-page .wrap {
   padding: 4px 8px;
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.18s ease, transform 0.18s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -314,6 +322,10 @@ body.ax-page .wrap {
 }
 .ax-sidebar-toggle-btn:hover {
   background: rgba(255,255,255,0.25);
+  transform: scale(1.08);
+}
+.ax-sidebar-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 .ax-sidebar .ax-nav {
@@ -354,7 +366,7 @@ body.ax-page .wrap {
 .ax-sidebar-status {
   text-align: left;
   align-items: flex-start !important;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s ease;
 }
 
 .ax-sidebar-status .ax-pill {
@@ -364,7 +376,7 @@ body.ax-page .wrap {
   box-sizing: border-box;
 }
 
-/* 우측 컨텐츠 영역 */
+/* 우측 컨텐츠 영역 — 사이드바와 동일한 이징 곡선으로 부드럽게 확장 */
 .ax-content {
   margin-left: 230px;
   flex: 1;
@@ -372,7 +384,8 @@ body.ax-page .wrap {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: margin-left;
 }
 
 /* 상단 탑 바 */
@@ -395,6 +408,16 @@ body.ax-page .wrap {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+#sidebar-toggle-btn {
+  transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+#sidebar-toggle-btn:hover {
+  transform: scale(1.04);
+}
+#sidebar-toggle-btn:active {
+  transform: scale(0.95);
 }
 
 .ax-topbar .ax-tools {
@@ -436,14 +459,17 @@ body.ax-page .wrap {
   flex: 1;
 }
 
-/* ---- 사이드바 접힘(숨김/Collapsed) 모드 ---- */
+/* ---- 사이드바 접힘(숨김/Collapsed) 모드 : 너비 230px을 유지한 채 translateX로 샤르륵 슬라이드 아웃 ---- */
 .ax-layout.sidebar-collapsed .ax-sidebar {
-  width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  border: 0 !important;
   transform: translateX(-100%);
+  box-shadow: none;
+  opacity: 0;
   pointer-events: none;
+  visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+              box-shadow 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.22s ease,
+              visibility 0.28s;
 }
 
 .ax-layout.sidebar-collapsed .ax-content {
