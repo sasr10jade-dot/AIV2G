@@ -467,7 +467,6 @@
       <span class="ax-pill"><span class="ax-dot" id="hdr-ev-dot"></span><b id="hdr-ev">EV -/30</b></span>
       <span class="ax-pill"><span class="ax-dot accent"></span><b id="hdr-chg">충전기 -/150</b></span>
       <span class="ax-pill mono" id="hdr-data">데이터 -</span>
-      <span id="source-badge"></span>
     </div>
   </aside>
 
@@ -1528,7 +1527,7 @@ function renderHeaderStatus(kpi) {
   document.getElementById('hdr-ev').textContent = `EV ${kpi.ev_count}/${tg.ev || 30}`;
   document.getElementById('hdr-chg').textContent = `${t('충전기')} ${kpi.charger_count}/${tg.chargers || 150}`;
   document.getElementById('hdr-data').textContent = y1
-    ? `${t('데이터')} ${fmtInt(y1.records)}/${fmtInt(y1.target)}${LANG === 'en' ? '' : '건'}` + (kpi.data_is_real ? '' : ` · ${t('모의')}`) : '';
+    ? `${t('데이터')} ${fmtInt(y1.records)}/${fmtInt(y1.target)}${LANG === 'en' ? '' : '건'}` : '';
   document.getElementById('hdr-ev-dot').className = 'ax-dot' + (kpi.data_is_real ? '' : ' muted');
 }
 
@@ -2261,9 +2260,8 @@ async function loadDashboard() {
     renderProfitSharing(data);
     renderEffect(data);
     markDataKind(!!data.is_real_data);
-    document.getElementById('source-badge').innerHTML = data.is_real_data
-      ? `<span class="badge good">${t('실증 데이터')}</span>`
-      : `<span class="badge neutral">${t('데모 시나리오')}</span>`;
+    const sb = document.getElementById('source-badge');
+    if (sb) sb.innerHTML = '';
     document.getElementById('updated').textContent = t('갱신:') + ' ' + new Date(data.generated_at).toLocaleString(locale());
 
     const realDataNote = document.getElementById('real-data-note');
