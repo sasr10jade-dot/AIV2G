@@ -413,12 +413,11 @@
 </head>
 <body>
 <div class="ax-layout">
-  <!-- 좌측 LNB 사이드바 (좌측메뉴 이미지 메뉴 일체) -->
+  <!-- 좌측 LNB 사이드바 (화면 메뉴 + 실증 상태 뱃지군) -->
   <aside class="ax-sidebar">
     <a class="ax-logo" href="/dashboard">
       <span class="ax-logo-badge">AX</span>
       <span><b>AX·V2G</b> <span data-i18n>허브 실증</span></span>
-      <span class="ax-tag">V1.0</span>
     </a>
     <nav class="ax-nav" aria-label="화면">
       <a href="/dashboard" aria-current="page" data-i18n>운영 대시보드</a>
@@ -426,25 +425,25 @@
       <a id="admin-link" href="/admin" data-i18n>웹앱 관리</a>
       <a id="api-link" href="/docs" target="_blank" rel="noopener" data-i18n>API 안내</a>
     </nav>
+    <div class="ax-sidebar-status" style="margin-top:auto; display:flex; flex-direction:column; gap:8px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.12);">
+      <span class="ax-pill"><span class="ax-dot" id="hdr-ev-dot"></span><b id="hdr-ev">EV -/30</b></span>
+      <span class="ax-pill"><span class="ax-dot accent"></span><b id="hdr-chg">충전기 -/150</b></span>
+      <span class="ax-pill mono" id="hdr-data">데이터 -</span>
+      <span id="source-badge"></span>
+    </div>
   </aside>
 
   <!-- 우측 본문 및 상단 탑 바 -->
   <div class="ax-content">
-    <!-- 상단 탑 바 (그 외 모든 상태 뱃지 및 도구/유틸리티 버튼) -->
+    <!-- 상단 탑 바 (도구 및 유틸리티 버튼 일괄 배치) -->
     <header class="ax-topbar"><div class="ax-header" style="display:none"></div>
-      <div class="ax-status">
-        <span class="ax-pill"><span class="ax-dot" id="hdr-ev-dot"></span><b id="hdr-ev">EV -/30</b></span>
-        <span class="ax-pill"><span class="ax-dot accent"></span><b id="hdr-chg">충전기 -/150</b></span>
-        <span class="ax-pill mono" id="hdr-data">데이터 -</span>
-        <span id="source-badge"></span>
-      </div>
-      <div class="ax-tools">
+      <div class="ax-tools" style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <button id="refresh" data-i18n>새로고침</button>
         <button id="live-demo-toggle" data-i18n data-i18n-title title="5초마다 화면을 다시 불러옵니다 — 데이터는 전일 수집분의 익일 배치 기준이며 실시간 수집이 아닙니다">▶ 자동 새로고침</button>
         <button id="guide-btn" data-i18n>이용 가이드</button>
         <button id="theme-toggle" class="ax-switch" type="button" role="switch" aria-checked="false" aria-label="다크 모드"><span class="ax-switch-track" aria-hidden="true"><span class="ax-switch-knob"></span></span><span class="ax-switch-label">다크 모드</span></button>
         <button id="lang-toggle" aria-label="Language"></button>
-        <span id="user-badge"></span>
+        <span id="user-badge" style="font-size:12.5px; font-weight:600; color:var(--text); padding:4px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px;"></span>
         <button id="account-mgmt-btn" hidden data-i18n>계정관리</button>
         <button id="logout-btn" hidden data-i18n>로그아웃</button>
       </div>

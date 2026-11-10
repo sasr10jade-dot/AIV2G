@@ -71,9 +71,12 @@
       <h2>PC 대시보드</h2>
       <div class="path">/dashboard</div>
       <p>운영 대시보드. KPI, 최적화 비교, 수요예측, 충전기 현황, 이용 가이드.</p>
-      <div class="actions">
-        <a class="btn primary" href="/dashboard">열기</a>
-        <button class="btn" type="button" id="qAdmin" hidden>간편 로그인으로 열기</button>
+      <div class="actions" style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; gap:8px;">
+          <a class="btn primary" href="/dashboard" style="flex:1; text-align:center;">열기</a>
+          <button class="btn" type="button" id="qSuper" hidden style="flex:2; background:#1F5EDB; color:#fff; font-weight:700;">⚡ 최고관리자로 열기</button>
+        </div>
+        <button class="btn" type="button" id="qAdmin" hidden>관리자 간편 로그인으로 열기</button>
       </div>
     </section>
     <section class="card c">
@@ -137,7 +140,7 @@
     try {
       var a = await api('/auth/quick-login/available');
       if (a.ok && a.body) {
-        var map = [['qOwner', a.body.owner, 'owner', '/app'], ['qAdmin', a.body.admin, 'admin', '/dashboard'], ['qAdmin2', a.body.admin, 'admin', '/admin']];
+        var map = [['qOwner', a.body.owner, 'owner', '/app'], ['qSuper', a.body.super_admin, 'super_admin', '/dashboard'], ['qAdmin', a.body.admin, 'admin', '/dashboard'], ['qAdmin2', a.body.admin, 'admin', '/admin']];
         map.forEach(function (m) {
           if (!m[1]) return;
           var b = document.getElementById(m[0]); b.hidden = false;
