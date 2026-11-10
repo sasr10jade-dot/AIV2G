@@ -54,8 +54,32 @@
 <link rel="stylesheet" href="/theme.css" />
 </head>
 <body class="ax-page">
-<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin" aria-current="page">웹앱 관리</a></nav></div></header>
-<div class="wrap">
+<div class="ax-layout">
+  <!-- 좌측 LNB 사이드바 -->
+  <aside class="ax-sidebar">
+    <a class="ax-logo" href="/dashboard">
+      <span class="ax-logo-badge">AX</span>
+      <span><b>AX·V2G</b> <span>허브 실증</span></span>
+    </a>
+    <nav class="ax-nav" aria-label="화면">
+      <a href="/dashboard">운영 대시보드</a>
+      <a href="/approvals">가입 승인</a>
+      <a href="/admin" aria-current="page">웹앱 관리</a>
+      <a href="/docs" target="_blank" rel="noopener">API 안내</a>
+    </nav>
+  </aside>
+
+  <!-- 우측 본문 및 상단 탑 바 -->
+  <div class="ax-content">
+    <header class="ax-topbar">
+      <div class="ax-header" style="display:none"></div>
+      <div class="ax-tools" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <a href="/dashboard" style="text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12.5px;">대시보드로 복귀</a>
+        <a href="/docs" target="_blank" rel="noopener" style="text-decoration:none; padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12.5px;">API 문서</a>
+      </div>
+    </header>
+
+    <div class="ax-main-body">
   <div class="ax-page-head">
       <h1>웹앱 관리</h1>
       <div class="sub">서포터즈 모바일 앱의 공지사항·안내 문구, ㈜아크릴 예측모델 연계(학습 데이터 제공·예측 결과 수신), AI 운영 지표, 모델링 예외 기록을 관리합니다.</div>
@@ -69,6 +93,8 @@
   </div>
   <div id="msg" class="msg" role="status"></div>
   <div id="panel"></div>
+    </div>
+  </div>
 </div>
 <script>
 (function () {

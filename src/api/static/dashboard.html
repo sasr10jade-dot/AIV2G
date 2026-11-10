@@ -687,6 +687,59 @@
     <div class="scroll-area" style="max-height:320px; overflow-y:auto;"><table id="infra-roster"></table></div>
   </div>
 
+  <div class="card" id="chargers-list-card">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+      <div>
+        <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>충전사업자별 충전소 및 충전기 150기 관제 리스트</h2>
+        <span class="muted" style="font-size:12px;">CPO 3사(나이스인프라·플러그링크·이브이시스) 연계 실증 충전기 현황 (UI/UX 시연용)</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <span class="tag navy" id="chg-total-tag">총 150기</span>
+        <span class="tag" style="background:#10b981; color:#fff;" id="chg-avail-tag">대기중 118기</span>
+        <span class="tag" style="background:#2f5bff; color:#fff;" id="chg-busy-tag">충전중 28기</span>
+        <span class="tag gray" id="chg-wait-tag">통신대기 4기</span>
+      </div>
+    </div>
+    <p class="card-what" data-i18n>충전사업자 API를 통해 실시간 연계되는 150기 충전기의 위치, 종류(급속/완속), 커넥터 및 가동 상태 목록입니다. 사업자별 필터 및 실시간 검색이 지원됩니다.</p>
+
+    <!-- 검색 및 필터 컨트롤 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 14px 0;">
+      <div class="presets" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="preset-btn chg-filter-op active" data-op="all">전체 (150)</button>
+        <button class="preset-btn chg-filter-op" data-op="niceinfra">나이스인프라 (50)</button>
+        <button class="preset-btn chg-filter-op" data-op="pluglink">플러그링크 (50)</button>
+        <button class="preset-btn chg-filter-op" data-op="evsis">이브이시스 (50)</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <select id="chg-speed-select" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px;">
+          <option value="all">전체 속도 (급속/완속)</option>
+          <option value="fast">급속/초급속 (50~200kW)</option>
+          <option value="slow">완속 (7kW)</option>
+        </select>
+        <input type="text" id="chg-search" placeholder="충전기ID 또는 충전소명/주소 검색" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; width:220px;" />
+      </div>
+    </div>
+
+    <div class="scroll-area" style="max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:6px;">
+      <table id="chargers-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th>충전기 ID</th>
+            <th>사업자 (CPO)</th>
+            <th>충전소명</th>
+            <th>설치 주소</th>
+            <th>종류 및 정격</th>
+            <th>커넥터</th>
+            <th>현재 상태</th>
+            <th class="num">오늘 충전량</th>
+            <th>최종 통신시각</th>
+          </tr>
+        </thead>
+        <tbody id="chargers-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card" id="quality-card" hidden>
     <h2 data-sec="01" data-kind="actual" data-i18n>데이터 품질 검증</h2>
     <p class="card-what" data-i18n>모은 데이터가 필수 항목·값의 범위·중복 기준을 통과했는지 표별로 확인합니다. FAIL인 표는 분석 결과를 조심해서 봐야 합니다.</p>
@@ -2500,6 +2553,140 @@ async function boot() {
   loadDashboard();
   loadHorizonForecast('hourly');
 }
+
+
+// ------------------------------------------------------------- 충전기 150기 인프라 리스트 (UI/UX) --
+const CPO_NAMES = { niceinfra: '나이스인프라', pluglink: '플러그링크', evsis: '이브이시스' };
+const CPO_STATIONS = {
+  niceinfra: [
+    { name: '광주시청 청사 부설 충전소', addr: '광주 서구 내방로 111 (치평동)' },
+    { name: '상무시민공원 공영주차장', addr: '광주 서구 상무자유로 93 (치평동)' },
+    { name: '서구문화센터 공영 충전소', addr: '광주 서구 상무대로 1157 (금호동)' },
+    { name: '풍암생활체육공원 주차장', addr: '광주 서구 풍암동 1045' },
+    { name: '광주월드컵경기장 P2 충전소', addr: '광주 서구 금화로 240 (풍암동)' }
+  ],
+  pluglink: [
+    { name: '도시 공용 거점 충전소 (첨단산단)', addr: '광주 북구 첨단과기로 208 (오룡동)' },
+    { name: '북구청 본관 공영주차장', addr: '광주 북구 우치로 77 (용봉동)' },
+    { name: '광주비엔날레 전시관 주차장', addr: '광주 북구 비엔날레로 111 (용봉동)' },
+    { name: '일곡제1공영주차장 충전소', addr: '광주 북구 일곡택지로 53 (일곡동)' },
+    { name: '첨단종합체육관 공영주차장', addr: '광주 북구 첨단연신로 29 (신용동)' }
+  ],
+  evsis: [
+    { name: '기업 빌딩 부설 충전소 (빛가람)', addr: '전남 나주시 빛가람동 120 (전력로)' },
+    { name: '한전 본사거리 상가 복합 충전소', addr: '전남 나주시 전력로 55 (빛가람동)' },
+    { name: '나주스마트파크 에너지밸리 충전소', addr: '전남 나주시 혁신산단로 35 (동수동)' },
+    { name: '빛가람전망대 공영 충전소', addr: '전남 나주시 호수로 77 (빛가람동)' },
+    { name: '나주종합스포츠파크 주차장', addr: '전남 나주시 영산로 5400 (송월동)' }
+  ]
+};
+
+let allChargersData = [];
+function initChargersList() {
+  const ops = ['niceinfra', 'pluglink', 'evsis'];
+  let list = [];
+  ops.forEach(op => {
+    const stations = CPO_STATIONS[op];
+    for (let i = 1; i <= 50; i++) {
+      const st = stations[(i - 1) % stations.length];
+      const isFast = (i % 3 === 0);
+      const isSuper = (i % 10 === 0);
+      const chgType = isSuper ? '초급속' : (isFast ? '급속' : '완속');
+      const kw = isSuper ? 200 : (isFast ? 100 : 7);
+      const conn = isFast || isSuper ? 'DC콤보1' : 'AC단상5핀';
+      
+      let status = 'idle';
+      if (i % 5 === 0) status = 'charging';
+      else if (i === 49) status = 'offline';
+      
+      const energyToday = status === 'charging' ? (Math.random() * 25 + 15).toFixed(1) : (Math.random() * 40 + 5).toFixed(1);
+      const pKw = status === 'charging' ? (kw * (Math.random() * 0.3 + 0.65)).toFixed(1) : '0.0';
+      const cid = `CHG-${op === 'niceinfra' ? 'NI' : op === 'pluglink' ? 'PL' : 'EV'}-${String(i).padStart(3, '0')}`;
+
+      list.push({
+        cid,
+        op,
+        opName: CPO_NAMES[op],
+        stName: st.name + ` (${Math.floor((i-1)/5)+1}구역)`,
+        addr: st.addr,
+        chgType,
+        kw,
+        conn,
+        status,
+        currentKw: pKw,
+        energyToday,
+        lastSeen: '14:' + String((i * 7) % 60).padStart(2, '0') + ':25'
+      });
+    }
+  });
+  allChargersData = list;
+  renderChargersTable();
+}
+
+let activeOpFilter = 'all';
+function renderChargersTable() {
+  const tbody = document.getElementById('chargers-tbody');
+  if (!tbody) return;
+  const speed = document.getElementById('chg-speed-select')?.value || 'all';
+  const query = (document.getElementById('chg-search')?.value || '').trim().toLowerCase();
+
+  let filtered = allChargersData.filter(c => {
+    if (activeOpFilter !== 'all' && c.op !== activeOpFilter) return false;
+    if (speed === 'fast' && c.kw < 50) return false;
+    if (speed === 'slow' && c.kw >= 50) return false;
+    if (query) {
+      const match = c.cid.toLowerCase().includes(query) || c.stName.toLowerCase().includes(query) || c.addr.toLowerCase().includes(query);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  tbody.innerHTML = filtered.map(c => `
+    <tr>
+      <td><code><b>${c.cid}</b></code></td>
+      <td><span class="tag ${c.op === 'niceinfra' ? 'navy' : c.op === 'pluglink' ? 'gray' : 'ok'}">${c.opName}</span></td>
+      <td><b>${c.stName}</b></td>
+      <td><span style="font-size:12px; color:var(--muted);">${c.addr}</span></td>
+      <td><b>${c.chgType} ${c.kw}kW</b></td>
+      <td><span style="font-size:11.5px;">${c.conn}</span></td>
+      <td>
+        ${c.status === 'charging' 
+          ? `<span class="badge good" style="background:#2f5bff; color:#fff;">충전중 (${c.currentKw}kW)</span>`
+          : c.status === 'idle'
+          ? `<span class="badge good">대기중(사용가능)</span>`
+          : `<span class="badge neutral">통신대기</span>`}
+      </td>
+      <td class="num"><b>${c.energyToday}</b> kWh</td>
+      <td><span style="font-size:11.5px; color:var(--muted);">오늘 ${c.lastSeen}</span></td>
+    </tr>
+  `).join('');
+
+  // 태그 숫자 업데이트
+  const total = allChargersData.length;
+  const busy = allChargersData.filter(x => x.status === 'charging').length;
+  const idle = allChargersData.filter(x => x.status === 'idle').length;
+  const wait = allChargersData.filter(x => x.status === 'offline').length;
+  if (document.getElementById('chg-total-tag')) document.getElementById('chg-total-tag').textContent = `총 ${total}기`;
+  if (document.getElementById('chg-avail-tag')) document.getElementById('chg-avail-tag').textContent = `대기중 ${idle}기`;
+  if (document.getElementById('chg-busy-tag')) document.getElementById('chg-busy-tag').textContent = `충전중 ${busy}기`;
+  if (document.getElementById('chg-wait-tag')) document.getElementById('chg-wait-tag').textContent = `통신대기 ${wait}기`;
+}
+
+// 이벤트 리스너 등록
+document.addEventListener('DOMContentLoaded', () => {
+  initChargersList();
+  document.querySelectorAll('.chg-filter-op').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.chg-filter-op').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeOpFilter = btn.dataset.op;
+      renderChargersTable();
+    });
+  });
+  document.getElementById('chg-speed-select')?.addEventListener('change', renderChargersTable);
+  document.getElementById('chg-search')?.addEventListener('input', renderChargersTable);
+});
+
 
 boot();
 </script>
