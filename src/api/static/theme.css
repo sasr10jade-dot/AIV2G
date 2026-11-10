@@ -434,3 +434,12 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   .ax-topbar { padding: 10px 16px; }
   .ax-main-body { padding: 14px 16px 24px; }
 }
+
+body.ax-page {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+body.ax-page .wrap {
+  padding: 0 !important;
+  max-width: 100% !important;
+}

@@ -22,7 +22,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--surface-page); color: var(--text-primary);
-         font-family: "Noto Sans KR", "Noto Sans", "Malgun Gothic", sans-serif; padding: 24px; }
+         font-family: "Noto Sans KR", "Noto Sans", "Malgun Gothic", sans-serif; padding: 0 !important; margin: 0 !important; }
   .wrap { max-width: 1100px; margin: 0 auto; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
   h1 { font-size: 20px; margin: 0; }
@@ -53,6 +53,7 @@
 <body class="ax-page">
 <div class="ax-layout">
   <!-- 좌측 LNB 사이드바 -->
+    <!-- 좌측 LNB 사이드바 -->
   <aside class="ax-sidebar">
     <a class="ax-logo" href="/dashboard">
       <span class="ax-logo-badge">AX</span>
@@ -64,6 +65,12 @@
       <a href="/admin">웹앱 관리</a>
       <a href="/docs" target="_blank" rel="noopener">API 안내</a>
     </nav>
+    <div class="ax-sidebar-status" style="margin-top:auto; display:flex; flex-direction:column; gap:8px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.12);">
+      <span class="ax-pill"><span class="ax-dot" style="background:#2fb67c"></span><b>EV 30/30</b></span>
+      <span class="ax-pill"><span class="ax-dot accent"></span><b>충전기 150/150</b></span>
+      <span class="ax-pill mono">데이터 4,000건+</span>
+      <span class="badge good" style="font-size:11px; text-align:center;">실증 인프라 가동</span>
+    </div>
   </aside>
 
   <!-- 우측 본문 및 상단 탑 바 -->
