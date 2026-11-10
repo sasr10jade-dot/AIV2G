@@ -55,46 +55,13 @@ svg text { font-family: var(--font); }
 /* ---- 공통 컴포넌트 */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: none; }
 
-/* 운영 화면 메뉴(B.O) — 넓은 화면에서는 왼쪽 네이비 메뉴, 좁은 화면에서는 위쪽 네이비 띠 */
-.ax-header { position: sticky; top: 0; z-index: 40; background: var(--navy); color: #fff; }
-.ax-header-inner { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 12px 16px; }
-.ax-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.02em; font-size: 16px; color: #fff; text-decoration: none; }
-.ax-logo b { font-weight: 800; color: #fff; }
-.ax-logo-badge { width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--navy); display: grid; place-items: center; font-size: 12px; font-weight: 800; flex: none; }
-.ax-tag { padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 11px; font-weight: 700; color: var(--cream); }
-.ax-nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.ax-nav a, .ax-nav button { padding: 10px 12px; border-radius: 10px; border: 0; background: transparent; color: #DCE6FA; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; }
-.ax-nav a:hover, .ax-nav button:hover { background: #1A3B78; }
-.ax-nav .active, .ax-nav [aria-current="page"], .ax-nav [aria-pressed="true"] { background: #1F5EDB; color: #fff; font-weight: 700; }
-.ax-status { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.ax-header button {
-  border: 1px solid rgba(255,255,255,.22); background: transparent; color: #fff; border-radius: 8px;
-  padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
-}
-.ax-header button:hover { background: #1A3B78; }
-.ax-header #user-badge, .ax-header #source-badge, .ax-header #user-badge * { color: var(--cream); font-size: 12px; }
+/* 상태 뱃지 및 점 공통 */
 .ax-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 11px; font-weight: 600; color: var(--cream); white-space: nowrap; }
 .ax-pill b { color: #fff; }
 .ax-dot { width: 6px; height: 6px; border-radius: 50%; background: #6FA3FF; }
 .ax-dot.accent { background: #fff; }
 .ax-dot.muted { background: #5B6B88; }
 .ax-icon-btn { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); display: inline-grid; place-items: center; cursor: pointer; font-size: 13px; text-decoration: none; }
-
-/* 상단 LNB / GNB 헤더 — 좌측 하단 사이드바 대신 상단에 가로로 일체 정렬 */
-.ax-header { position: sticky; top: 0; z-index: 40; width: 100%; background: var(--navy); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-.ax-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; padding: 10px 20px; }
-.ax-nav { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.ax-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ax-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-
-@media (min-width: 901px) {
-  body:has(.ax-header) { padding-left: 0; }
-  .ax-header { position: sticky; top: 0; width: 100%; }
-  .ax-header-inner { flex-direction: row; align-items: center; justify-content: space-between; padding: 10px 24px; min-height: auto; }
-  .ax-nav { flex-direction: row; flex-wrap: wrap; }
-  .ax-status { flex-direction: row; align-items: center; }
-  .ax-tools { margin-top: 0; flex-direction: row; flex-wrap: wrap; margin-left: auto; }
-}
 
 /* 수행 전제 안내 */
 .ax-notice { display: flex; gap: 10px; padding: 12px 14px; background: var(--tint); border: 1px solid var(--tint2); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); line-height: 1.55; }
@@ -256,12 +223,24 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
 .ax-header .ax-switch, .ax-header .ax-switch:hover { border: 0; background: transparent; padding: 4px 6px; color: #fff; }
 
 /* ---- 좌측 LNB 사이드바 + 상단 유틸리티 Topbar 레이아웃 ---- */
+body.ax-page {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+body.ax-page .wrap {
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
 .ax-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
   background: var(--bg);
+  position: relative;
 }
 
+/* 좌측 LNB 사이드바 */
 .ax-sidebar {
   width: 230px;
   flex-shrink: 0;
@@ -276,10 +255,20 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   flex-direction: column;
   align-items: stretch;
   text-align: left;
-  padding: 22px 14px;
-  gap: 22px;
+  padding: 18px 14px;
+  gap: 18px;
   box-shadow: 2px 0 10px rgba(0,0,0,0.12);
   overflow-y: auto;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), padding 0.22s ease;
+}
+
+/* 사이드바 헤더 (로고 및 숨김 토글) */
+.ax-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 4px;
 }
 
 .ax-sidebar .ax-logo {
@@ -289,16 +278,49 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   gap: 8px;
   color: #fff;
   text-decoration: none;
-  padding: 4px 6px;
   font-size: 15px;
+  font-weight: 800;
   text-align: left;
+  white-space: nowrap;
+}
+
+.ax-sidebar .ax-logo-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--navy);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex: none;
+}
+
+/* 사이드바 접기(숨김) 버튼 */
+.ax-sidebar-toggle-btn {
+  background: rgba(255,255,255,0.12);
+  border: 0;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.ax-sidebar-toggle-btn:hover {
+  background: rgba(255,255,255,0.25);
 }
 
 .ax-sidebar .ax-nav {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   text-align: left;
 }
 
@@ -307,13 +329,14 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   align-items: center;
   justify-content: flex-start;
   text-align: left;
-  padding: 11px 14px;
+  padding: 10px 14px;
   border-radius: 8px;
   color: #DCE6FA;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
 .ax-sidebar .ax-nav a:hover {
@@ -326,13 +349,12 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   background: #1F5EDB !important;
   color: #fff !important;
   font-weight: 700;
-  text-align: left;
-  justify-content: flex-start;
 }
 
 .ax-sidebar-status {
   text-align: left;
   align-items: flex-start !important;
+  transition: opacity 0.15s;
 }
 
 .ax-sidebar-status .ax-pill {
@@ -342,6 +364,7 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   box-sizing: border-box;
 }
 
+/* 우측 컨텐츠 영역 */
 .ax-content {
   margin-left: 230px;
   flex: 1;
@@ -349,15 +372,17 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 상단 탑 바 */
 .ax-topbar {
   position: sticky;
   top: 0;
   z-index: 40;
   background: var(--card, #fff);
   border-bottom: 1px solid var(--border);
-  padding: 11px 24px;
+  padding: 10px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -366,11 +391,10 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
-.ax-topbar .ax-status {
+.ax-topbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .ax-topbar .ax-tools {
@@ -381,7 +405,7 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   margin-left: auto;
 }
 
-.ax-topbar button {
+.ax-topbar button, .ax-topbar a.btn {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -390,10 +414,13 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
+  text-decoration: none;
   transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
 }
 
-.ax-topbar button:hover {
+.ax-topbar button:hover, .ax-topbar a.btn:hover {
   background: var(--tint);
   border-color: var(--accent);
 }
@@ -404,20 +431,27 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   padding: 4px 6px;
 }
 
-.ax-topbar .ax-pill {
-  background: var(--tint);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.ax-topbar .ax-pill b {
-  color: var(--text);
-}
-
 .ax-main-body {
   padding: 18px 24px 40px;
   flex: 1;
 }
 
+/* ---- 사이드바 접힘(숨김/Collapsed) 모드 ---- */
+.ax-layout.sidebar-collapsed .ax-sidebar {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.ax-layout.sidebar-collapsed .ax-content {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* 반응형 모바일 (768px 이하) */
 @media (max-width: 768px) {
   .ax-layout { flex-direction: column; }
   .ax-sidebar {
@@ -435,16 +469,8 @@ body.fo .ins p { margin: 3px 0 0; font-size: 13px; color: var(--sub); line-heigh
   .ax-sidebar .ax-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
   .ax-sidebar .ax-nav a { padding: 6px 10px; font-size: 12px; }
   .ax-sidebar-status { display: none !important; }
-  .ax-content { margin-left: 0; }
+  .ax-sidebar-toggle-btn { display: none !important; }
+  .ax-content { margin-left: 0 !important; }
   .ax-topbar { padding: 8px 14px; }
   .ax-main-body { padding: 12px 14px 24px; }
-}
-
-body.ax-page {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-body.ax-page .wrap {
-  padding: 0 !important;
-  max-width: 100% !important;
 }

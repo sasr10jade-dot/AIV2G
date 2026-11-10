@@ -439,10 +439,13 @@
 <div class="ax-layout">
   <!-- 좌측 LNB 사이드바 (화면 메뉴 + 실증 상태 뱃지군) -->
   <aside class="ax-sidebar">
-    <a class="ax-logo" href="/dashboard">
-      <span class="ax-logo-badge">AX</span>
-      <span><b>AX·V2G</b> <span data-i18n>허브 실증</span></span>
-    </a>
+    <div class="ax-sidebar-header">
+      <a class="ax-logo" href="/dashboard">
+        <span class="ax-logo-badge">AX</span>
+        <span><b>AX·V2G</b> <span data-i18n>허브 실증</span></span>
+      </a>
+      <button class="ax-sidebar-toggle-btn" id="sidebar-hide-btn" title="좌측 메뉴 숨기기" aria-label="메뉴 숨기기">◀</button>
+    </div>
     <nav class="ax-nav" aria-label="화면">
       <a href="/dashboard" aria-current="page" data-i18n>운영 대시보드</a>
       <a id="approvals-link" href="/approvals" data-i18n>가입 승인</a>
@@ -461,6 +464,11 @@
   <div class="ax-content">
     <!-- 상단 탑 바 (도구 및 유틸리티 버튼 일괄 배치) -->
     <header class="ax-topbar"><div class="ax-header" style="display:none"></div>
+      <div class="ax-topbar-left">
+        <button id="sidebar-toggle-btn" class="ax-icon-btn" title="좌측 메뉴 열기/숨기기" aria-label="메뉴 열기/숨기기" style="padding:6px 10px; font-weight:700; gap:5px; font-size:12.5px; display:inline-flex; align-items:center;">
+          ☰ <span class="toggle-txt">메뉴</span>
+        </button>
+      </div>
       <div class="ax-tools" style="margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <button id="refresh" data-i18n>새로고침</button>
         <button id="live-demo-toggle" data-i18n data-i18n-title title="5초마다 화면을 다시 불러옵니다 — 데이터는 전일 수집분의 익일 배치 기준이며 실시간 수집이 아닙니다">▶ 자동 새로고침</button>
@@ -2713,6 +2721,41 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('chg-search')?.addEventListener('input', renderChargersTable);
 });
 
+
+
+// 사이드바 숨김/열기 토글 (디폴트 열림, localStorage 상태 보존)
+(function initSidebarToggle() {
+  const layout = document.querySelector('.ax-layout');
+  const hideBtn = document.getElementById('sidebar-hide-btn');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (!layout) return;
+
+  function updateToggleUI(collapsed) {
+    if (toggleBtn) {
+      const txt = toggleBtn.querySelector('.toggle-txt');
+      if (txt) txt.textContent = collapsed ? '메뉴 열기' : '메뉴';
+      toggleBtn.title = collapsed ? '좌측 메뉴 열기' : '좌측 메뉴 숨기기';
+    }
+  }
+
+  // 디폴트는 열림(false), localStorage에 'true'로 저장된 경우만 숨김 처리
+  const isCollapsed = localStorage.getItem('ai-v2g-sidebar-collapsed') === 'true';
+  if (isCollapsed) {
+    layout.classList.add('sidebar-collapsed');
+  }
+  updateToggleUI(isCollapsed);
+
+  function toggle() {
+    const collapsed = layout.classList.toggle('sidebar-collapsed');
+    try {
+      localStorage.setItem('ai-v2g-sidebar-collapsed', collapsed ? 'true' : 'false');
+    } catch (e) {}
+    updateToggleUI(collapsed);
+  }
+
+  if (hideBtn) hideBtn.addEventListener('click', toggle);
+  if (toggleBtn) toggleBtn.addEventListener('click', toggle);
+})();
 
 boot();
 </script>
