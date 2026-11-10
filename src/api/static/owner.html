@@ -1457,9 +1457,14 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var card = el('div', { class: 'card' }, [el('h2', { text: t('hs_title'), 'data-kind': 'actual' })]);
     var body = el('div', {});
     function seg(items, key) {
-      var g = el('div', { class: 'chips' });
+      var g = el('div', { class: 'chips', style: 'margin:0; display:flex; gap:4px; flex-wrap:nowrap;' });
       items.forEach(function (it) {
-        var b = el('button', { type: 'button', class: 'sm' + (histState[key] === it[0] ? ' solid' : ''), text: t(it[1]) });
+        var b = el('button', {
+          type: 'button',
+          class: 'sm' + (histState[key] === it[0] ? ' solid' : ''),
+          style: 'padding:4px 9px; font-size:12px; min-height:28px; border-radius:14px; white-space:nowrap;',
+          text: t(it[1])
+        });
         b.addEventListener('click', function () { histState[key] = it[0]; draw(); });
         g.appendChild(b);
       });
@@ -1468,8 +1473,14 @@ label.check input { width: 22px; height: 22px; flex: none; }
     function dstr(d) { return d.toISOString().slice(0, 10); }
     function draw() {
       clear(body);
-      body.appendChild(seg([['day', 'hs_day'], ['week', 'hs_week'], ['month', 'hs_month']], 'span'));
-      body.appendChild(seg([['kwh', 'hs_kwh'], ['n', 'hs_n'], ['cost', 'hs_cost']], 'metric'));
+      var btnRow = el('div', {
+        class: 'row',
+        style: 'display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:12px; flex-wrap:nowrap;'
+      }, [
+        seg([['kwh', 'hs_kwh'], ['n', 'hs_n'], ['cost', 'hs_cost']], 'metric'),
+        seg([['day', 'hs_day'], ['week', 'hs_week'], ['month', 'hs_month']], 'span')
+      ]);
+      body.appendChild(btnRow);
       var end = new Date((asOf || dstr(new Date())) + 'T00:00:00Z'), buckets = [];
       if (histState.span === 'day') {
         for (var i = 13; i >= 0; i--) { var d = new Date(end); d.setUTCDate(d.getUTCDate() - i); var k = dstr(d);

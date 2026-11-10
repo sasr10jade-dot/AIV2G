@@ -80,16 +80,20 @@ svg text { font-family: var(--font); }
 .ax-dot.muted { background: #5B6B88; }
 .ax-icon-btn { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); display: inline-grid; place-items: center; cursor: pointer; font-size: 13px; text-decoration: none; }
 
+/* 상단 LNB / GNB 헤더 — 좌측 하단 사이드바 대신 상단에 가로로 일체 정렬 */
+.ax-header { position: sticky; top: 0; z-index: 40; width: 100%; background: var(--navy); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.ax-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; padding: 10px 20px; }
+.ax-nav { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ax-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ax-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+
 @media (min-width: 901px) {
-  body:has(.ax-header) { padding-left: var(--side-w); }
-  .ax-header { position: fixed; left: 0; top: 0; bottom: 0; width: var(--side-w); overflow-y: auto; }
-  .ax-header-inner { flex-direction: column; align-items: stretch; flex-wrap: nowrap; min-height: 100%; padding: 20px 12px; gap: 14px; }
-  .ax-logo { padding: 4px 10px 0; flex-wrap: wrap; }
-  .ax-header-inner > .ax-tag { align-self: flex-start; margin-left: 10px; }
-  .ax-nav { flex-direction: column; flex-wrap: nowrap; }
-  .ax-nav a, .ax-nav button { display: block; }
-  .ax-status { flex-direction: column; align-items: stretch; padding: 0 4px; }
-  .ax-tools { margin-top: auto; flex-direction: row; flex-wrap: wrap; }
+  body:has(.ax-header) { padding-left: 0; }
+  .ax-header { position: sticky; top: 0; width: 100%; }
+  .ax-header-inner { flex-direction: row; align-items: center; justify-content: space-between; padding: 10px 24px; min-height: auto; }
+  .ax-nav { flex-direction: row; flex-wrap: wrap; }
+  .ax-status { flex-direction: row; align-items: center; }
+  .ax-tools { margin-top: 0; flex-direction: row; flex-wrap: wrap; margin-left: auto; }
 }
 
 /* 수행 전제 안내 */
