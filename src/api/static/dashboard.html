@@ -509,8 +509,6 @@
       <div id="exec-summary-core-tiles" style="display:contents"></div>
     </div>
   </div>
-    </div>
-  </div>
 
   <div id="guide-modal" class="modal-overlay" hidden>
     <div class="modal-card">
@@ -672,16 +670,22 @@
 
 
   <div class="card" id="collection-card" style="padding:10px 16px; margin-bottom:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
       <h2 data-sec="01" data-kind="actual" style="margin:0; font-size:15px;" data-i18n>데이터 현황판 — 목표 대비 수집 속도 시각화</h2>
-      <div class="legend-row" style="margin:0; gap:10px;">
-        <span class="legend-key"><span class="swatch" style="background:var(--navy)"></span><span data-i18n>충전 세션</span></span>
-        <span class="legend-key"><span class="swatch" style="background:var(--tint2)"></span><span data-i18n>차량-일</span></span>
+      <div class="legend-row" style="margin:0; gap:12px; font-size:12px; font-weight:600;">
+        <span class="legend-key" style="display:inline-flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#1B3B78; display:inline-block;"></span>
+          <span data-i18n>충전 세션</span>
+        </span>
+        <span class="legend-key" style="display:inline-flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#60A5FA; display:inline-block;"></span>
+          <span data-i18n>차량-일</span>
+        </span>
       </div>
     </div>
     <div id="collection-warn" style="margin-bottom:4px;"></div>
-    <div class="tiles" id="collection-tiles" style="margin-bottom:6px;"></div>
-    <div style="width:100%; height:135px; position:relative;">
+    <div class="tiles" id="collection-tiles" style="margin-bottom:8px;"></div>
+    <div style="width:100%; height:200px; position:relative;">
       <canvas id="collectionChart"></canvas>
     </div>
   </div>
@@ -1527,8 +1531,8 @@ function renderCollection(data) {
     data: {
       labels: d.map(r => r.date.slice(5)),
       datasets: [
-        { label: t('충전 세션'), data: d.map(r => r.charger_sessions), backgroundColor: cssVar('--navy'), stack: 'n' },
-        { label: t('차량-일'), data: d.map(r => r.vehicle_days), backgroundColor: cssVar('--tint2'), stack: 'n' },
+        { label: t('충전 세션'), data: d.map(r => r.charger_sessions), backgroundColor: '#1B3B78', borderRadius: 2, stack: 'n' },
+        { label: t('차량-일'), data: d.map(r => r.vehicle_days), backgroundColor: '#60A5FA', borderRadius: 2, stack: 'n' },
       ],
     },
     options: {
