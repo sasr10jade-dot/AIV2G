@@ -16,36 +16,41 @@ from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, op
 from src.auth.store import ensure_bootstrap_super_admin  # noqa: E402
 
 TAGS_METADATA = [
-    {"name": "auth", "description": "로그인·로그아웃·계정관리 — 최고관리자(super_admin)/관리자(admin)/차량 등록자(owner) 권한."},
-    {"name": "owner", "description": "사용자 모바일웹(`/app`) — 차량 등록자(owner)가 본인 차량만 조회·설정. 충전 시간 안내(안전 검증 포함), 수요 예측, 방전 참여 동의, 내 정보(열람·정정·탈퇴)."},
-    {"name": "admin", "description": "웹앱 관리(관리자, `/admin`) — 공지사항(영어 포함), 서포터즈 모집 및 승인 관리."},
-    {"name": "advisory", "description": "추천 계획 발행·수용률(관리자) 및 AI 운영 지표 — 안전 검증 통과율·방전 참여 철회율 집계."},
-    {"name": "privacy", "description": "개인정보 보호 — 동의 이력, 해시체인 감사로그와 무결성 검증(최고관리자)."},
-    {"name": "health", "description": "서버 상태 확인(공개)."},
-    {"name": "signup", "description": "모바일 회원가입 — 계정과 차량·페르소나 정보를 승인 대기로 등록(공개)."},
-    {"name": "registrations", "description": "차량 등록 심사(관리자) — 가입 신청을 PC에서 승인·반려하고 차량을 연결."},
-    {"name": "ingest", "description": "데이터 연계·적재 (WS1) — 합성 데이터 생성, 실증 데이터 업로드, 파이프라인 실행."},
-    {"name": "forecast", "description": "AI 수요·공급 예측 서빙 (WS2) — 적합도 확인, 일/주/월 재귀 예측 전망."},
-    {"name": "optimize", "description": "AI 최적 V2G 의사결정 (WS3/WS4) — 일반충전 vs 최적화 PoC 비교."},
-    {"name": "models", "description": "예측 모델 레지스트리 조회 (Monitoring 레이어 입력)."},
-    {"name": "dashboard", "description": "실시간 웹 대시보드 데이터 (KPI·차트·Closed-loop 통합)."},
-    {"name": "acryl", "description": "참여기관 ㈜아크릴 AI 예측모델 연계 — 학습용 정제 데이터 제공(가명처리)과 예측 추론 결과 수신(일 배치). `/partner/acryl/*`은 기관 연계 토큰 전용."},
-    {"name": "cpo", "description": "충전서비스 사업자(CPO 3사: 나이스인프라·플러그링크·이브이시스) 연계 — 데이터 명세서(계획서 13장 산출물), 일 단위 세션 수신 REST API, 수집 현황 모니터링."},
+    {"name": "auth", "description": "[01. 인증 및 계정 관리] 세션 로그인·로그아웃, 개발자 빠른 로그인, 계정 발급 및 권한 관리 (최고관리자/관리자/차량등록자)."},
+    {"name": "dashboard", "description": "[02. 운영 대시보드 관제] 핵심 성과 요약, 실증 인프라 현황, 차트 데이터, 이익공유 시뮬레이션, 결과 자료(엑셀) 다운로드."},
+    {"name": "owner", "description": "[03. 서포터즈 모바일웹 (/app)] 차량 등록자 전용 모바일 앱 — 배터리 모니터링, 충전시간 안내, AI 추천 배너, 거주지 맞춤 추천 충전소, 혼잡 회피 알림함, 충전 리포트."},
+    {"name": "signup", "description": "[04. 서포터즈 회원가입] 시·도 / 시·군·구 / 동·읍·면 거주지 선택 및 차량·페르소나 정보 등록 (공개)."},
+    {"name": "registrations", "description": "[05. 차량 등록 심사 및 가입 승인] 관리자 승인 화면(/approvals) — 가입 신청 검토, 승인·반려, 실차 EV-ID 매핑, 예비 참여자 관리."},
+    {"name": "cpo", "description": "[06. CPO 충전데이터 연계] 충전서비스 사업자(CPO 3사: 나이스인프라·플러그링크·이브이시스 150기) 데이터 연계 명세 및 일 단위 세션 수신 REST API."},
+    {"name": "admin", "description": "[07. 웹앱 관리 (/admin)] 서포터즈 앱 공지사항 CRUD, 다국어 앱 문구, AI 모델링 예외상황 기록 관리."},
+    {"name": "models", "description": "[08. AI 예측모델 레지스트리] AI 기반 최적 V2G 예측모델 설명서(Model Card 공식 산출물) 및 모델 메타데이터 조회."},
+    {"name": "forecast", "description": "[09. AI 충전수요 전망] 48시간 일별/주별/월별 미래 충전수요 시계열 재귀 예측 서빙 (㈜아크릴 예측 연계)."},
+    {"name": "optimize", "description": "[10. AI 최적 V2G 의사결정] 일반 충전(무제어) vs AI-V2G 최적화 피크 저감 및 충전요금 절감 효과 비교 (HiGHS LP)."},
+    {"name": "acryl", "description": "[11. ㈜아크릴 AI 예측모델 연계] 참여기관 ㈜아크릴 간 학습용 정제 데이터 제공(가명화) 및 예측 추론 결과 배치 수신."},
+    {"name": "privacy", "description": "[12. 개인정보 보호 및 감사로그] 개인정보 가명화(HMAC-SHA256), 동의 이력 관리, 감사로그 해시체인 무결성 검증."},
+    {"name": "ingest", "description": "[13. 데이터 수급 파이프라인] 서포터즈 실차 OBD2 배치 수급 및 전력거래소(KPX)·기상청 공공데이터 동기화."},
+    {"name": "advisory", "description": "[14. AI 운영 지표] AI 추천 발행, 차주 수용률 및 안전 검증 통과율 감사로그 집계."},
+    {"name": "health", "description": "[15. 서버 헬스체크] 시스템 및 데이터베이스 가동 상태 확인 (공개)."},
 ]
 
 app = FastAPI(
-    title="AI-V2G 실증 API",
-    version="0.4.0",
+    title="AI-V2G 실증 시스템 공식 API 레퍼런스",
+    version="1.0.0",
     description=(
-        "AI기반 도시형 에너지 이익공유 및 전기차 V2G기술 실증 — 데이터 연계 → AI 수요예측 → "
-        "V2G 최적화 → 현장 PoC(OCPP) → Closed-loop 재학습까지 PRD 1차년도 워크스트림(WS1~WS5)의 "
-        "서빙 계층.\n\n"
-        "**화면**: 개발용 진입 `/dev` · 모바일 `/app` · PC 대시보드 `/dashboard` · 어드민 `/admin` · 가입 승인 `/approvals`.\n\n"
-        "**권한**: 공개 / 이용자(owner) / 관리자(admin) / 최고관리자(super_admin). 각 엔드포인트의 필요한 권한은 설명 맨 앞 "
-        "\"권한\"에 표시된다. 로그인은 `POST /auth/login`(세션 쿠키). 계정은 최고관리자가 `/auth/users`에서 발급하고, 이용자는 "
-        "`POST /signup`으로 가입해 관리자 승인 후 차량이 연결된다.\n\n"
-        "**보안**: 로그인·비밀번호 확인은 실패가 누적되면 429(Retry-After)로 잠시 잠긴다. 개인정보 응답은 `Cache-Control: no-store`.\n\n"
-        "**주의**: 금액·절감 효과·포인트는 합성 데이터와 가정값 기반 시범(모의) 결과이며 실제 금전 정산이 아니다."
+        "**과제명**: 올인원 AI 허브 AX 실증 (에너지·모빌리티) — AI 기반 도시형 에너지 이익공유 및 전기차 V2G 기술 실증\n\n"
+        "실증 시스템에서 실제로 운영되는 **서포터즈 실차 30대 OBD2 수급**, **CPO 3사 150기 연계**, **공공데이터 5종 동기화**, "
+        "**AI 충전수요 예측(㈜아크릴)** 및 **V2G 의사결정(HiGHS LP)** 서빙 계층의 실무 API 목록입니다.\n\n"
+        "### 주요 화면 링크\n"
+        "* **개발자 진입점**: [`/dev`](/dev) (최고관리자 원클릭 로그인 지원)\n"
+        "* **운영 대시보드**: [`/dashboard`](/dashboard) (LNB 사이드바, CPO 150기 관제 리스트, 차트 188px 통일)\n"
+        "* **모바일 서포터즈 앱**: [`/app`](/app) (시군구동 가입, 거주지 맞춤 추천 충전소, 혼잡 회피 알림)\n"
+        "* **가입 승인 관리**: [`/approvals`](/approvals) (서포터즈 신청 검토 및 실차 매핑)\n"
+        "* **웹앱 관리**: [`/admin`](/admin) (모바일 공지사항, 앱 문구, 모델링 예외 기록)\n\n"
+        "### 권한 체계 (RBAC)\n"
+        "* **공개 (Public)**: 로그인 불필요 (가입, 로그인, 헬스체크)\n"
+        "* **이용자 (Owner)**: 차량이 연결된 실증 서포터즈 차주 (본인 차량 데이터만 열람·설정)\n"
+        "* **관리자 (Admin)**: 가입 승인 심사, 공지사항 등록, 모델링 예외 처리\n"
+        "* **최고관리자 (Super Admin)**: 계정 발급/삭제, 감사로그 해시체인 무결성 검증, 데이터 수급 관리"
     ),
     openapi_tags=TAGS_METADATA,
 )
