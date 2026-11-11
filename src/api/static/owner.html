@@ -108,26 +108,26 @@ body {
 }
 button, input, select { font: inherit; color: inherit; }
 .app { min-height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
-.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 10px 20px; border-bottom: 1px solid var(--border);
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: color-mix(in srgb, var(--bg) 84%, transparent); }
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -0.02em; font-size: 15px; white-space: nowrap; flex-shrink: 0; }
 .brand b { font-weight: 800; color: var(--accent); }
 .brand .ax-logo-badge { width: 28px; height: 28px; border-radius: 9px; font-size: 12px; }
-.tools { display: flex; align-items: center; gap: 4px; }
+.tools { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-.seg button { min-height: 32px; min-width: 38px; padding: 0 8px; border: 0; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); }
+.seg button { min-height: 28px; min-width: 32px; padding: 0 6px; border: 0; background: transparent; cursor: pointer; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
-.iconbtn { min-width: 44px; min-height: 44px; border: 0; background: transparent; cursor: pointer; padding: 0 8px; color: var(--muted); font-size: 13px; letter-spacing: .04em; }
+.iconbtn { min-width: auto; min-height: 32px; border: 0; background: transparent; cursor: pointer; padding: 4px 6px; color: var(--muted); font-size: 12.5px; letter-spacing: .02em; white-space: nowrap; display: inline-flex; align-items: center; }
 .iconbtn:hover { color: var(--text); }
 .iconbtn svg { width: 18px; height: 18px; vertical-align: middle; }
 .iconbtn:focus-visible, .tab:focus-visible, .primary:focus-visible, input:focus-visible, select:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-main { flex: 1; padding: 28px 20px 24px; width: 100%; max-width: 560px; margin: 0 auto; }
+main { flex: 1; padding: 14px 16px 24px; width: 100%; max-width: 560px; margin: 0 auto; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 14px; }
 .card h2, .eyebrow { margin: 0 0 8px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
 .big { font-size: 22px; font-weight: 700; letter-spacing: -.03em; line-height: 1.3; }
 .muted { color: var(--muted); font-size: 14px; }
 .chip { display: inline-block; padding: 1px 8px; border: 1px solid var(--border); border-radius: 2px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.banner { margin: 0 20px; padding: 10px 14px; border-radius: var(--r); font-size: 14px; }
+.banner { margin: 10px 16px 0; padding: 10px 14px; border-radius: var(--r); font-size: 13.5px; }
 .banner.offline { border: 1px solid var(--warn); color: var(--warn); margin-top: 12px; }
 .banner.install { border: 1px solid var(--border); margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
@@ -292,7 +292,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       theme: '테마 전환', logout: '로그아웃', menu: '메뉴', close: '닫기', add: '추가',
       offline: '오프라인입니다. 연결되면 최신 정보를 불러옵니다.',
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
-      install_ios: '공유 버튼 → "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.', install_how: '설치 방법',
+      install_ios: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.', install_how: '설치 방법',
       resv_title: '예비 참여자로 등록됐어요', resv_desc: '지금은 실증 차량 정원이 차 있어요. 참여 차량에 빈자리가 생기면 순서대로 승인해 연락드릴게요.',
       premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트',
       rp_title: '최근 4주 내 충전', rp_ai: 'AI 충전 분석', rp_odo: '누적 주행거리 기록', rp_odo_btn: '기록하기',
