@@ -979,6 +979,29 @@ label.check input { width: 22px; height: 22px; flex: none; }
     });
     toPriceBtn.addEventListener('click', function () { state.tab = 'price'; renderHome(); });
     notifAlertCard.appendChild(toPriceBtn);
+
+    // 솔링스 VPP 벤치마킹: ESG 탄소 감축 기여도 및 소나무 식재 효과 카드
+    var esgCard = el('div', {
+      class: 'card',
+      style: 'background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); padding:12px 14px; margin-bottom:12px;'
+    }, [
+      el('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;' }, [
+        el('span', { class: 'chip', style: 'background:#10b981; color:#fff; font-size:11px; font-weight:700;', text: '🌱 ESG 탄소 감축' }),
+        el('span', { class: 'muted', style: 'font-size:11.5px;', text: '재생에너지 스마트 충전' })
+      ]),
+      el('div', { style: 'display:flex; justify-content:space-between; align-items:baseline; margin:4px 0 2px;' }, [
+        el('div', {}, [
+          el('span', { class: 'muted', style: 'font-size:11px; display:block;', text: '누적 온실가스 감축' }),
+          el('span', { class: 'big', style: 'color:#059669; font-size:18px;', text: '14.2 kg CO₂' })
+        ]),
+        el('div', { style: 'text-align:right;' }, [
+          el('span', { class: 'muted', style: 'font-size:11px; display:block;', text: '환경 가치 환산' }),
+          el('span', { class: 'big', style: 'color:#059669; font-size:18px;', text: '🌲 소나무 2.1그루' })
+        ])
+      ]),
+      el('p', { class: 'muted', style: 'font-size:11px; margin:2px 0 0; line-height:1.4;', text: 'AI가 태양광 발전이 풍부한 시간대에 충전하여 온실가스 배출을 줄였어요.' })
+    ]);
+    box.appendChild(esgCard);
     box.appendChild(notifAlertCard);
 
     box.appendChild(el('div', { class: 'card' }, [el('p', { text: t('home_intro') }),

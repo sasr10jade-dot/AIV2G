@@ -710,6 +710,19 @@
             <div>• 충전기: <b>급속 4기 (50~100kW) · 완속 16기 (7kW)</b></div>
             <div>• 감축목표: <b>피크 45.0 kW 저감</b></div>
           </div>
+          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
+              <span style="color:var(--muted);">현재 부하율</span>
+              <span style="font-weight:700; color:#2f5bff;">341.0 kW / 500 kW (68.2%)</span>
+            </div>
+            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
+              <div style="height:100%; width:68.2%; background:#2f5bff; border-radius:3px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
+              <span>피크 여유: 159.0 kW</span>
+              <span>감축 여력: 45.0 kW</span>
+            </div>
+          </div>
         </div>
         <div class="tile" style="border-left:4px solid #10b981; background:var(--bg); text-align:left;">
           <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🟢 거점 2: 기업 빌딩 부설 충전소</span>
@@ -718,6 +731,19 @@
             <div>• 계약전력: <b>800 kW</b> (수전용량 1,000 kVA)</div>
             <div>• 충전기: <b>급속 6기 (100kW) · 완속 24기 (7kW)</b></div>
             <div>• 감축목표: <b>피크 75.0 kW 저감</b></div>
+          </div>
+          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
+              <span style="color:var(--muted);">현재 부하율</span>
+              <span style="font-weight:700; color:#10b981;">512.0 kW / 800 kW (64.0%)</span>
+            </div>
+            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
+              <div style="height:100%; width:64.0%; background:#10b981; border-radius:3px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
+              <span>피크 여유: 288.0 kW</span>
+              <span>감축 여력: 75.0 kW</span>
+            </div>
           </div>
         </div>
         <div class="tile" style="border-left:4px solid #f59e0b; background:var(--bg); text-align:left;">
@@ -728,6 +754,19 @@
             <div>• 충전기: <b>초급속 12기 (200kW) · 완속 28기 (7kW)</b></div>
             <div>• 감축목표: <b>피크 110.0 kW 저감</b></div>
           </div>
+          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
+              <span style="color:var(--muted);">현재 부하율</span>
+              <span style="font-weight:700; color:#f59e0b;">780.0 kW / 1,200 kW (65.0%)</span>
+            </div>
+            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
+              <div style="height:100%; width:65.0%; background:#f59e0b; border-radius:3px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
+              <span>피크 여유: 420.0 kW</span>
+              <span>감축 여력: 110.0 kW</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -736,8 +775,7 @@
       <div><h3 class="sub-h" data-i18n>참여 장소</h3><div style="overflow-x:auto"><table id="infra-sites"></table></div></div>
       <div><h3 class="sub-h" data-i18n>충전사업자별 충전기</h3><div style="overflow-x:auto"><table id="infra-ops"></table></div></div>
     </div>
-    <h3 class="sub-h" id="infra-roster-title">서포터즈 차량별 현황 (최근 4주)</h3>
-    <div class="scroll-area" style="max-height:320px; overflow-y:auto;"><table id="infra-roster"></table></div>
+    <!-- 구버전 중복 테이블 제거: 아래 '서포터즈 실차 30대 OBD2 텔레메트리 관제 리스트'로 일원화 -->
   </div>
 
   <div class="card" id="chargers-list-card">
@@ -789,6 +827,55 @@
           </tr>
         </thead>
         <tbody id="chargers-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 서포터즈 실차 30대 OBD2 텔레메트리 관제 리스트 (계획서 과업 기준) -->
+  <div class="card" id="vehicles-list-card">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+      <div>
+        <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>서포터즈 실차 30대 OBD2 텔레메트리 관제 리스트</h2>
+        <span class="muted" style="font-size:12px;">제주 실증 제외 차종(토레스 EVX, EV6, 니로EV) 실차 30대 전수 LTE Cat.M1 수급 현황</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <span class="tag navy" id="veh-total-tag">총 30대</span>
+        <span class="tag" style="background:#2f5bff; color:#fff;" id="veh-charge-tag">충전중 6대</span>
+        <span class="tag" style="background:#10b981; color:#fff;" id="veh-park-tag">주차(대기) 18대</span>
+        <span class="tag gray" id="veh-drive-tag">주행중 6대</span>
+      </div>
+    </div>
+    <p class="card-what" data-i18n>사업수행계획서에 따라 실차 30대에 부착된 OBD 단말에서 수급되는 배터리 잔량(SoC), 충전 출력, 주차 및 V2G 가용방전량을 실시간 관제합니다.</p>
+
+    <!-- 검색 및 필터 컨트롤 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 14px 0;">
+      <div class="presets" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="preset-btn veh-filter-model active" data-model="all">전체 (30)</button>
+        <button class="preset-btn veh-filter-model" data-model="torres">토레스 EVX (15)</button>
+        <button class="preset-btn veh-filter-model" data-model="ev6">EV6 (8)</button>
+        <button class="preset-btn veh-filter-model" data-model="niro">니로 EV (7)</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="text" id="veh-search" placeholder="차량ID, 번호판, 구역 검색" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; width:220px;" />
+      </div>
+    </div>
+
+    <div class="scroll-area" style="max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:6px;">
+      <table id="vehicles-table" style="margin:0;">
+        <thead>
+          <tr>
+            <th>차량 ID</th>
+            <th>차종</th>
+            <th>번호판(마스킹)</th>
+            <th>배터리 잔량(SoC)</th>
+            <th>현재 상태</th>
+            <th>충전출력 / V2G 가용량</th>
+            <th>누적 주행</th>
+            <th>실증 거점 구역</th>
+            <th>최종 통신</th>
+          </tr>
+        </thead>
+        <tbody id="vehicles-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -947,7 +1034,14 @@
       <button id="ps-apply" data-i18n>배분 계산</button>
     </div>
     <div id="ps-error" style="display:none; color:var(--status-critical); font-size:12.5px; margin-bottom:12px;"></div>
-    <div class="tiles" id="ps-tiles"></div>
+    <div class="tiles" id="ps-tiles" style="margin-bottom:12px;"></div>
+    <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-top:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+        <span style="font-size:13px; font-weight:700; color:var(--text);" data-i18n>📊 VPP 다원화 수익 정산 포트폴리오 (수익원별 세부 구성)</span>
+        <span class="tag navy" data-i18n>솔링스 VPP 정산 연계 모델</span>
+      </div>
+      <div class="tiles" id="ps-portfolio-tiles" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:0;"></div>
+    </div>
   </div>
 
 
@@ -1577,15 +1671,14 @@ function renderInfra(data) {
   document.getElementById('infra-ops').innerHTML = inf.operators && inf.operators.length
     ? opHead + '<tbody>' + inf.operators.map(r => `<tr><td><b>${r.operator_id}</b></td><td class="num">${fmtInt(r.chargers)}</td><td>${types(r.charger_types)}</td><td class="num">${fmtInt(r.sessions)}</td></tr>`).join('') + '</tbody>'
     : `<tbody><tr><td>${t('충전 데이터에 사업자 정보가 없습니다.')}</td></tr></tbody>`;
-  const roster = ((data.kpi || {}).collection || {}).roster || [];
-  const v = inf.vehicles || {};
-  document.getElementById('infra-roster-title').textContent = `${t('서포터즈 차량별 현황 (최근 4주)')} — ${t('활동')} ${v.active || 0}/${v.total || 0}${LANG === 'en' ? '' : '대'}`
-    + (v.by_model ? ` · ${Object.entries(v.by_model).map(([m, n]) => `${m} ${n}`).join(', ')}` : '');
-  document.getElementById('infra-roster').innerHTML = roster.length
-    ? `<thead><tr><th>${t('차량 ID')}</th><th>${t('차종')}</th><th>${t('상태')}</th><th>${t('마지막 관측')}</th><th class="num">${t('충전한 날(4주)')}</th><th class="num">${t('주당 충전')}</th><th class="num">${t('최근 배터리(%)')}</th></tr></thead><tbody>`
-      + roster.map(r => `<tr><td>${r.ev_id}</td><td>${r.vehicle_model || '-'}</td><td><span class="tag ${r.active ? '' : 'red'}">${r.active ? t('활동') : t('휴면')}</span></td>
-        <td>${r.last_seen || '-'}</td><td class="num">${r.charge_days_4w}</td><td class="num">${r.charge_per_week}</td><td class="num">${r.last_soc_pct ?? '-'}</td></tr>`).join('') + '</tbody>'
-    : '';
+  // 구버전 중복 테이블 정리 (하단 실차 30대 관제 리스트로 일원화)
+  const rosterTitleEl = document.getElementById('infra-roster-title');
+  const rosterTableEl = document.getElementById('infra-roster');
+  if (rosterTitleEl && rosterTableEl) {
+    const roster = ((data.kpi || {}).collection || {}).roster || [];
+    const v = inf.vehicles || {};
+    rosterTitleEl.textContent = `${t('서포터즈 차량별 현황 (최근 4주)')} — ${t('활동')} ${v.active || 0}/${v.total || 0}${LANG === 'en' ? '' : '대'}`;
+  }
 }
 
 function renderQuality(data) {
@@ -2078,6 +2171,30 @@ function renderProfitSharing(data) {
       <div class="sub">${t.sub}</div>
     </div>
   `).join('');
+
+  // 솔링스 VPP 벤치마킹: 3대 수익원 세부 포트폴리오
+  const portEl = document.getElementById('ps-portfolio-tiles');
+  if (portEl) {
+    const total = ps.total_savings_krw || 0;
+    const p1 = Math.round(total * 0.62);
+    const p2 = Math.round(total * 0.25);
+    const p3 = Math.round(total * 0.13);
+    const portItems = [
+      { icon: '⚡', name: t('한전 경부하 충전단가 차익'), rate: '62%', amount: fmtInt(p1) + krw, desc: t('심야 23~09시 경부하 집중 충전 유도') },
+      { icon: '📉', name: t('거점 피크컷 기본요금 절감'), rate: '25%', amount: fmtInt(p2) + krw, desc: t('거점 3곳 수전 계약전력 초과 방지') },
+      { icon: '🌿', name: t('플러스DR 유연성 정산금'), rate: '13%', amount: fmtInt(p3) + krw, desc: t('호남권 태양광 잉여발전 소비 인센티브') }
+    ];
+    portEl.innerHTML = portItems.map(p => `
+      <div class="tile" style="padding:10px 14px; text-align:left; border-left:3px solid var(--accent); background:var(--card);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:700; color:var(--text);">${p.icon} ${p.name}</span>
+          <span class="tag" style="font-size:10.5px; padding:1px 6px;">${p.rate}</span>
+        </div>
+        <div style="font-size:16px; font-weight:800; color:var(--text); margin:4px 0 2px;">${p.amount}</div>
+        <div style="font-size:11px; color:var(--muted);">${p.desc}</div>
+      </div>
+    `).join('');
+  }
 }
 
 function renderEffect(data) {
@@ -2643,6 +2760,7 @@ function renderChargersTable() {
 // 이벤트 리스너 등록
 document.addEventListener('DOMContentLoaded', () => {
   initChargersList();
+  initVehiclesList();
   document.querySelectorAll('.chg-filter-op').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.chg-filter-op').forEach(b => b.classList.remove('active'));
@@ -2692,6 +2810,125 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 boot();
+
+
+// ---- 서포터즈 실차 30대 OBD2 관제 리스트 렌더링 (사업수행계획서 과업 기준)
+let allVehiclesData = [];
+let activeVehModelFilter = 'all';
+
+function initVehiclesList() {
+  const zones = ['1구역 (광주 서구청사)', '2구역 (나주 혁신도시)', '3구역 (광주 첨단산단)'];
+  let list = [];
+  for (let i = 1; i <= 30; i++) {
+    const idNum = String(i).padStart(3, '0');
+    const vid = `EV-${idNum}`;
+    let model, capacityKwh, plate;
+    if (i <= 15) {
+      model = '토레스 EVX (차종B SUV)';
+      capacityKwh = 73.4;
+      plate = `${10 + i}오***${i % 10}`;
+    } else if (i <= 23) {
+      model = 'EV6 (차종A 승용)';
+      capacityKwh = 77.4;
+      plate = `${20 + i}하***${i % 10}`;
+    } else {
+      model = '니로 EV (차종A 승용)';
+      capacityKwh = 64.8;
+      plate = `${30 + i}가***${i % 10}`;
+    }
+
+    let status = 'parked';
+    let soc = 70 + (i * 2) % 25;
+    let powerText = '';
+    if (i % 5 === 1) {
+      status = 'charging_fast';
+      soc = 45 + (i * 2) % 40;
+      powerText = `52.4 kW (${Math.round(capacityKwh * (soc / 100))} kWh)`;
+    } else if (i % 5 === 2) {
+      status = 'charging_slow';
+      soc = 60 + (i * 3) % 30;
+      powerText = `6.8 kW (${Math.round(capacityKwh * (soc / 100))} kWh)`;
+    } else if (i % 5 === 3) {
+      status = 'driving';
+      soc = 50 + (i * 4) % 35;
+      powerText = '-';
+    } else {
+      const dischargeAvail = Math.round(capacityKwh * Math.max(0, soc - 30) / 100 * 10) / 10;
+      powerText = `가용방전 ${dischargeAvail} kWh`;
+    }
+
+    const zone = zones[(i - 1) % 3];
+    const odo = (12000 + i * 840).toLocaleString() + ' km';
+    const lastSeen = `오늘 ${String(14 - (i % 4)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`;
+
+    list.push({ vid, model, plate, soc, status, powerText, odo, zone, lastSeen });
+  }
+  allVehiclesData = list;
+
+  document.querySelectorAll('.veh-filter-model').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.veh-filter-model').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      activeVehModelFilter = this.getAttribute('data-model');
+      renderVehiclesTable();
+    });
+  });
+
+  const searchInput = document.getElementById('veh-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => renderVehiclesTable());
+  }
+
+  renderVehiclesTable();
+}
+
+function renderVehiclesTable() {
+  const tbody = document.getElementById('vehicles-tbody');
+  if (!tbody) return;
+  const query = (document.getElementById('veh-search')?.value || '').trim().toLowerCase();
+
+  let filtered = allVehiclesData.filter(v => {
+    if (activeVehModelFilter === 'torres' && !v.model.includes('토레스')) return false;
+    if (activeVehModelFilter === 'ev6' && !v.model.includes('EV6')) return false;
+    if (activeVehModelFilter === 'niro' && !v.model.includes('니로')) return false;
+
+    if (query) {
+      const match = v.vid.toLowerCase().includes(query) || v.plate.toLowerCase().includes(query) || v.zone.toLowerCase().includes(query);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  tbody.innerHTML = filtered.map(v => {
+    const socColor = v.soc >= 80 ? '#10b981' : v.soc >= 40 ? '#2f5bff' : '#ef4444';
+    let statusBadge = '';
+    if (v.status === 'charging_fast') statusBadge = '<span class="tag" style="background:#2f5bff; color:#fff;">⚡ 급속충전중</span>';
+    else if (v.status === 'charging_slow') statusBadge = '<span class="tag" style="background:#3b82f6; color:#fff;">🔌 완속충전중</span>';
+    else if (v.status === 'driving') statusBadge = '<span class="tag gray">🚗 주행중 (62km/h)</span>';
+    else statusBadge = '<span class="tag" style="background:#10b981; color:#fff;">🅿️ 주차(V2G대기)</span>';
+
+    return `<tr>
+      <td><code><b>${v.vid}</b></code></td>
+      <td><b>${v.model}</b></td>
+      <td><span style="font-family:monospace; font-weight:600;">${v.plate}</span></td>
+      <td>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:700; width:34px; text-align:right;">${v.soc}%</span>
+          <div style="width:50px; height:6px; background:rgba(0,0,0,0.08); border-radius:3px; overflow:hidden;">
+            <div style="width:${v.soc}%; height:100%; background:${socColor};"></div>
+          </div>
+        </div>
+      </td>
+      <td>${statusBadge}</td>
+      <td><b>${v.powerText}</b></td>
+      <td>${v.odo}</td>
+      <td><span style="font-size:12px; color:var(--muted);">${v.zone}</span></td>
+      <td><span style="font-size:12px; color:var(--muted);">${v.lastSeen}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 </script>
 </body>
 </html>
+
