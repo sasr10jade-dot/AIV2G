@@ -60,7 +60,7 @@ main { flex: 1; padding: 14px 16px 24px; width: 100%; max-width: 560px; margin: 
 .banner.offline { border: 1px solid var(--warn); color: var(--warn); margin-top: 12px; }
 .banner.install { border: 1px solid var(--border); margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
-input[type=text], input[type=password], input[type=number], select {
+input[type=text], input[type=password], input[type=number], input[type=time], select {
   width: 100%; min-height: 48px; padding: 0 12px; border-radius: var(--r);
   border: 1px solid var(--border); background: var(--surface); font-size: 16px;
 }
@@ -70,6 +70,9 @@ input[type=text], input[type=password], input[type=number], select {
 }
 .linkbtn { display: block; width: 100%; margin-top: 14px; min-height: 44px; background: none; border: 0; color: var(--muted); font-size: 14px; text-decoration: underline; cursor: pointer; }
 .hint { font-size: 12px; margin: 6px 0 0; }
+.consent-text { white-space: pre-line; }   /* 동의 문구 항목별 줄바꿈 */
+label .req { color: var(--danger, #d92d20); margin-left: 2px; }
+label .opt { color: var(--muted); font-weight: 400; margin-left: 4px; }
 .consent-text { font-size: 12px; margin: 18px 0 8px; line-height: 1.5; }
 label.check { display: flex; align-items: center; gap: 10px; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); font-weight: 500; margin: 10px 0 0; }
 label.check input { width: 22px; height: 22px; flex: none; }
@@ -248,6 +251,10 @@ label.check input { width: 22px; height: 22px; flex: none; }
       pt_title: '내 실증 참여', pt_dep: '평소 출발 시각', pt_target: '목표 배터리', pt_min: '최소 보장 배터리', pt_odo: '누적 주행거리', pt_v2g: '방전(V2G) 추론 안내',
       pt_edit: '내 정보에서 바꿀 수 있어요.', pt_unset: '미입력(기본값 사용)',
       data_note: '수집한 데이터는 가명처리해 AI 예측·분석에만 쓰여요. 방전 안내는 실제 방전이 아닌 AI 추론 결과예요.',
+      su_req_note: '* 표시는 필수 항목입니다.', su_opt: '(선택)', su_dong: '동·읍·면', su_dong_pick: '동·읍·면 선택', su_dong_none: '선택 가능한 동 없음',
+      su_tg_ph: '비워 두면 80', su_mn_ph: '비워 두면 20', su_od_ph: '예: 35000',
+      su_err_target: '출발 시 목표 배터리는 20~100% 사이로 입력해 주세요.', su_err_min: '최소 보장 배터리는 10~90% 사이로 입력해 주세요.',
+      su_err_order: '최소 보장 배터리는 목표 배터리보다 낮아야 합니다.', su_err_odo: '누적 주행거리는 0 이상 숫자로 입력해 주세요.',
       su_op_title: '운행 정보(선택)', su_op_hint: '입력하면 충전 추천이 내 운행에 맞춰져요. 비워 두면 08시 출발·목표 80%·최소 20%로 계산해요.',
       su_dep: '평소 출발 시각', su_target: '출발 시 목표 배터리(%)', su_min: '최소 보장 배터리(%)', su_odo: '누적 주행거리(km)', h_reg: '평소 출발 시각({t})',
       me_btn: '내 정보', mp_title: '내 정보', mp_back: '← 돌아가기', mp_fail: '내 정보를 불러오지 못했어요', mp_fail_sub: '잠시 후 다시 시도해 주세요.',
@@ -269,7 +276,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       signup: '회원가입', signup_title: '회원가입', signup_desc: '차량 정보를 등록하면 관리자가 확인한 뒤 차량이 연결돼요. 승인 전에는 차량 정보가 보이지 않아요.',
       su_model: '차종', su_plate: '번호판', su_plate_ph: '예: 43오3450', su_occ: '직업군', su_sido: '시·도', su_sigungu: '시·군·구',
       su_pick: '선택하세요', su_sigungu_first: '시·도를 먼저 선택하세요', su_pw_hint: '8자 이상, 영문·숫자 포함', su_consent: '개인정보 수집·이용에 동의합니다(필수)', su_policy: '처리방침 보기',
-      su_submit: '가입하고 승인 요청', su_submitting: '가입 중…', su_need: '모든 항목을 입력하고 동의해 주세요.', su_fail: '가입에 실패했습니다.', su_back: '로그인으로 돌아가기',
+      su_submit: '가입하고 승인 요청', su_submitting: '가입 중…', su_need: '* 표시된 필수 항목을 모두 입력하고 동의해 주세요.', su_fail: '가입에 실패했습니다.', su_back: '로그인으로 돌아가기',
       pend_title: '승인 대기 중', pend_desc: '관리자가 차량을 확인하면 충전 시간 추천을 볼 수 있어요.', pend_vehicle: '신청 차량', pend_region: '거주지',
       pend_refresh: '승인 상태 새로고침', pend_still: '아직 승인 전이에요.', rej_title: '신청이 반려됐어요', rej_reason: '사유', rej_help: '관리자에게 문의한 뒤 다시 신청해 주세요.',
       dev_login: '개발용 간편 로그인', dev_fail: '간편 로그인에 실패했습니다.', login_needed: '로그인이 필요해요.',
@@ -322,6 +329,10 @@ label.check input { width: 22px; height: 22px; flex: none; }
       pt_title: 'My pilot participation', pt_dep: 'Usual departure', pt_target: 'Target battery', pt_min: 'Minimum battery', pt_odo: 'Odometer', pt_v2g: 'Discharge (V2G) inference guidance',
       pt_edit: 'You can change these in My info.', pt_unset: 'Not set (defaults used)',
       data_note: 'Collected data is pseudonymized and used only for AI forecasting and analysis. Discharge guidance is an AI inference, not an actual discharge.',
+      su_req_note: 'Fields marked * are required.', su_opt: '(optional)', su_dong: 'Neighborhood', su_dong_pick: 'Choose a neighborhood', su_dong_none: 'No neighborhoods to choose',
+      su_tg_ph: 'Blank = 80', su_mn_ph: 'Blank = 20', su_od_ph: 'e.g. 35000',
+      su_err_target: 'Enter a target battery between 20 and 100%.', su_err_min: 'Enter a minimum battery between 10 and 90%.',
+      su_err_order: 'Minimum battery must be lower than the target battery.', su_err_odo: 'Enter the odometer as a number of 0 or more.',
       su_op_title: 'Driving info (optional)', su_op_hint: 'Fill these in to fit recommendations to your driving. If blank we assume 08:00 departure, 80% target and 20% minimum.',
       su_dep: 'Usual departure time', su_target: 'Target battery at departure (%)', su_min: 'Minimum battery (%)', su_odo: 'Odometer (km)', h_reg: 'Usual departure ({t})',
       me_btn: 'My info', mp_title: 'My info', mp_back: '← Back', mp_fail: 'Could not load your info', mp_fail_sub: 'Please try again shortly.',
@@ -343,7 +354,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       signup: 'Sign up', signup_title: 'Sign up', signup_desc: 'Register your vehicle. An administrator reviews it before your car is linked. Vehicle data stays hidden until approval.',
       su_model: 'Vehicle model', su_plate: 'Plate number', su_plate_ph: 'e.g. 43오3450', su_occ: 'Occupation', su_sido: 'Province / city', su_sigungu: 'District',
       su_pick: 'Select', su_sigungu_first: 'Select a province first', su_pw_hint: 'At least 8 characters, letters and numbers', su_consent: 'I agree to the collection and use of personal data (required)', su_policy: 'View policy',
-      su_submit: 'Sign up and request approval', su_submitting: 'Signing up…', su_need: 'Fill in every field and agree to continue.', su_fail: 'Sign-up failed.', su_back: 'Back to sign in',
+      su_submit: 'Sign up and request approval', su_submitting: 'Signing up…', su_need: 'Fill in every field marked * and agree to continue.', su_fail: 'Sign-up failed.', su_back: 'Back to sign in',
       pend_title: 'Awaiting approval', pend_desc: 'Once an administrator confirms your vehicle, charging recommendations appear.', pend_vehicle: 'Vehicle', pend_region: 'Region',
       pend_refresh: 'Refresh approval status', pend_still: 'Not approved yet.', rej_title: 'Request rejected', rej_reason: 'Reason', rej_help: 'Contact the administrator, then apply again.',
       dev_login: 'Developer quick sign-in', dev_fail: 'Quick sign-in failed.', login_needed: 'Please sign in.',
@@ -551,12 +562,12 @@ label.check input { width: 22px; height: 22px; flex: none; }
       occ: select('su_o', o.occupations, function (x) { return x.label; }, function (x) { return x.id; }),
       sido: select('su_s', o.sido, function (x) { return x; }, function (x) { return x; }),
       sigungu: el('select', { id: 'su_g', required: '', disabled: '' }, [el('option', { value: '', text: t('su_sigungu_first') })]),
-      dong: el('select', { id: 'su_d', disabled: '' }, [el('option', { value: '', text: '동·읍·면 선택' })]),
+      dong: el('select', { id: 'su_d', disabled: '' }, [el('option', { value: '', text: t('su_dong_pick') })]),
       consent: el('input', { type: 'checkbox', id: 'su_c' }),
       dep: el('input', { type: 'time', id: 'su_dep' }),
-      target: el('input', { type: 'number', id: 'su_tg', min: '20', max: '100', inputmode: 'numeric' }),
-      minsoc: el('input', { type: 'number', id: 'su_mn', min: '10', max: '90', inputmode: 'numeric' }),
-      odo: el('input', { type: 'number', id: 'su_od', min: '0', inputmode: 'numeric' }),
+      target: el('input', { type: 'number', id: 'su_tg', min: '20', max: '100', inputmode: 'numeric', placeholder: t('su_tg_ph') }),
+      minsoc: el('input', { type: 'number', id: 'su_mn', min: '10', max: '90', inputmode: 'numeric', placeholder: t('su_mn_ph') }),
+      odo: el('input', { type: 'number', id: 'su_od', min: '0', inputmode: 'numeric', placeholder: t('su_od_ph') }),
     };
     // 시·도를 고르면 그 시·도의 시·군·구만 선택지로 채운다(서버 검증과 같은 목록)
     var byProv = o.sigungu_by_sido || {};
@@ -564,7 +575,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     f.sido.addEventListener('change', function () {
       clear(f.sigungu);
       clear(f.dong);
-      f.dong.appendChild(el('option', { value: '', text: '동·읍·면 선택' }));
+      f.dong.appendChild(el('option', { value: '', text: t('su_dong_pick') }));
       f.dong.disabled = true;
       var names = byProv[f.sido.value] || [];
       f.sigungu.appendChild(el('option', { value: '', text: names.length ? t('su_pick') : t('su_sigungu_first') }));
@@ -575,7 +586,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       clear(f.dong);
       var key = f.sido.value + ':' + f.sigungu.value;
       var dongs = byDong[key] || [];
-      f.dong.appendChild(el('option', { value: '', text: dongs.length ? '동·읍·면 선택' : '선택 가능한 동 없음' }));
+      f.dong.appendChild(el('option', { value: '', text: dongs.length ? t('su_dong_pick') : t('su_dong_none') }));
       dongs.forEach(function (d) { f.dong.appendChild(el('option', { value: d, text: d })); });
       f.dong.disabled = !dongs.length;
     });
@@ -583,15 +594,16 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var btn = el('button', { class: 'primary', type: 'submit', text: t('su_submit') });
     var policy = el('a', { href: o.consent.policy_url || '/privacy-policy', target: '_blank', rel: 'noopener', text: t('su_policy') });
     var form = el('form', { novalidate: '' }, [
-      el('label', { for: 'su_u', text: t('username') }), f.user,
-      el('label', { for: 'su_p', text: t('password') }), f.pass,
+      el('p', { class: 'muted hint', text: t('su_req_note') }),
+      reqLabel('su_u', 'username'), f.user,
+      reqLabel('su_p', 'password'), f.pass,
       el('p', { class: 'muted hint', text: t('su_pw_hint') }),
-      el('label', { for: 'su_m', text: t('su_model') }), f.model,
-      el('label', { for: 'su_pl', text: t('su_plate') }), f.plate,
-      el('label', { for: 'su_o', text: t('su_occ') }), f.occ,
-      el('label', { for: 'su_s', text: t('su_sido') }), f.sido,
-      el('label', { for: 'su_g', text: t('su_sigungu') }), f.sigungu,
-      el('label', { for: 'su_d', text: '동·읍·면 (시·군·구·동 선택)' }), f.dong,
+      reqLabel('su_m', 'su_model'), f.model,
+      reqLabel('su_pl', 'su_plate'), f.plate,
+      reqLabel('su_o', 'su_occ'), f.occ,
+      reqLabel('su_s', 'su_sido'), f.sido,
+      reqLabel('su_g', 'su_sigungu'), f.sigungu,
+      optLabel('su_d', 'su_dong'), f.dong,
       el('h2', { class: 'gap', text: t('su_op_title') }), el('p', { class: 'muted hint', text: t('su_op_hint') }),
       el('label', { for: 'su_dep', text: t('su_dep') }), f.dep,
       el('label', { for: 'su_tg', text: t('su_target') }), f.target,
@@ -608,6 +620,8 @@ label.check input { width: 22px; height: 22px; flex: none; }
       if (!f.user.value.trim() || !f.pass.value || !f.model.value || !f.plate.value.trim() || !f.occ.value || !f.sido.value || !f.sigungu.value || !f.consent.checked) {
         err.textContent = t('su_need'); return;
       }
+      var opErr = operatingError(f.target.value, f.minsoc.value, f.odo.value);
+      if (opErr) { err.textContent = opErr; return; }
       btn.disabled = true; btn.textContent = t('su_submitting');
       try {
         var r = await api('/signup', { method: 'POST', body: JSON.stringify(Object.assign({
@@ -631,6 +645,17 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var back = el('button', { class: 'linkbtn', type: 'button', text: t('su_back') });
     back.addEventListener('click', function () { renderLogin(null); });
     card.appendChild(back);
+  }
+  function reqLabel(id, key) { return el('label', { for: id }, [el('span', { text: t(key) }), el('span', { class: 'req', 'aria-hidden': 'true', text: '*' })]); }
+  function optLabel(id, key) { return el('label', { for: id }, [el('span', { text: t(key) }), el('span', { class: 'opt', text: t('su_opt') })]); }
+  // 운행 정보(선택) 범위 검사 — 서버와 같은 규칙(목표 20~100, 최소 10~90, 최소 < 목표, 주행거리 ≥ 0)
+  function operatingError(target, minsoc, odo) {
+    var tg = target === '' ? null : Number(target), mn = minsoc === '' ? null : Number(minsoc), od = odo === '' ? null : Number(odo);
+    if (tg != null && !(tg >= 20 && tg <= 100)) return t('su_err_target');
+    if (mn != null && !(mn >= 10 && mn <= 90)) return t('su_err_min');
+    if (tg != null && mn != null && mn >= tg) return t('su_err_order');
+    if (od != null && !(od >= 0)) return t('su_err_odo');
+    return '';
   }
   // 운행 정보(선택) — 빈 칸은 보내지 않는다(서버 기본값을 쓴다)
   function operatingBody(dep, target, minsoc, odo) {

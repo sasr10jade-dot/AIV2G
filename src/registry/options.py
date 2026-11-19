@@ -1,7 +1,7 @@
 """가입 선택지·입력 규칙 — 직업군, 시·도, 번호판 형식, 개인정보 수집·이용 동의 문구.
 
 직업군과 거주지는 개인정보라 자유 입력을 최소화한다: 직업군은 고정 선택지, 거주지는 시·도 선택 +
-시·군·구까지만 받는다(읍·면·동·상세주소는 받지 않는다). 동의 문구를 바꾸면 CONSENT_VERSION을
+시·군·구까지 필수로 받고, 동·읍·면은 선택(상세주소는 받지 않는다). 동의 문구를 바꾸면 CONSENT_VERSION을
 올려, 어떤 문구에 동의했는지 추적할 수 있게 한다.
 """
 from __future__ import annotations
@@ -60,12 +60,13 @@ def sigungu_allowed(sido: str, sigungu: str) -> bool:
     return True if names is None else sigungu in names
 
 
-CONSENT_VERSION = "profile-v1"
+CONSENT_VERSION = "profile-v2"   # v2: 선택 항목(동·읍·면, 운행 정보)을 수집 항목에 명시
 POLICY_URL = "/privacy-policy"
 POLICY_VERSION = "policy-v0.1-draft"
 CONSENT_TEXT = (
     "[개인정보 수집·이용 동의]\n"
-    "• 수집 항목: 차종, 차량 번호판, 직업군, 거주지(시·군·구까지)\n"
+    "• 수집 항목(필수): 차종, 차량 번호판, 직업군, 거주지(시·군·구까지)\n"
+    "• 수집 항목(선택, 입력한 경우만): 거주지 동·읍·면, 평소 출발 시각, 출발 시 목표 배터리, 최소 보장 배터리, 누적 주행거리\n"
     "• 이용 목적: 차량 확인 및 승인, 내 상황에 맞는 충전 시간·요금·수요 안내(맞춤 알림)\n"
     "• 보유 기간: 회원 탈퇴 시까지(탈퇴하면 지체 없이 삭제)\n"
     "• 동의를 거부할 수 있으나, 거부하면 가입할 수 없습니다.\n"

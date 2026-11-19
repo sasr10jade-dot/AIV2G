@@ -4,6 +4,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from src.registry import options
 from src.api import app
 from src.api.routers import signup as signup_router
 from src.auth import store as auth_store
@@ -88,7 +89,7 @@ def test_signup_leaves_masked_history_with_consent_version_and_ip():
     assert item["label"] == "회원가입" and item["by"] == "본인" and item["note"] == reg_id
     fields = {c["field"]: c["after"] for c in item["changes"]}
     assert fields["plate"] == "43오**50" and fields["occupation"] == "office"
-    assert fields["profile_consent"] == "profile-v1"
+    assert fields["profile_consent"] == options.CONSENT_VERSION   # 동의 문구 버전(현재 값)
     assert "ip" not in item and "actor" not in item          # 본인용에는 접속 IP·처리자 계정을 싣지 않는다
     stored = audit.entries("member.signup", target="newdriver")[0]
     assert json.loads(stored["detail"])["ip"] == "testclient"  # 서버 기록에는 IP가 남아 있다

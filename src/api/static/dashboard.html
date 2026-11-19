@@ -202,7 +202,8 @@
   th.th-tip { cursor: help; border-bottom: 1px dotted var(--text-muted); text-decoration: none; }
   .scroll-area thead th { position: sticky; top: 0; background: var(--surface-card); z-index: 1; }
   #vehicle-status-table th, #vehicle-status-table td { text-align: center; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }   /* 머리글도 숫자 열과 같이 오른쪽 정렬 */
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.ess-folded tr.ess-extra { display: none; }   /* ESS 그룹 표 접기 — 행은 남겨 두고 숨기기만 한다(선택 상태 유지) */   /* 머리글도 숫자 열과 같이 오른쪽 정렬 */
 
   .badge {
     display: inline-flex;
@@ -2268,13 +2269,39 @@ function renderEss() {
   document.getElementById('ess-msg').textContent =
     `${t('지정')} ${members.size}${t('대')} (${t('목표')} ${d.group_size_target[0]}~${d.group_size_target[1]}${t('대')}) · ${t(d.criteria)} · ${t(d.label)}`;
   document.getElementById('ess-download').style.display = members.size ? '' : 'none';
-  document.getElementById('ess-table').innerHTML = `<table><thead><tr><th>${t('선택')}</th><th>${t('차량')}</th><th>${t('구분')}</th><th class="num">${t('점수')}</th>
+  // 기본은 점수 상위 ESS_PREVIEW_ROWS대(추천 범위)만 보이고 나머지는 숨긴다. 지정된 그룹 차량은 항상 보인다.
+  // 행을 다시 그리지 않고 숨기기만 하므로 접었다 펼쳐도 체크 상태가 유지된다.
+  const extra = d.candidates.filter((c, i) => i >= ESS_PREVIEW_ROWS && !members.has(c.ev_id)).length;
+  document.getElementById('ess-table').innerHTML = (extra ? `<div style="display:flex; justify-content:space-between; align-items:center; margin:2px 0 6px;">
+      <span class="muted" style="font-size:12px;" id="ess-fold-note"></span>
+      <button type="button" class="preset-btn" id="ess-toggle"></button></div>` : '') +
+    `<table class="${essExpanded ? '' : 'ess-folded'}" id="ess-tbl"><thead><tr><th>${t('선택')}</th><th>${t('차량')}</th><th>${t('구분')}</th><th class="num">${t('점수')}</th>
     <th class="num">${t('규칙성')}</th><th class="num">${t('장기 주차(시간/일)')}</th><th class="num">${t('완속 체류(시간)')}</th><th class="num">${t('심야충전 후 주간대기')}</th>
     <th>${t('방전 허용 시간대')}</th></tr></thead><tbody>` +
-    d.candidates.map(c => `<tr><td><input type="checkbox" class="ess-chk" value="${escH(c.ev_id)}" ${members.has(c.ev_id) ? 'checked' : ''}></td>
+    d.candidates.map((c, i) => `<tr class="${i >= ESS_PREVIEW_ROWS && !members.has(c.ev_id) ? 'ess-extra' : ''}"><td><input type="checkbox" class="ess-chk" value="${escH(c.ev_id)}" ${members.has(c.ev_id) ? 'checked' : ''}></td>
       <td>${escH(c.ev_id)}${members.has(c.ev_id) ? ' <span class="tag navy">' + t('그룹') + '</span>' : ''}</td><td>${escH(t(c.group_label))}<br><span style="color:var(--text-muted)">${escH(c.ev_type)} · ${escH(c.affiliation_source)}</span></td>
       <td class="num">${c.score}</td><td class="num">${c.regularity}</td><td class="num">${c.long_parking_h_per_day}</td><td class="num">${c.slow_charger_dwell_h}</td>
       <td class="num">${Math.round(c.night_charge_day_idle_ratio * 100)}%</td><td>${hourRanges(c.discharge_allowed_hours)} (${t('평균')} ${c.discharge_allowed_h_per_day}${t('시간/일')})</td></tr>`).join('') + '</tbody></table>';
+  if (extra) {
+    const btn = document.getElementById('ess-toggle');
+    btn.addEventListener('click', () => { essExpanded = !essExpanded; syncEssFold(); });
+    document.getElementById('ess-tbl').addEventListener('change', syncEssFold);   // 접힌 행의 선택 수 안내 갱신
+    syncEssFold();
+  }
+}
+
+const ESS_PREVIEW_ROWS = 10;
+let essExpanded = false;
+function syncEssFold() {
+  const tbl = document.getElementById('ess-tbl'), btn = document.getElementById('ess-toggle'), note = document.getElementById('ess-fold-note');
+  if (!tbl || !btn) return;
+  tbl.classList.toggle('ess-folded', !essExpanded);
+  const hidden = tbl.querySelectorAll('tr.ess-extra');
+  const hiddenChecked = Array.prototype.filter.call(hidden, tr => tr.querySelector('.ess-chk')?.checked).length;
+  btn.textContent = essExpanded ? t('접기 ▴') : `${t('전체 보기')} ▾ (${essData.candidates.length}${t('대')})`;
+  btn.setAttribute('aria-expanded', String(essExpanded));
+  note.textContent = essExpanded ? `${t('점수 순 전체')} ${essData.candidates.length}${t('대')}`
+    : `${t('점수 상위')} ${ESS_PREVIEW_ROWS}${t('대와 지정 차량만 표시 — 나머지')} ${hidden.length}${t('대 접힘')}` + (hiddenChecked ? ` (${t('접힌 행 중 선택')} ${hiddenChecked}${t('대')})` : '');
 }
 
 async function loadEss() {
