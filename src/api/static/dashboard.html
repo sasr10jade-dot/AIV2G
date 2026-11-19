@@ -202,7 +202,7 @@
   th.th-tip { cursor: help; border-bottom: 1px dotted var(--text-muted); text-decoration: none; }
   .scroll-area thead th { position: sticky; top: 0; background: var(--surface-card); z-index: 1; }
   #vehicle-status-table th, #vehicle-status-table td { text-align: center; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }   /* 머리글도 숫자 열과 같이 오른쪽 정렬 */
 
   .badge {
     display: inline-flex;
@@ -2328,9 +2328,9 @@ function renderEffect(data) {
     `<tr><td>${t('전력수요 수준')}</td><td>${t(g.label)}</td><td class="num">${fmtInt(g.hours)}${LANG === 'en' ? ' h' : '시간'}</td>` +
     `<td class="num" colspan="2">${t('충전량 비중')} ${g.baseline_charge_share_pct}% → ${g.optimized_charge_share_pct}%</td><td class="num">-</td></tr>`));
   condEl.innerHTML = `<h3 style="margin:14px 0 6px; font-size:13px;">${t('조건별 반복 분석')}</h3>
-    <table><thead><tr><th>${t('조건')}</th><th>${t('구분')}</th><th class="num">${t('세션')}</th><th class="num">${t('일반충전 비용')}</th>
-    <th class="num">${t('AI 적용 비용')}</th><th class="num">${t('절감률')}</th></tr></thead><tbody>${rows.join('')}</tbody></table>
-    <p style="font-size:11.5px; color:var(--text-muted);">${t(e.note)}</p>` + coverageHtml(e.conditions.coverage);
+    <table><thead><tr><th>${t('조건')}</th><th>${t('구분')}</th><th class="num">${t('세션 수')}</th><th class="num">${t('일반충전 비용(원)')}</th>
+    <th class="num">${t('AI 적용 비용(원)')}</th><th class="num">${t('절감률')}</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+    <p style="font-size:11.5px; color:var(--text-muted);">${t(e.note)} ${t('전력수요 수준 행은 시간마다 바뀌는 계통 수요로 나누므로 세션이 아닌 시간 수로 세고, 비용 대신 그 시간대 충전량 비중(일반 → AI)을 보여 줍니다.')}</p>` + coverageHtml(e.conditions.coverage);
 }
 
 // 운영조건 다양성(커버리지) — 조건별 세션 건수, 0건 칸은 추가 확보가 필요한 조건
