@@ -2204,11 +2204,24 @@ function renderSettlement(sum, preview) {
       preview.incentives.options.map(o => `<tr><td>${escH(t(o.label))}</td><td class="num">${fmtInt(o.participant_krw)}${krw}</td><td class="num">${fmtInt(o.per_vehicle_krw)}${krw}</td></tr>`).join('') + '</tbody></table>';
   }
   if (sum.per_vehicle.length) {
-    html += `<table style="margin-top:8px;"><thead><tr><th>${t('차량')}</th><th>${t('소속')}</th><th class="num">${t('거래일')}</th><th class="num">${t('피크 방전 kWh')}</th><th class="num">${t('흡수 kWh')}</th><th class="num">${t('포인트')}</th></tr></thead><tbody>` +
-      sum.per_vehicle.slice(0, 30).map(v => `<tr><td>${escH(v.ev_id)}</td><td>${t(v.label)}</td><td class="num">${v.trade_days}</td><td class="num">${v.peak_discharge_kwh}</td><td class="num">${v.absorb_kwh}</td><td class="num">${fmtInt(v.points)}</td></tr>`).join('') + '</tbody></table>';
+    // 차량별 표는 기본으로 상위 SETTLE_PREVIEW_ROWS대만 보이고, 버튼으로 펼치고 접는다(자동 새로고침에도 상태 유지)
+    const rows = sum.per_vehicle;
+    const shown = settleExpanded ? rows : rows.slice(0, SETTLE_PREVIEW_ROWS);
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <b style="font-size:13px;">${t('차량별 정산 내역')} <span class="muted" style="font-weight:400;">(${t('포인트 많은 순')} · ${rows.length}${t('대')})</span></b>
+        ${rows.length > SETTLE_PREVIEW_ROWS ? `<button type="button" class="preset-btn" id="settle-toggle" aria-expanded="${settleExpanded}">${settleExpanded ? t('접기 ▴') : `${t('전체 보기')} ▾ (${rows.length}${t('대')})`}</button>` : ''}
+      </div>` +
+      `<table style="margin-top:6px;"><thead><tr><th>${t('차량')}</th><th>${t('소속')}</th><th class="num">${t('거래일')}</th><th class="num">${t('피크 방전 kWh')}</th><th class="num">${t('흡수 kWh')}</th><th class="num">${t('포인트')}</th></tr></thead><tbody>` +
+      shown.map(v => `<tr><td>${escH(v.ev_id)}</td><td>${t(v.label)}</td><td class="num">${v.trade_days}</td><td class="num">${v.peak_discharge_kwh}</td><td class="num">${v.absorb_kwh}</td><td class="num">${fmtInt(v.points)}</td></tr>`).join('') + '</tbody></table>' +
+      (!settleExpanded && rows.length > SETTLE_PREVIEW_ROWS ? `<p class="muted" style="font-size:11.5px; margin:4px 0 0;">${t('나머지')} ${rows.length - SETTLE_PREVIEW_ROWS}${t('대는 접혀 있습니다.')}</p>` : '');
   }
-  document.getElementById('settle-detail').innerHTML = html;
+  const detail = document.getElementById('settle-detail');
+  detail.innerHTML = html;
+  const tg = document.getElementById('settle-toggle');
+  if (tg) tg.addEventListener('click', () => { settleExpanded = !settleExpanded; renderSettlement(sum, preview); });
 }
+const SETTLE_PREVIEW_ROWS = 5;
+let settleExpanded = false;
 
 async function loadSettlement() {
   try {
