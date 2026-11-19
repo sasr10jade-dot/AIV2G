@@ -109,6 +109,11 @@ cd ~/AIV2G-dev && git pull origin main
 launchctl kickstart -k gui/$(id -u)/kr.aiv2g.dev
 
 # 직접 실행할 때(서비스 대신): scripts/run_dev_lan.sh 5050      (Windows PC에서는 scripts\run_dev_lan.cmd)
+
+# 운영 재학습 배치(주 1회, 월 05:00) — 등록·즉시 실행·결과
+sh scripts/register_retrain_launchd.sh
+launchctl kickstart gui/$(id -u)/kr.aiv2g.retrain
+tail data/batch/retrain_history.jsonl
 ```
 * 접속 주소: `http://192.168.35.92:5050/` (개발 진입 `/dev`, 대시보드 `/dashboard`, 모바일 `/app`, API 문서 `/docs`)
 * 앱 객체는 `src.api:app` 이다(`src.api.main:app` 아님).
