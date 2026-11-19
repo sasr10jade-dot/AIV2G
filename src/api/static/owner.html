@@ -1393,7 +1393,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
         class: 'ai-banner',
         style: 'background:rgba(47,91,255,0.08); border-left:4px solid var(--accent); padding:10px 12px; border-radius:6px; margin:8px 0 12px; font-size:13.5px; line-height:1.5; color:var(--text);'
       }, [
-        el('b', { style: 'color:var(--accent); display:block; margin-bottom:4px;', text: '🤖 AI 추천 근거 설명 (최적화 결과 기반)' }),
+        el('b', { style: 'color:var(--accent); display:block; margin-bottom:4px;', text: g.explanation_method === 'llm' ? '🤖 AI 추천 근거 설명 (LLM 생성 · 최적화 결과 기반)' : '🤖 AI 추천 근거 설명 (최적화 결과 기반)' }),
         el('span', { text: g.ai_agent_explanation })
       ]));
     }

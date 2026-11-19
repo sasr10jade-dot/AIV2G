@@ -330,7 +330,14 @@ def charging_guide(current_soc_pct: float = Query(50.0, ge=0, le=100),
         guide = owner_guide.build_guide(profile, inputs,
                                         participating=consent.has_consent(user["owned_ev_id"], "v2g_discharge"))
         _audit_guide(user, guide)
-        return owner_guide.localize(guide, lang)
+        facts = guide.pop("_explanation_facts", None)
+        out = owner_guide.localize(guide, lang)
+        if facts:   # 추천 근거 설명을 LLM으로 생성(요구사항 D05). 키가 없거나 실패하면 문장 틀 설명을 그대로 쓴다
+            from src.advisory import llm_explain
+            text = llm_explain.explain(facts, lang)
+            if text:
+                out = {**out, "ai_agent_explanation": text, "explanation_method": "llm"}
+        return out
     except (owner_guide.GuideError, ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

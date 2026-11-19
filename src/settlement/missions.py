@@ -19,7 +19,6 @@ from src.pipeline import store
 
 # (id, 제목, 설명, 주기, 목표, 단위, 기본 보상 포인트)
 MISSIONS = [
-    ("consent_v2g", "방전(V2G) 참여 켜기", "앱에서 방전 참여를 켜면 피크 시간대 방전 실적이 정산에 반영돼요.", "once", 1, "회", 300),
     ("consent_location", "위치정보 이용 동의", "충전 위치 기반 분석(출력제어·피크 시나리오)에 참여해요.", "once", 1, "회", 100),
     ("follow_recommendation", "추천 충전 시간 따르기", "이번 주 충전 안내 중 '추천대로 할게요'를 2번 이상 선택해요.", "weekly", 2, "회", 150),
     ("peak_discharge", "피크 시간대 방전 기여", "이번 달 피크 시간대(저녁) 방전 실적을 10kWh 이상 쌓아요(확정 정산 기준).", "monthly", 10, "kWh", 300),
@@ -108,8 +107,6 @@ def update_setting(mission_id: str, enabled: bool, points: int, actor: str) -> d
 
 def _progress(mid: str, period: str, ev_id: str, username: str | None, con: sqlite3.Connection, now: pd.Timestamp) -> float:
     from src.privacy import consent
-    if mid == "consent_v2g":
-        return 1.0 if consent.has_consent(ev_id, "v2g_discharge") else 0.0
     if mid == "consent_location":
         return 1.0 if consent.has_consent(ev_id, "location") else 0.0
     start, end = _period_range(period, now)

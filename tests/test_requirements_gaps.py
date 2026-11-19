@@ -229,3 +229,39 @@ def test_region_compare_marks_uncollected_and_compares_collected(tmp_path, monke
     assert dj["status"] == "수집됨" and dj["below_zero_pct"] == 50.0 and dj["mean_diff_c"] == round(-0.5 - 5.0, 1)
     _admin()
     assert client.post("/ingest/regions/nowhere/sync-temperature?start=2026-12-01&end=2026-12-02").status_code == 404
+
+
+# ------------------------------------------------------------------ D05 LLM 추천 근거 설명
+def test_llm_explanation_used_when_available_and_falls_back(monkeypatch):
+    from src.advisory import llm_explain
+    facts = {"charge_windows": "23:00~05:00", "saving_krw": 1200, "departure": "08:00"}
+    calls = []
+    assert llm_explain.explain(facts, "ko", call=lambda f, l: calls.append(f) or "심야에 충전하면 약 1,200원 아껴요(모의).") \
+        == "심야에 충전하면 약 1,200원 아껴요(모의)."
+    assert llm_explain.explain(facts, "ko", call=lambda f, l: calls.append(f) or "다른 답") == "심야에 충전하면 약 1,200원 아껴요(모의)."
+    assert len(calls) == 1                                                    # 같은 수치는 캐시
+    assert llm_explain.explain({"x": 1}, "ko", call=lambda f, l: 1 / 0) is None  # 실패하면 None → 문장 틀
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    monkeypatch.setenv("LLM_EXPLANATION", "1")
+    assert llm_explain.enabled() is False                                      # 키가 없으면 호출하지 않는다
+
+
+def test_guide_facts_have_no_personal_data_and_route_uses_llm(monkeypatch):
+    from src.advisory import llm_explain
+    auth_store.create_user("owner-llm", "owner-pass-1", "owner", owned_ev_id="EV-003")
+    assert client.post("/auth/login", json={"username": "owner-llm", "password": "owner-pass-1"}).status_code == 200
+    seen = {}
+
+    def fake(facts, lang="ko", call=None):
+        seen.update(facts)
+        return "LLM이 만든 설명입니다."
+    monkeypatch.setattr(llm_explain, "explain", fake)
+    g = client.get("/owner/charging-guide?current_soc_pct=40").json()
+    assert g["ai_agent_explanation"] == "LLM이 만든 설명입니다." and g["explanation_method"] == "llm"
+    assert "_explanation_facts" not in g
+    blob = str(seen)
+    assert "EV-003" not in blob and "owner-llm" not in blob and "departure" in seen and "saving_krw" in seen
+    monkeypatch.setattr(llm_explain, "explain", lambda facts, lang="ko", call=None: None)
+    g2 = client.get("/owner/charging-guide?current_soc_pct=40").json()
+    assert g2["explanation_method"] == "rule_template" and g2["ai_agent_explanation"]

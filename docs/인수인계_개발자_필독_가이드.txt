@@ -101,7 +101,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
   * [개발 서버 데이터 주의] 2차 보강 전 방식(즉시 확정)으로 쌓인 정산 기록이 서버 DB에 남아 있으면 새 회차가 그 날짜를 건너뛴다.
 
 [미션·등급] src/settlement/missions.py — /owner/missions, /owner/missions/{id}/claim, /vpp/missions
-  방전 참여 켜기·위치정보 동의(일회), 추천 충전 따르기 2회(주간), 피크 방전 10kWh·흡수 20kWh·설문 응답·주행거리 입력(월간)
+  위치정보 동의(일회), 추천 충전 따르기 2회(주간), 피크 방전 10kWh·흡수 20kWh·설문 응답·주행거리 입력(월간)
   기간당 1회 보상, 등급 새싹/브론즈 1,000/실버 5,000/골드 20,000/플래티넘 50,000P. 관리자가 사용 여부·포인트 설정.
 
 [VoC 설문] src/appadmin/survey.py — 웹앱 관리 'VoC 설문' 탭, 모바일 홈 설문 카드, /admin/surveys*, /owner/surveys*

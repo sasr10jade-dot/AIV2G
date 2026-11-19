@@ -18,6 +18,7 @@ def _isolated_privacy(tmp_path, monkeypatch):
     from src.api.routers import cpo
     monkeypatch.setattr(cpo, "CPO_STATUS_PATH", tmp_path / "cpo_status.json")   # CPO 수신 실적을 실제 data/에 쓰지 않게
     monkeypatch.setenv("QUICK_LOGIN_LAN_ONLY", "0")
+    monkeypatch.setenv("LLM_EXPLANATION", "0")   # 테스트 중 실제 Claude API를 부르지 않는다
 
 
 @pytest.fixture

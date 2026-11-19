@@ -272,7 +272,7 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
         reason = (f"방전 보상단가(최고 {max_sell:.0f}원/kWh)가 손익분기(약 {breakeven:.0f}원/kWh)보다 낮아서 방전은 추천하지 않아요."
                   if max_sell <= breakeven else "이번 조건에서는 방전해도 이득이 크지 않아서 추천하지 않아요.")
 
-    # 추천 근거 설명(계획서 4.1 라) — 최적화 결과 값을 정해진 문장 틀에 넣어 만든다(LLM 생성 아님, explanation_method 참조)
+    # 추천 근거 설명(계획서 4.1 라) — 기본은 최적화 결과를 문장 틀에 넣은 설명. LLM 설명은 라우터가 explanation_facts로 만든다(llm_explain)
     charge_intervals = _intervals(times, charge, buy)
     chg_windows_str = ""
     if charge_intervals:
@@ -300,7 +300,22 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
 
     return {
         "ai_agent_explanation": ai_agent_explanation,
-        "explanation_method": "rule_template",   # 최적화 결과 기반 문장 틀(규칙형). LLM 연동 시 'llm'으로 바꾼다
+        "explanation_method": "rule_template",   # 최적화 결과 기반 문장 틀. LLM 설명으로 바뀌면 'llm'
+        # LLM 설명 입력(개인정보 없음 — 계획 수치만). 라우터가 꺼내 쓰고 응답에서는 뺀다
+        "_explanation_facts": {
+            "charge_windows": chg_windows_str or None,
+            "departure": dep.strftime("%H:%M"),
+            "current_soc_pct": round(soc0),
+            "target_soc_pct": round(need_soc),
+            "min_soc_pct": round(reserve_pct),
+            "saving_krw": saving_val,
+            "saving_pct": saving_pct_val,
+            "v2g_discharge_recommended": recommended,
+            "v2g_revenue_krw": round(revenue) if recommended else 0,
+            "v2g_reason": reason,
+            "vehicle_supports_v2g": bool(profile.get("v2g_capable")),
+            "price_basis": "계시별 요금표·보상 시나리오 가정값(모의)",
+        },
         "vehicle": {k: profile[k] for k in ("label", "battery_kwh", "v2g_capable", "demo") if k in profile},
         "period": {"start": start.isoformat(), "departure": dep.isoformat(), "hours": n},
         "inputs": {"current_soc_pct": soc0, "need_soc_pct": need_soc, "min_soc_pct": reserve_pct,

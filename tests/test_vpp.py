@@ -206,18 +206,19 @@ def test_missions_progress_claim_once_and_admin_settings(tmp_path, monkeypatch):
     from src.privacy import consent
     from src.settlement import missions
     st = {m["id"]: m for m in missions.status_for("EV-M1")}
-    assert st["consent_v2g"]["completed"] is False
+    assert "consent_v2g" not in st                                              # 방전 참여 켜기 미션은 삭제됨
+    assert st["consent_location"]["completed"] is False
     with pytest.raises(missions.MissionError):
-        missions.claim("EV-M1", "consent_v2g")
-    consent.grant("EV-M1", "v2g_discharge", "v1", recorded_by="t")
-    got = missions.claim("EV-M1", "consent_v2g")
-    assert got["points"] == 300 and got["balance_points"] == 300 and got["level"]["name"] == "새싹"
+        missions.claim("EV-M1", "consent_location")
+    consent.grant("EV-M1", "location", "v1", recorded_by="t")
+    got = missions.claim("EV-M1", "consent_location")
+    assert got["points"] == 100 and got["balance_points"] == 100 and got["level"]["name"] == "새싹"
     with pytest.raises(missions.MissionError, match="이미"):
-        missions.claim("EV-M1", "consent_v2g")
-    missions.update_setting("consent_location", False, 100, "admin")
-    assert "consent_location" not in {m["id"] for m in missions.status_for("EV-M1")}
+        missions.claim("EV-M1", "consent_location")
+    missions.update_setting("odometer_input", False, 50, "admin")
+    assert "odometer_input" not in {m["id"] for m in missions.status_for("EV-M1")}
     ov = missions.admin_overview()
-    assert next(m for m in ov["missions"] if m["id"] == "consent_v2g")["completions"] == 1
+    assert next(m for m in ov["missions"] if m["id"] == "consent_location")["completions"] == 1
     assert missions.level_of(5000)["name"] == "실버" and missions.level_of(4999)["to_next"] == 1
 
 
@@ -235,7 +236,7 @@ def test_mission_and_reward_api(admin, small_bundle):
     assert client.post("/auth/login", json={"username": "owner-mis", "password": "owner-pass-1"}).status_code == 200
     ms = client.get("/owner/missions").json()
     assert ms["level"]["name"] and any(m["id"] == "survey_answer" and m["points"] == 250 for m in ms["missions"])
-    assert client.post("/owner/missions/consent_v2g/claim").status_code == 409                   # 아직 미완료
+    assert client.post("/owner/missions/consent_location/claim").status_code == 409              # 아직 미완료
     pts = client.get("/owner/points").json()
     assert pts["balance_points"] > 0 and "by_source_krw" in pts["history"][0] and pts["level"]["name"]
     assert client.post("/owner/points/inquiries", json={"message": "포인트 문의"}).status_code == 200

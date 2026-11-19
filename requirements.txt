@@ -18,3 +18,4 @@ cryptography
 scipy
 joblib
 pillow
+anthropic>=2.4.0      # 추천 근거 설명 LLM 생성(D05) — ANTHROPIC_API_KEY 없으면 문장 틀로 대체

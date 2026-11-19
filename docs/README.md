@@ -1,52 +1,40 @@
-# AI-V2G 실증 시스템 개발자 인수인계 문서 허브 (Documentation Hub)
+# AIV2G — AI-V2G 실증 시스템 문서
 
-올인원 AI 허브 AX 실증(에너지·모빌리티) 과제의 소프트웨어 엔지니어, 데이터 엔지니어, AI 연구원을 위한 통합 인수인계 문서 보관소입니다.  
-시스템 운영, 데이터 파이프라인 수급, UI/UX 유지보수에 필요한 모든 명세와 런북이 본 디렉터리에 일원화되어 있습니다.
+올인원 AI 허브 AX 실증(에너지·모빌리티) — AI 기반 도시형 에너지 이익공유 및 전기차 V2G 기술 실증.
+이 폴더는 개발자 인수인계 문서와 GitHub Pages 고정 진입 링크(`index.html` → https://sasr10jade-dot.github.io/AIV2G/)를 함께 둔다.
 
----
+## 먼저 읽을 것
 
-## 1. 핵심 개발자 인수인계 문서 (PRD & 아키텍처)
+| 문서 | 내용 |
+|---|---|
+| [`인수인계_개발자_필독_가이드.txt`](./인수인계_개발자_필독_가이드.txt) | **[필독]** 셋업·서버 구동(내부망 5050)·보강 내역·테스트 |
+| [`AI-V2G_PRD_소스분석_v1.0_261118.md`](./AI-V2G_PRD_소스분석_v1.0_261118.md) | 현행 소스 기준 PRD — 기능 요구사항, 계획서 대비 갭(충족률), 리워드 정산 프로세스 |
+| [`developer_handover_prd_v1.0.md`](./developer_handover_prd_v1.0.md) | 아키텍처·운영 런북(서버 구동·재학습 배치·Git 규칙) |
+| [`api_reference.md`](./api_reference.md) | 전체 API 레퍼런스 — 코드에서 자동 생성(`python scripts/build_api_docs.py`) |
+| [`data_specifications_v1.0.md`](./data_specifications_v1.0.md) | 데이터 전주기 통합 명세(OBD·CPO·공공데이터·가명화) |
 
-| 문서명 | 파일 경로 | 주요 내용 및 인수인계 범위 |
-|---|---|---|
-| **개발자 인수인계서 및 PRD** | [`developer_handover_prd_v1.0.md`](./developer_handover_prd_v1.0.md) | **[필독]** 시스템 전체 아키텍처, 관리자 3개 화면 LNB 사이드바 체계, 모바일웹 PWA 구조, 개발자 실행 런북, 환경변수 설정, Git 관리 규칙 |
-| **데이터 통합 명세서** | [`data_specifications_v1.0.md`](./data_specifications_v1.0.md) | **[필독]** 서포터즈 실차 30대 OBD2 텔레메트리, CPO 3사 150기 연계 스키마, 공공데이터 5종 OpenAPI, 거점 3곳 부하 모델, 가명화(HMAC-SHA256) 기준 |
-| **REST API 전체 레퍼런스** | [`api_reference.md`](./api_reference.md) | 대시보드 API, 서포터즈 모바일 API, CPO Ingest 수신 API, 관리자 승인/웹앱관리 엔드포인트 명세 |
-| **OBD 데이터 수급 런북** | [`obd_batch_runbook.md`](./obd_batch_runbook.md) | TOAST Object Storage ➔ 새벽 04:40 LTE Cat.M1 원천 데이터 수급 및 이상치 정제 배치 매뉴얼 |
-| **CPO & OCPP 보안 가이드** | [`ocpp_security.md`](./ocpp_security.md) | CPO 3사 충전기 연계 인증 토큰, OCPP 1.6J 보안 규격 및 무결성 검증 가이드 |
-| **개인정보 침해사고 대응 매뉴얼** | [`privacy_incident_response.md`](./privacy_incident_response.md) | 차대번호/번호판 가명화 관리, 이상 징후 모니터링, 만료 데이터 파기 절차 |
+## 운영·보안 문서
 
----
+| 문서 | 내용 |
+|---|---|
+| [`obd_batch_runbook.md`](./obd_batch_runbook.md) | OBD 일일 배치(TOAST Object Storage) 운영 |
+| [`privacy_incident_response.md`](./privacy_incident_response.md) | 개인정보 침해사고 대응 |
+| [`ai_v2g_national_service_fit.md`](./ai_v2g_national_service_fit.md) | 이익공유 모델 정책·제도 적합성 검토 |
+| [`meeting_brief_charging_operator.md`](./meeting_brief_charging_operator.md) | 충전사업자 협의용 기능 요약 |
+| [`owner_web_roadmap.md`](./owner_web_roadmap.md), [`service_review_20261023.md`](./service_review_20261023.md), [`real_charging_sample_summary.md`](./real_charging_sample_summary.md) | 서비스 로드맵·점검 기록·실충전 샘플 요약 |
 
-## 2. 외부 데이터 연계 및 검증 엑셀 산출물 (.xlsx)
+## 저장소에 없는 문서(별도 전달)
 
-| 산출물 명칭 | 파일명 | 시트 구성 및 설명 |
-|---|---|---|
-| **외부데이터 연계 명세서** | [`AI-V2G_외부데이터_연계_및_인프라_인수인계_명세서_v1.0.xlsx`](./AI-V2G_외부데이터_연계_및_인프라_인수인계_명세서_v1.0.xlsx) | **[신규 제작]** 4개 시트 구성<br>1) 공공_API_목록 (KPX/기상청/천문연/한전/환경공단)<br>2) 외부연동_CPO_데이터 (나이스인프라·플러그링크·이브이시스 150기)<br>3) OBD_EV_차량_데이터 (실차 30대 15개 텔레메트리 필드)<br>4) 데이터_수급_배치_스케줄 |
-| **데이터 수급 & 인프라 체크리스트** | [`AI-V2G_데이터수급_및_실증인프라_체크리스트_v1.0.xlsx`](./AI-V2G_데이터수급_및_실증인프라_체크리스트_v1.0.xlsx) | 인프라 수급 상태, CPO 협약 현황, 데이터 수집 파이프라인 체크리스트 |
-| **실증 수집데이터 통합명세서** | [`AI-V2G_실증수집데이터_통합명세서_v1.0_261029.xlsx`](./AI-V2G_실증수집데이터_통합명세서_v1.0_261029.xlsx) | 데이터 항목별 원천 속성 및 정제 매핑 테이블 |
+엑셀·한글·워드·PDF 문서는 `.gitignore` 대상이라 저장소에 올라가지 않는다.
+요구사항정의서(`AI-V2G_요구사항정의서_v1.0_261118.xlsx` — 요구사항·API 연계 대상·계산식·AI 방법·판정요약), 사업수행계획서, 데이터 명세 엑셀 등은 USB 등으로 전달한다.
 
----
-
-## 3. 사업 기획 및 도메인 근거 문서
-
-| 문서명 | 파일명 | 설명 |
-|---|---|---|
-| **사업수행계획서 최종본 (V1.0)** | [`올인원_AI_허브_AX_실증_사업수행계획서_V1.0.pdf`](./올인원_AI_허브_AX_실증_사업수행계획서_V1.0.pdf) | 본 실증 과제의 공식 사업수행계획서 (목표 인프라, 과업 범위, 예산, 13장 용역 산출물 명시) |
-| **국가서비스 적합성 검토서** | [`ai_v2g_national_service_fit.md`](./ai_v2g_national_service_fit.md) | V2G 이익공유 모델의 정책 부합성 및 법제도적 검토 자료 |
-
----
-
-## 4. 빠른 개발자 시작 가이드 (Quick Start)
+## 빠른 시작
 
 ```powershell
-# 1. 개발 폴더 진입
-cd "C:\Users\Jade\Desktop\바탕화면\업무\개발\올인원 AI 허브 AX 실증"
-
-# 2. 로컬 서버 기동
-python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
-
-# 3. 개발자 대시보드 및 모바일 화면 확인
-# PC 대시보드: http://127.0.0.1:8000/dev (최고관리자 원클릭 로그인 가능)
-# 모바일웹앱: http://127.0.0.1:8000/app
+pip install -r requirements.txt
+copy .env.example .env
+python -m uvicorn src.api:app --host 127.0.0.1 --port 5050 --reload   # http://127.0.0.1:5050/dev
+python -m pytest -q
 ```
+
+사내 와이파이 개발 서버: http://192.168.35.92:5050/dev (서버 PC `~/AIV2G-dev`, launchd `kr.aiv2g.dev`).
