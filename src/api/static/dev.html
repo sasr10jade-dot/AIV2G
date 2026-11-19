@@ -11,123 +11,249 @@
   document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'light');
 })();
 </script>
+<link rel="stylesheet" href="/theme.css" />
 <style>
-  :root {
-    --bg: #ffffff; --card: #ffffff; --text: #0f1b3d; --muted: #6b7690; --blue: #2f5bff; --line: #dfe6ff;
-    --pastel-a: #e6edff; --pastel-b: #e3f6ee; --pastel-c: #fdeee3; --border: #e6e9f2;
-  }
-  :root[data-theme="dark"] {
-    --bg: #0e1220; --card: #151a2e; --text: #eef1fb; --muted: #97a1bd; --blue: #8fb0ff; --line: #26305a;
-    --pastel-a: #1b2548; --pastel-b: #14302a; --pastel-c: #3a2a1e; --border: #242b45;
-  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); padding: 40px 20px 60px;
-         font-family: "Noto Sans KR", "Noto Sans", "Malgun Gothic", sans-serif; }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  .badge { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .08em; color: var(--blue);
-           background: var(--pastel-a); border-radius: 999px; padding: 5px 12px; }
-  h1 { font-size: 30px; margin: 14px 0 6px; }
-  .lead { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .card { border: 1px solid var(--border); border-radius: 16px; padding: 22px; background: var(--card); display: flex; flex-direction: column; gap: 10px; }
-  .card.a { border-top: 6px solid var(--pastel-a); }
-  .card.b { border-top: 6px solid var(--pastel-b); }
-  .card.c { border-top: 6px solid var(--pastel-c); }
-  .card h2 { margin: 0; font-size: 20px; }
-  .card .path { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--blue); }
-  .card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; flex: 1; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-  a.btn, button.btn { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px;
-                      padding: 9px 14px; font-size: 14px; cursor: pointer; text-decoration: none; }
-  a.btn.primary, button.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  /* 상단 요약 */
+  .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 22px; }
+  .hero-main { background: linear-gradient(135deg, var(--navy), var(--accent)); color: #fff; border-radius: 18px; padding: 26px 26px 22px; }
+  .hero-main .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; opacity: .85; }
+  .hero-main h1 { margin: 6px 0 8px; font-size: 26px; line-height: 1.3; }
+  .hero-main p { margin: 0; font-size: 14px; line-height: 1.6; opacity: .92; }
+  .env { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 5px 11px;
+          background: rgba(255,255,255,.16); color: #fff; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #c9cedd; display: inline-block; }
+  .dot.ok { background: #3ddc97; } .dot.bad { background: #ff6b6b; }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .panel h2 { margin: 0; font-size: 15px; }
+  .muted { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .who { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none; }
+  .who b { display: block; font-size: 14px; }
+  .who span { font-size: 12px; color: var(--muted); }
+
+  /* 역할로 바로 시작 */
+  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+  .section-title h2 { margin: 0; font-size: 18px; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .role { text-align: left; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 16px; padding: 16px 16px 14px;
+          cursor: pointer; font: inherit; display: flex; gap: 12px; align-items: flex-start; transition: border-color .15s, transform .15s; }
+  .role:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  .role:focus-visible, .btn:focus-visible, .copy:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+  .role:disabled { opacity: .55; cursor: not-allowed; }
+  .role .ico { font-size: 22px; line-height: 1; }
+  .role b { display: block; font-size: 15px; margin-bottom: 3px; }
+  .role small { color: var(--muted); font-size: 12.5px; line-height: 1.45; display: block; }
+  .role .go { margin-left: auto; color: var(--accent); font-weight: 700; align-self: center; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; min-height: 18px; }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 6px; }
+
+  /* 화면 카드 */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { border: 1px solid var(--border); border-radius: 16px; padding: 18px; background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+  .card .top { display: flex; align-items: center; gap: 8px; }
+  .card h3 { margin: 0; font-size: 16px; }
+  .tag { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 7px; background: var(--tint); color: var(--accent); white-space: nowrap; }
+  .tag.pub { background: var(--surface-2); color: var(--muted); }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; flex: 1; }
+  .path { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+  .copy { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 6px; }
+  .copy:hover { color: var(--accent); background: var(--surface-2); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  a.btn, button.btn { border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px; padding: 8px 14px;
+                      font-size: 13.5px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  a.btn.primary, button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   :root[data-theme="dark"] a.btn.primary, :root[data-theme="dark"] button.btn.primary { color: #0b1220; }
   button.btn:disabled { opacity: .5; cursor: default; }
-  hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0 18px; }
-  .status { font-size: 13px; color: var(--muted); margin-top: 22px; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9cedd; margin-right: 6px; }
-  .dot.ok { background: #2fb67c; } .dot.bad { background: #d9534f; }
-  .err { color: #d9534f; font-size: 13px; min-height: 18px; }
-  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+  /* 바로가기 */
+  .links { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .link { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+          color: var(--text); text-decoration: none; }
+  .link:hover { border-color: var(--accent); }
+  .link .k { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--tint); border-radius: 6px; padding: 2px 6px; white-space: nowrap; }
+  .link b { font-size: 13.5px; display: block; }
+  .link span { font-size: 12px; color: var(--muted); }
+
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  @media (max-width: 860px) { .hero, .roles, .grid, .links { grid-template-columns: 1fr; } }
 </style>
-<link rel="stylesheet" href="/theme.css" />
 </head>
 <body class="ax-page">
-<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><span class="ax-tag">DEV</span><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin">웹앱 관리</a></nav></div></header>
-<div class="wrap">
-  <div class="ax-page-head"><h1>AX·V2G 개발용 진입</h1>
-  <p class="lead">모바일 앱, PC 대시보드, 어드민으로 바로 들어가는 개발용 페이지입니다. 간편 로그인은 서버에 개발용 계정이 설정된 경우에만 나타납니다.</p></div>
+<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><span class="ax-tag">DEV</span><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin">웹앱 관리</a><a href="/docs">API 문서</a></nav></div></header>
 
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-main">
+      <div class="eyebrow">AI-V2G 실증 · 개발용 진입</div>
+      <h1>필요한 화면으로 바로 들어가세요</h1>
+      <p>역할을 고르면 해당 계정으로 로그인한 뒤 맞는 화면을 엽니다. 이 서버는 사내 와이파이 전용 개발 서버이며, 모든 데이터는 실측과 모의(추론)를 구분해 표시합니다.</p>
+      <div class="env">
+        <span class="chip"><span class="dot" id="dot"></span><span id="st">서버 확인 중…</span></span>
+        <span class="chip" id="host">-</span>
+        <span class="chip" id="netChip">접속 위치 확인 중…</span>
+      </div>
+    </div>
+    <aside class="panel" aria-live="polite">
+      <h2>현재 로그인</h2>
+      <div class="who" id="who" hidden>
+        <div class="avatar" id="whoInitial">?</div>
+        <div style="flex:1; min-width:0;"><b id="whoName"></b><span id="whoRole"></span></div>
+        <button class="btn" type="button" id="logout">로그아웃</button>
+      </div>
+      <div class="muted" id="whoNone">로그인하지 않은 상태입니다. 아래에서 역할을 골라 바로 시작하거나, 각 화면의 로그인 창을 쓰세요.</div>
+      <div class="muted" id="qlState"></div>
+    </aside>
+  </section>
+
+  <div class="section-title"><h2>역할로 바로 시작</h2><span class="muted">간편 로그인 — 비밀번호는 서버에만 있고 화면으로 보내지 않습니다</span></div>
+  <div class="roles">
+    <button class="role" type="button" id="qSuper" disabled>
+      <span class="ico" aria-hidden="true">⚡</span>
+      <span><b>최고관리자</b><small>운영 대시보드 · 계정 관리 · 접속기록까지 전체 권한</small></span>
+      <span class="go" aria-hidden="true">→</span>
+    </button>
+    <button class="role" type="button" id="qAdmin" disabled>
+      <span class="ico" aria-hidden="true">🛠</span>
+      <span><b>관리자</b><small>대시보드 · 가입 승인 · 웹앱 관리 · 모의 정산 실행</small></span>
+      <span class="go" aria-hidden="true">→</span>
+    </button>
+    <button class="role" type="button" id="qOwner" disabled>
+      <span class="ico" aria-hidden="true">🚗</span>
+      <span><b>서포터즈(차주)</b><small>모바일 앱 · 충전 시간 추천 · 모의 포인트 · 동의 관리</small></span>
+      <span class="go" aria-hidden="true">→</span>
+    </button>
+  </div>
+  <div class="err" id="err" role="alert"></div>
+
+  <div class="section-title"><h2>화면</h2><span class="muted">주소를 복사해 휴대폰(같은 와이파이)에서도 열 수 있습니다</span></div>
   <div class="grid">
-    <section class="card a">
-      <h2>모바일</h2>
-      <div class="path">/app</div>
-      <p>차량 등록자용 모바일웹(PWA). 충전 시간·예측·리포트, 한국어/영어.</p>
-      <div class="actions">
-        <a class="btn primary" href="/app">열기</a>
-        <button class="btn" type="button" id="qOwner" hidden>간편 로그인으로 열기</button>
-      </div>
+    <section class="card">
+      <div class="top"><h3>PC 운영 대시보드</h3><span class="tag">관리자</span></div>
+      <div class="path"><span>/dashboard</span><button class="copy" type="button" data-copy="/dashboard">복사</button></div>
+      <p>성과지표(KPI), 실증 인프라, 일반 충전 vs AI 최적화 비교, 수요예측, 효용성 검증, VPP·이익공유 실증(05).</p>
+      <div class="actions"><a class="btn primary" href="/dashboard">열기</a></div>
     </section>
-    <section class="card b">
-      <h2>PC 대시보드</h2>
-      <div class="path">/dashboard</div>
-      <p>운영 대시보드. KPI, 최적화 비교, 수요예측, 충전기 현황, 이용 가이드.</p>
-      <div class="actions" style="display:flex; flex-direction:column; gap:6px;">
-        <div style="display:flex; gap:8px;">
-          <a class="btn primary" href="/dashboard" style="flex:1; text-align:center;">열기</a>
-          <button class="btn" type="button" id="qSuper" hidden style="flex:2; background:#1F5EDB; color:#fff; font-weight:700;">⚡ 최고관리자로 열기</button>
-        </div>
-        <button class="btn" type="button" id="qAdmin" hidden>관리자 간편 로그인으로 열기</button>
-      </div>
+    <section class="card">
+      <div class="top"><h3>서포터즈 모바일 앱</h3><span class="tag">차주</span></div>
+      <div class="path"><span>/app</span><button class="copy" type="button" data-copy="/app">복사</button></div>
+      <p>차량 등록자용 모바일웹(PWA). 충전 시간 추천·예측·리포트, 모의 포인트, 위치정보 동의, 한국어/영어.</p>
+      <div class="actions"><a class="btn primary" href="/app">열기</a></div>
     </section>
-    <section class="card c">
-      <h2>어드민</h2>
-      <div class="path">/admin</div>
-      <p>웹앱 관리. 공지사항, 앱 문구(미션 안내), 상품권 교환·코드 등록. 가입 승인은 별도 화면입니다.</p>
-      <div class="actions">
-        <a class="btn primary" href="/admin">열기</a>
-        <button class="btn" type="button" id="qAdmin2" hidden>간편 로그인으로 열기</button>
-      </div>
+    <section class="card">
+      <div class="top"><h3>가입 승인</h3><span class="tag">관리자</span></div>
+      <div class="path"><span>/approvals</span><button class="copy" type="button" data-copy="/approvals">복사</button></div>
+      <p>모바일 가입 신청 심사(번호판 마스킹), 예비 참여자 지정, 관용/민간 구분. 제주 실증 차종은 승인되지 않습니다.</p>
+      <div class="actions"><a class="btn primary" href="/approvals">열기</a></div>
+    </section>
+    <section class="card">
+      <div class="top"><h3>웹앱 관리</h3><span class="tag">관리자</span></div>
+      <div class="path"><span>/admin</span><button class="copy" type="button" data-copy="/admin">복사</button></div>
+      <p>모바일 앱 공지사항과 안내 문구를 관리합니다.</p>
+      <div class="actions"><a class="btn primary" href="/admin">열기</a></div>
+    </section>
+    <section class="card">
+      <div class="top"><h3>API 문서</h3><span class="tag pub">공개</span></div>
+      <div class="path"><span>/docs</span><button class="copy" type="button" data-copy="/docs">복사</button></div>
+      <p>전체 API를 화면에서 바로 호출해 볼 수 있는 Swagger 문서. 엔드포인트마다 필요한 권한이 표시됩니다.</p>
+      <div class="actions"><a class="btn primary" href="/docs">열기</a></div>
+    </section>
+    <section class="card">
+      <div class="top"><h3>로그인</h3><span class="tag pub">공개</span></div>
+      <div class="path"><span>/login</span><button class="copy" type="button" data-copy="/login">복사</button></div>
+      <p>아이디·비밀번호로 직접 로그인합니다. 간편 로그인을 쓸 수 없는 환경에서 사용하세요.</p>
+      <div class="actions"><a class="btn primary" href="/login">열기</a></div>
     </section>
   </div>
 
-  <div class="err" id="err" role="alert"></div>
-  <div class="status"><span class="dot" id="dot"></span><span id="st">서버 확인 중…</span></div>
-  <div class="status" id="who" hidden>현재 로그인: <b id="whoName"></b> <button class="btn" type="button" id="logout" style="margin-left:8px; padding:4px 10px">로그아웃</button></div>
-</div>
+  <div class="section-title"><h2>새로 보강된 기능 바로가기</h2><span class="muted">요구사항정의서 v1.0 보강(2026-11-19)</span></div>
+  <div class="links">
+    <a class="link" href="/dashboard#curtail-card"><span class="k">C01</span><span><b>신재생 출력제어 해소 시나리오</b><span>가상 과잉발전 에뮬레이터 · 적용 전후 출력제어량</span></span></a>
+    <a class="link" href="/dashboard#settle-card"><span class="k">E03</span><span><b>가상 전력 거래·모의 포인트 정산</b><span>관용/민간 집계 · 인센티브 유형 비교</span></span></a>
+    <a class="link" href="/dashboard#ess-card"><span class="k">D03</span><span><b>V2G 이동형 ESS 집중 실증 그룹</b><span>5~10대 지정 · 전용 데이터셋 내려받기</span></span></a>
+    <a class="link" href="/dashboard#effect-card"><span class="k">C04</span><span><b>효용성 검증 · 운영조건 다양성</b><span>운행조건별 분석 · 조건별 세션 건수</span></span></a>
+    <a class="link" href="/docs#/models/get_model_card_models_card_get"><span class="k">K03</span><span><b>AI 모델 카드 (실계산 지표)</b><span>80:20 + 교차검증 MAPE·R² — 대시보드 'AI 모델 카드' 버튼</span></span></a>
+    <a class="link" href="/docs#/vpp"><span class="k">API</span><span><b>VPP·이익공유 API</b><span>/vpp/curtailment · /vpp/settlement · /vpp/ess-group</span></span></a>
+  </div>
+
+  <div class="foot">
+    · 이 서버는 사내망 전용입니다. 주소를 외부에 공유하거나 포트포워딩·터널로 열지 마세요.<br>
+    · 화면 값 중 '모의' 표시는 합성 데이터나 추론값이며 성과 실적이 아닙니다. 가정값은 config/vpp_settlement.json(verified=false)에 있습니다.
+  </div>
+</main>
+
 <script>
 (function () {
   var err = document.getElementById('err');
+  var ROLE_LABEL = { owner: '서포터즈(차주)', admin: '관리자', super_admin: '최고관리자' };
+  var ROLES = [
+    ['qSuper', 'super_admin', '/dashboard'],
+    ['qAdmin', 'admin', '/dashboard'],
+    ['qOwner', 'owner', '/app'],
+  ];
+
   async function api(path, opts) {
     var res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}));
     var body = null;
     try { body = await res.json(); } catch (e) { body = null; }
-    return { ok: res.ok, body: body };
+    return { ok: res.ok, status: res.status, body: body };
   }
+
   async function quick(role, dest, btn) {
-    err.textContent = ''; btn.disabled = true;
+    err.textContent = '';
+    btn.disabled = true;
+    var label = btn.querySelector('.go');
+    if (label) label.textContent = '…';
     try {
       var r = await api('/auth/quick-login', { method: 'POST', body: JSON.stringify({ role: role }) });
       if (r.ok) { location.href = dest; return; }
       err.textContent = (r.body && typeof r.body.detail === 'string' && r.body.detail) || '간편 로그인에 실패했습니다.';
-    } catch (e) { err.textContent = '네트워크 오류입니다.'; }
+    } catch (e) { err.textContent = '네트워크 오류입니다. 서버 상태를 확인하세요.'; }
     btn.disabled = false;
+    if (label) label.textContent = '→';
   }
-  var ROLE_LABEL = { owner: '이용자', admin: '관리자', super_admin: '최고관리자' };
+
   async function showWho() {
+    var box = document.getElementById('who'), none = document.getElementById('whoNone');
     try {
       var me = await api('/auth/me');
-      var box = document.getElementById('who');
       if (me.ok && me.body && me.body.username) {
-        document.getElementById('whoName').textContent = me.body.username + ' (' + (ROLE_LABEL[me.body.role] || me.body.role) + ')';
-        box.hidden = false;
-      } else { box.hidden = true; }
+        document.getElementById('whoName').textContent = me.body.username;
+        document.getElementById('whoRole').textContent = (ROLE_LABEL[me.body.role] || me.body.role) + (me.body.owned_ev_id ? ' · 차량 ' + me.body.owned_ev_id : '');
+        document.getElementById('whoInitial').textContent = (me.body.username[0] || '?').toUpperCase();
+        box.hidden = false; none.hidden = true;
+        return;
+      }
     } catch (e) { /* 상태를 못 읽어도 링크는 쓸 수 있다 */ }
+    box.hidden = true; none.hidden = false;
   }
+
   document.getElementById('logout').addEventListener('click', async function () {
     await api('/auth/logout', { method: 'POST' });
     showWho();
   });
+
+  document.querySelectorAll('.copy').forEach(function (b) {
+    b.addEventListener('click', async function () {
+      var url = location.origin + b.getAttribute('data-copy');
+      try { await navigator.clipboard.writeText(url); b.textContent = '복사됨'; }
+      catch (e) { window.prompt('주소를 복사하세요', url); }
+      setTimeout(function () { b.textContent = '복사'; }, 1500);
+    });
+  });
+
+  function isPrivateHost(h) {
+    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+  }
+
   (async function () {
+    document.getElementById('host').textContent = location.host;
+    document.getElementById('netChip').textContent = isPrivateHost(location.hostname) ? '사내망 접속' : '외부 주소로 접속';
     showWho();
     try {
       var h = await api('/health');
@@ -137,17 +263,30 @@
       document.getElementById('dot').className = 'dot bad';
       document.getElementById('st').textContent = '서버에 연결할 수 없습니다';
     }
+    var state = document.getElementById('qlState');
     try {
       var a = await api('/auth/quick-login/available');
+      var any = false;
       if (a.ok && a.body) {
-        var map = [['qOwner', a.body.owner, 'owner', '/app'], ['qSuper', a.body.super_admin, 'super_admin', '/dashboard'], ['qAdmin', a.body.admin, 'admin', '/dashboard'], ['qAdmin2', a.body.admin, 'admin', '/admin']];
-        map.forEach(function (m) {
-          if (!m[1]) return;
-          var b = document.getElementById(m[0]); b.hidden = false;
-          b.addEventListener('click', function () { quick(m[2], m[3], b); });
+        ROLES.forEach(function (m) {
+          var b = document.getElementById(m[0]);
+          if (a.body[m[1]]) {
+            any = true;
+            b.disabled = false;
+            b.addEventListener('click', function () { quick(m[1], m[2], b); });
+          } else {
+            b.title = '이 역할의 간편 로그인이 설정되지 않았습니다';
+          }
         });
       }
-    } catch (e) { /* 간편 로그인 정보를 못 읽어도 링크는 쓸 수 있다 */ }
+      state.textContent = any
+        ? '간편 로그인 사용 가능 — 역할 버튼을 누르면 해당 계정으로 바로 들어갑니다.'
+        : (isPrivateHost(location.hostname)
+            ? '간편 로그인이 꺼져 있습니다(서버 .env에 개발용 계정이 없음). 로그인 화면을 쓰세요.'
+            : '간편 로그인은 사내 와이파이에서만 쓸 수 있습니다. 로그인 화면을 쓰세요.');
+    } catch (e) {
+      state.textContent = '간편 로그인 정보를 불러오지 못했습니다. 로그인 화면을 쓰세요.';
+    }
   })();
 })();
 </script>
