@@ -6,6 +6,7 @@
 """
 import io
 from datetime import datetime
+from pathlib import Path
 
 import matplotlib
 
@@ -14,7 +15,9 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
-plt.rcParams.update({"font.family": "Malgun Gothic", "axes.unicode_minus": False})  # src/viz.py와 동일 — 한글(예: "시") 깨짐 방지
+from src.viz import KOREAN_FONT_FAMILY  # noqa: E402  운영체제별 한글 글꼴(Windows 맑은 고딕 / macOS 나눔·애플고딕)
+
+plt.rcParams.update({"font.family": KOREAN_FONT_FAMILY, "axes.unicode_minus": False})  # src/viz.py와 동일 — 한글(예: "시") 깨짐 방지
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt, RGBColor
@@ -38,13 +41,26 @@ MUTED = RGBColor(0x6B, 0x77, 0x85)
 
 # PDF는 한글이 포함된 문서라 Windows 기본 한글 서체(맑은 고딕)를 직접 임베드한다 —
 # reportlab 기본 서체(Helvetica)는 한글 글리프가 없어 문서가 아예 깨진다.
+# 운영체제별 후보(일반, 굵게) — 처음 찾은 것을 쓴다(Windows 맑은 고딕, macOS 나눔고딕·애플고딕, Linux 나눔고딕).
+_HOME = Path.home()
+_PDF_FONT_CANDIDATES = [
+    (r"C:\Windows\Fonts\malgun.ttf", r"C:\Windows\Fonts\malgunbd.ttf"),
+    (str(_HOME / "Library/Fonts/NanumGothic-Regular.ttf"), str(_HOME / "Library/Fonts/NanumGothic-Bold.ttf")),
+    ("/Library/Fonts/NanumGothic-Regular.ttf", "/Library/Fonts/NanumGothic-Bold.ttf"),
+    ("/System/Library/Fonts/Supplemental/AppleGothic.ttf", "/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
+    ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf", "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"),
+]
 PDF_FONT, PDF_FONT_BOLD = "Helvetica", "Helvetica-Bold"
-try:
-    pdfmetrics.registerFont(TTFont("MalgunGothic", r"C:\Windows\Fonts\malgun.ttf"))
-    pdfmetrics.registerFont(TTFont("MalgunGothic-Bold", r"C:\Windows\Fonts\malgunbd.ttf"))
-    PDF_FONT, PDF_FONT_BOLD = "MalgunGothic", "MalgunGothic-Bold"
-except Exception:
-    pass  # 폰트 파일이 없는 환경(비-Windows)에서는 영문만 정상 표시된다
+for _regular, _bold in _PDF_FONT_CANDIDATES:
+    if not Path(_regular).exists():
+        continue
+    try:
+        pdfmetrics.registerFont(TTFont("KoreanFont", _regular))
+        pdfmetrics.registerFont(TTFont("KoreanFont-Bold", _bold if Path(_bold).exists() else _regular))
+        PDF_FONT, PDF_FONT_BOLD = "KoreanFont", "KoreanFont-Bold"
+        break
+    except Exception:
+        continue   # 글꼴 파일이 손상됐거나 형식이 맞지 않으면 다음 후보
 
 UNIT_BY_GRANULARITY = {"hourly": "kW", "daily": "kWh", "weekly": "kWh"}
 DATE_LABEL_BY_GRANULARITY = {"hourly": "시각", "daily": "날짜", "weekly": "주 시작일"}

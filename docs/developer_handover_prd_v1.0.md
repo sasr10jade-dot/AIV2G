@@ -101,18 +101,19 @@
 * **GitHub Pages 진입점 저장소**: `..\aiv2g-entry`
 
 ### 4.2 서버 구동 (내부 와이파이 개발 서버)
-개발 서버는 서버 PC(`192.168.35.92`)에서 포트 3000으로 띄우고, 같은 와이파이의 PC·휴대폰에서 접속한다.
-```powershell
-# 서버 PC에서: 최신 소스 받기 → 개발 서버 구동 (0.0.0.0:3000, --reload)
-git pull origin main
-scripts\run_dev_lan.cmd
+개발 서버는 서버 PC(`192.168.35.92`, macOS)의 `~/AIV2G-dev` 폴더에서 포트 5050으로 띄우고, 같은 와이파이의 PC·휴대폰에서 접속한다(내부망 전용).
+서버 PC의 3000(Node 앱)·5000(AirPlay 수신)·8000·8080(다른 서비스)은 쓰지 않는다. 6000번은 브라우저가 막는 포트라 쓰지 않는다.
+```sh
+# 서버 PC(macOS): 최신 소스 받기 → 재시작(launchd 서비스 kr.aiv2g.dev가 상시 구동·자동 재시작)
+cd ~/AIV2G-dev && git pull origin main
+launchctl kickstart -k gui/$(id -u)/kr.aiv2g.dev
 
-# 최초 1회(관리자 PowerShell): 방화벽 인바운드 3000 허용(개인 네트워크 한정)
-New-NetFirewallRule -DisplayName "AIV2G dev 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Profile Private -Action Allow
+# 직접 실행할 때(서비스 대신): scripts/run_dev_lan.sh 5050      (Windows PC에서는 scripts\run_dev_lan.cmd)
 ```
-* 접속 주소: `http://192.168.35.92:3000/` (개발 진입 `/dev`, 대시보드 `/dashboard`, 모바일 `/app`, API 문서 `/docs`)
+* 접속 주소: `http://192.168.35.92:5050/` (개발 진입 `/dev`, 대시보드 `/dashboard`, 모바일 `/app`, API 문서 `/docs`)
 * 앱 객체는 `src.api:app` 이다(`src.api.main:app` 아님).
-* `/dev` 간편 로그인은 같은 망의 누구나 쓸 수 있으므로 3000 포트를 공유기 포트포워딩·터널로 외부에 열지 않는다. 외부 공개가 필요하면 `scripts/run_public_demo.py` 를 쓴다.
+* macOS에는 LightGBM이 쓰는 libomp가 없어 `run_dev_lan.sh`가 scikit-learn에 포함된 libomp를 경로에 잡아 준다(Homebrew 불필요).
+* `/dev` 간편 로그인은 내부망 IP에서만 동작하지만 5050 포트를 공유기 포트포워딩·터널로 외부에 열지 않는다. 외부 공개가 필요하면 `scripts/run_public_demo.py` 를 쓴다.
 
 ### 4.3 단위 테스트 및 무결성 검증
 ```powershell

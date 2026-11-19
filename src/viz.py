@@ -17,8 +17,11 @@ LINE = "#DCE3E7"
 BASELINE_COLOR = "#D2691E"   # copper — 무제어
 OPTIMIZED_COLOR = "#00897B"  # teal — AI 최적화
 
+# 운영체제별 한글 글꼴 — 맑은 고딕(Windows), 나눔고딕·애플고딕(macOS), 나눔고딕(Linux) 중 있는 것을 쓴다
+KOREAN_FONT_FAMILY = ["Malgun Gothic", "NanumGothic", "AppleGothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", "DejaVu Sans"]
+
 plt.rcParams.update({
-    "font.family": "Malgun Gothic",
+    "font.family": KOREAN_FONT_FAMILY,
     "axes.edgecolor": LINE,
     "axes.labelcolor": INK,
     "text.color": INK,
