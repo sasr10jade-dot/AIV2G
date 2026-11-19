@@ -12,7 +12,7 @@ from src.paths import PROJECT_ROOT
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app, cpo  # noqa: E402
+from .routers import acryl, auth, batch, dashboard, forecast, ingest, models, optimize, privacy, advisory, owner, pwa, signup, registrations, admin_app, cpo, vpp  # noqa: E402
 from src.auth.store import ensure_bootstrap_super_admin  # noqa: E402
 
 TAGS_METADATA = [
@@ -31,6 +31,7 @@ TAGS_METADATA = [
     {"name": "ingest", "description": "[13. 데이터 수급 파이프라인] 서포터즈 실차 OBD2 배치 수급 및 전력거래소(KPX)·기상청 공공데이터 동기화."},
     {"name": "advisory", "description": "[14. AI 운영 지표] AI 추천 발행, 차주 수용률 및 안전 검증 통과율 감사로그 집계."},
     {"name": "health", "description": "[15. 서버 헬스체크] 시스템 및 데이터베이스 가동 상태 확인 (공개)."},
+    {"name": "vpp", "description": "[16. VPP·이익공유 실증] 신재생 출력제어 해소 에뮬레이터, 재원별 편익(요금 차익·피크 저감·출력제어 완화), 가상 전력 거래·모의 포인트 정산, V2G 이동형 ESS 집중 실증 그룹."},
 ]
 
 app = FastAPI(
@@ -102,6 +103,7 @@ app.include_router(registrations.router)
 app.include_router(admin_app.router)
 app.include_router(acryl.router)
 app.include_router(cpo.router, prefix="/cpo", tags=["cpo"])
+app.include_router(vpp.router)
 
 dashboard.start_cache_warmer()
 if "pytest" not in __import__("sys").modules:

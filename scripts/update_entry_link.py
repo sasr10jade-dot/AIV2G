@@ -49,12 +49,12 @@ def main() -> int:
     else:
         run(["git", "pull", "--ff-only", "-q"], cwd=target, check=False)
 
-    page = target / "index.html"
+    page = target / "docs" / "index.html"   # GitHub Pages 원본 폴더: main 브랜치 /docs
     html = page.read_text(encoding="utf-8")
     new_html, n1 = re.subn(r'var TARGET = "[^"]*";', f'var TARGET = "{url}";', html)
     new_html, n2 = re.subn(r'content="0; url=[^"]*"', f'content="0; url={url}"', new_html)
     if n1 != 1 or n2 != 1:
-        raise SystemExit("index.html 형식이 예상과 달라 바꾸지 않았습니다.")
+        raise SystemExit("docs/index.html 형식이 예상과 달라 바꾸지 않았습니다.")
     if new_html == html:
         print(f"이미 같은 주소입니다: {url}")
         return 0
@@ -65,7 +65,7 @@ def main() -> int:
         return 0
     name = run(["git", "config", "user.name"], cwd=ROOT, check=False).strip() or "AI-V2G"
     email = run(["git", "config", "user.email"], cwd=ROOT, check=False).strip() or "noreply@example.com"
-    run(["git", "add", "index.html"], cwd=target)
+    run(["git", "add", "docs/index.html"], cwd=target)
     run(["git", "-c", f"user.name={name}", "-c", f"user.email={email}", "commit", "-q", "-m", f"서비스 주소 변경: {url}"], cwd=target)
     run(["git", "push", "-q"], cwd=target)
     print("푸시 완료. 반영까지 1분 안팎 걸릴 수 있습니다.")

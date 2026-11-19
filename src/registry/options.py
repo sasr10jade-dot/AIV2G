@@ -79,13 +79,23 @@ class VehicleModelCatalog:
         self.models: dict[str, dict] = data.get("models", {})
 
     def has(self, model_id: str) -> bool:
+        """가입·정정에 쓸 수 있는 차종인가 — 제외 차종(excluded=true, 제주 V2G 실증 차종)은 False."""
+        return model_id in self.models and not self.models[model_id].get("excluded")
+
+    def known(self, model_id: str) -> bool:
         return model_id in self.models
+
+    def is_excluded(self, model_id: str) -> bool:
+        return bool(self.models.get(model_id, {}).get("excluded"))
 
     def label(self, model_id: str) -> str:
         return self.models[model_id]["label"]
 
     def public_list(self) -> list[dict]:
-        return [{"id": k, "label": v["label"], "maker": v.get("maker", "")} for k, v in self.models.items()]
+        return [{"id": k, "label": v["label"], "maker": v.get("maker", "")} for k, v in self.models.items() if not v.get("excluded")]
+
+    def excluded_list(self) -> list[dict]:
+        return [{"id": k, "label": v["label"], "reason": v.get("excluded_reason", "")} for k, v in self.models.items() if v.get("excluded")]
 
 
 def load_catalog(path: Path | None = None) -> VehicleModelCatalog:

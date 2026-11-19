@@ -55,5 +55,5 @@ if __name__ == "__main__":
     print(result["quality_report_md"])
     for y in result["kpi_by_year"]:
         print(f"\nKPI {y['label']} 데이터: {y['records']:,} / 목표 {y['target']:,}건 이상 "
-              f"(충전 세션 {y['charger_sessions']:,} + 차량-일 {y['vehicle_days']:,})")
+              f"(충전 세션 {y['charger_sessions']:,} + 차량 세션 {y['vehicle_days']:,})")
     print(f"사업기간 구분 없이 센 전체 유효 건수(참고): {result['kpi_scenario_records']:,}")

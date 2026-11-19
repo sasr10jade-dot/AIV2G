@@ -7,9 +7,12 @@
 - 실증 데이터 : 1차년도 4,000건 이상, 2차년도 4,500건 이상 — 연차별 확보 데이터 미중복
 - AI 기반 최적 V2G 예측모델 1건(1차) / 고도화 1건(2차), BM 모델 제안 1건·MOU 1건(2차)은 문서 성과라 여기서 세지 않는다.
 
-데이터 1건의 정의(계획서 "수집·정제된 유효 데이터의 최종 누적 건수")
-- 충전 세션 : 연계 충전기의 유효 충전 세션 1건(충전량 > 0, 시작 시각 기준 연차 배정)
-- 차량-일 프로파일 : 그 날짜에 주행·충전·연결 중 하나라도 관측된 (ev_id, 날짜) 1건
+데이터 1건의 정의(계획서 p.16 산출식: [차량 OBD] EV 30대 x 주당 충전/운행 세션 3.5회 x 13주 = 1,365건
++ [충전기 관제] 거점 유효 충전 세션 주당 약 210건 x 13주 = 2,730건 → 합계 4,095건)
+- 충전기 세션 : 연계 충전기의 유효 충전 세션 1건(충전량 > 0, 시작 시각 기준 연차 배정)
+- 차량 세션 : 차량 OBD에서 관측된 운행 1회 또는 충전 1회(연속된 시간 구간, 시작 시각 기준 연차 배정)
+  — 결과 필드 이름(vehicle_days)은 화면·보고서 호환을 위해 유지하지만 값은 차량 세션 수다(요구사항 K01).
+  예전 단위였던 차량-일(활동한 차량·날짜 수)은 `count_vehicle_days`로 참고용으로만 남긴다.
 - 전력수요·기상 등 공개 데이터는 참고 건수로만 따로 보여주고 성과 건수에는 넣지 않는다(관리기관 협의 전 보수적 기준).
 - 방전은 실측이 아니라 AI 추론이므로(계획서 '수행 전제') 건수에 넣지 않는다.
 
@@ -104,6 +107,31 @@ def _vehicle_days(ev_df: pd.DataFrame) -> pd.DataFrame:
     return days[["ev_id", "_day"]].drop_duplicates().reset_index(drop=True)
 
 
+def _vehicle_sessions(ev_df: pd.DataFrame) -> pd.DataFrame:
+    """차량 세션 목록(ev_id, 시작 날짜) — 운행(driving) 또는 충전(charging_kw>0) 상태가 이어지는 구간 1개가 1건.
+    같은 상태라도 관측 간격이 1시간을 넘으면 새 세션으로 본다."""
+    if ev_df is None or ev_df.empty:
+        return pd.DataFrame(columns=["ev_id", "_day"])
+    df = ev_df[["ev_id", "timestamp", "driving", "charging_kw"]].copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values(["ev_id", "timestamp"])
+    driving = df["driving"].fillna(False).astype(bool)
+    charging = pd.to_numeric(df["charging_kw"], errors="coerce").fillna(0) > 0
+    state = pd.Series(pd.NA, index=df.index, dtype="object")
+    state[charging] = "charge"
+    state[driving] = "drive"
+    prev_state = state.groupby(df["ev_id"]).shift(1)
+    gap = df["timestamp"].groupby(df["ev_id"]).diff()
+    start = state.notna() & ((prev_state != state) | prev_state.isna() | (gap > pd.Timedelta(hours=1)))
+    starts = df[start.fillna(False).astype(bool)]
+    return pd.DataFrame({"ev_id": starts["ev_id"].to_numpy(), "_day": starts["timestamp"].dt.date.to_numpy()})
+
+
+def count_vehicle_sessions(ev_df: pd.DataFrame) -> int:
+    """차량 세션 수(운행 1회·충전 1회) — 계획서 p.16 차량 OBD 데이터 산출 단위."""
+    return int(len(_vehicle_sessions(ev_df)))
+
+
 def count_charger_sessions(charger_df: pd.DataFrame) -> int:
     """유효 충전 세션 수(충전량 0 이하 제외)."""
     return int(len(_session_dates(charger_df)))
@@ -118,7 +146,7 @@ def count_by_year(ev_df: pd.DataFrame, charger_df: pd.DataFrame,
                   count_sessions: bool = True, count_vehicle_days: bool = True) -> tuple[list[YearCount], int]:
     """연차별 건수와 어느 연차에도 속하지 않는 건수. count_*=False인 표는 0으로 센다(합성 표 제외용)."""
     sess_years = _session_dates(charger_df).map(project_year_of)
-    vd = _vehicle_days(ev_df)
+    vd = _vehicle_sessions(ev_df)
     vd_years = vd["_day"].map(project_year_of) if not vd.empty else pd.Series([], dtype="object")
     rows = []
     for key, y in PROJECT_YEARS.items():
@@ -172,7 +200,7 @@ def summarize_kpi(
         by_year=by_year,
         official_by_year=official,
         out_of_period_records=out,
-        scenario_records=count_charger_sessions(charger_df) + count_vehicle_days(ev_df),
+        scenario_records=count_charger_sessions(charger_df) + count_vehicle_sessions(ev_df),
         public_reference_records=public_ref,
         is_real=provenance.get("ev_telemetry") == "measured",
         provenance=provenance,
@@ -251,7 +279,7 @@ def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessi
     현재 속도로 연차 종료일까지 수집했을 때의 예상 건수, 경고, 차량별 최근 4주 현황.
     count_*=False인 표(합성)는 0으로 세어 성과 실적과 같은 기준을 쓴다."""
     sess = _session_dates(charger_df) if count_sessions else pd.Series([], dtype="object")
-    vd = _vehicle_days(ev_df) if count_vehicle_days else pd.DataFrame(columns=["ev_id", "_day"])
+    vd = _vehicle_sessions(ev_df) if count_vehicle_days else pd.DataFrame(columns=["ev_id", "_day"])
     s_daily = sess.value_counts() if len(sess) else pd.Series(dtype=int)
     v_daily = vd["_day"].value_counts() if not vd.empty else pd.Series(dtype=int)
     all_days = sorted(set(s_daily.index) | set(v_daily.index))

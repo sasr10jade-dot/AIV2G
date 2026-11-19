@@ -205,3 +205,26 @@ CPO 3사 REST/CSV ───────┼─▶ 표준 스키마·품질검증 
 - `docs/developer_handover_prd_v1.0.md` 3장의 `src/solar/` 경로는 존재하지 않는다(태양광 연계는 `config/public_apis.json`의 `kpx_solar_regional`, endpoint 미설정).
 - 같은 문서의 실행 명령 `src.api.main:app` → `src.api:app`.
 - 결과 엑셀 시트는 6종(성과지표·일자별 수집·실증 인프라·데이터 품질·효용성 검증·이익공유 기초자료)에 예외·오류 기록이 있으면 1종이 더해진다.
+
+---
+
+## 9. 2026-11-19 보강 개발 반영 (요구사항정의서 현행화)
+
+| 요구사항 | 보강 내용 | 주요 소스·API |
+|---|---|---|
+| K03·B04 | 모델 카드 고정값 제거, Train/Test 80:20(시간순)+5겹 시간순 교차검증으로 MAPE·R² 실계산 | `src/model/demand_forecast.py`, `GET /models/card`, `GET /models/evaluation` |
+| C01 | 출력제어 해소 에뮬레이터(정제→패턴분석→가상 과잉발전→전후 비교) | `src/optimizer/curtailment.py`, `GET /vpp/curtailment` |
+| S01·Y2D01 | 재원별 편익 산식(요금 차익·피크 저감·출력제어 완화), 고정 비율·실존 기업명 제거 | `src/optimizer/vpp_revenue.py`, `GET /vpp/revenue-sources` |
+| E03·Y2D03·Y2E04 | 가상 전력 거래 원장·모의 포인트 정산(중복 정산 방지, 관용/민간 집계, 인센티브 유형 비교) | `src/settlement/ledger.py`, `/vpp/settlement/*`, `GET /owner/points` |
+| D03 | 이동형 ESS 집중 실증 그룹(5~10대) 선정·지정·전용 데이터셋 | `src/optimizer/ess_group.py`, `/vpp/ess-group*` |
+| K01 | 데이터 건수 = 차량 운행·충전 세션 + 충전기 세션(계획서 p.16) | `src/kpi.py` |
+| A02 | 제주 V2G 실증 차종(EV9·아이오닉 9) 가입·승인 차단 | `config/vehicle_models.json`, `src/registry/` |
+| A07·K02 | 차량 소속(관용/민간), 예비 Pool 경고·대체 이력 | `/registrations/{id}/affiliation`, `/registrations/reserve-status`, `/registrations/replace` |
+| Q04 | 위치정보 별도 동의 | `/owner/consent/location` |
+| A04 | CPO 수신 실적을 `data/cpo_status.json`으로 분리, 토큰 설정 시 인증 필수 | `src/api/routers/cpo.py` |
+| C04·Y2A02·E01 | 운행조건 분석 축, 운영조건 커버리지, 결과 엑셀 '한계·개선 기준' 시트 | `src/optimizer/effect_metrics.py`, `src/reporting.py` |
+| D05 | 'AI 에이전트' 표기를 '최적화 결과 기반 추천 근거 설명'으로 정정(LLM 미연동은 남은 과제) | `src/advisory/owner_guide.py` |
+| 운영 | 내부망 개발 서버(0.0.0.0:3000), 간편 로그인 내부망 한정 | `scripts/run_dev_lan.cmd`, `src/auth/deps.py` |
+
+남은 미흡·누락: A04(CPO 실연계, 협약 후), A10(재생에너지·전력수요 API 자동수집), A15(원천 행 단위 출처), D05(LLM 설명), S02·Y2B01·Y2B02·Y2C02(2차년도), Y2E01·Y2E05(누락).
+가정값은 `config/vpp_settlement.json`(verified=false)에 있으며 모든 결과는 '모의(가정값)'로 표기된다.

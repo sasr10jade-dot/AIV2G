@@ -15,6 +15,24 @@ def client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+_PROXY_HEADERS = ("cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-real-ip", "forwarded")
+
+
+def is_lan_request(request: Request) -> bool:
+    """내부망(사설·루프백 IP)에서 직접 들어온 요청인지. 터널·프록시를 거친 요청은 접속지가 127.0.0.1로
+    보이므로, 프록시 헤더가 하나라도 있으면 내부망 요청으로 보지 않는다."""
+    import ipaddress
+
+    if any(h in request.headers for h in _PROXY_HEADERS):
+        return False
+    host = request.client.host if request.client else ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback
+
+
 # owner는 0 — 운영 API(require_admin 이상)는 자동으로 막히고 /owner/* 에서만 쓴다.
 ROLE_RANK = {"owner": 0, "admin": 1, "super_admin": 2}
 

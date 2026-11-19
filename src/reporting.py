@@ -68,7 +68,7 @@ def build_results_workbook(payload: dict) -> bytes:
         "1건 = 연계 충전기의 유효 충전 세션 1건 또는 주행·충전·연결이 관측된 (차량, 날짜) 1건. 연차별 미중복.",
         "공백기(2027-04-16~04-30)·사업기간 밖·합성 데이터·방전(추론)은 실적에 넣지 않는다. 공개 데이터는 참고 건수."])
     official = {y["year"]: y for y in kpi.get("data_official_by_year", [])}
-    _table(ws, ["연차", "기간", "목표(건)", "실적(건, 실측만)", "달성률(%)", "전체 집계(건, 모의 포함)", "충전 세션", "차량-일"],
+    _table(ws, ["연차", "기간", "목표(건)", "실적(건, 실측만)", "달성률(%)", "전체 집계(건, 모의 포함)", "충전 세션", "차량 세션"],
            [[y["label"], f"{PROJECT_YEARS[y['year']]['start']} ~ {PROJECT_YEARS[y['year']]['end']}", y["target"],
              official.get(y["year"], {}).get("records", 0), official.get(y["year"], {}).get("achieved_pct", 0.0),
              y["records"], y["charger_sessions"], y["vehicle_days"]] for y in kpi.get("data_by_year", [])], "연차별 데이터 건수")
@@ -95,7 +95,7 @@ def build_results_workbook(payload: dict) -> bytes:
         _table(ws, ["연차", "기준일", "누적(건)", "최근 14일 하루 평균", "남은 일수", "종료 시 예상(건)", "목표(건)", "목표 대비(%)", "목표까지 하루 필요"],
                [[p["label"], p["as_of"], p["counted"], p["per_day"], p["remaining_days"], p["expected"], p["target"], p["expected_pct"], p["per_day_needed"]]],
                "수집 속도 전망")
-    _table(ws, ["날짜", "충전 세션", "차량-일", "합계"],
+    _table(ws, ["날짜", "충전 세션", "차량 세션", "합계"],
            [[d["date"], d["charger_sessions"], d["vehicle_days"], d["charger_sessions"] + d["vehicle_days"]] for d in col.get("daily", [])],
            "일자별 건수(최근 60일)")
 
@@ -130,7 +130,7 @@ def build_results_workbook(payload: dict) -> bytes:
         ["방전 추론량(kWh)", 0, cost.get("discharge_kwh"), "추론, 실적 아님"],
     ], "적용 전·후 비교")
     cond = eff.get("conditions") or {}
-    for key, name in (("time_band", "충전 시작 시간대"), ("day_type", "평일·주말"), ("start_soc", "시작 배터리")):
+    for key, name in (("time_band", "충전 시작 시간대"), ("day_type", "평일·주말"), ("start_soc", "시작 배터리"), ("vehicle_type", "차량 운행조건")):
         _table(ws, [name, "세션", "적용 전 비용(원)", "적용 후 비용(원)", "절감(원)", "절감률(%)", "방전 추론(kWh)"],
                [[r["label"], r["sessions"], r["baseline_cost_krw"], r["optimized_cost_krw"], r["savings_krw"], r["savings_pct"], r["discharge_kwh"]]
                 for r in cond.get(key, [])], f"조건별 분석 — {name}")
@@ -167,6 +167,40 @@ def build_results_workbook(payload: dict) -> bytes:
                  "조치 완료" if x["status"] == "resolved" else "미조치", x.get("resolution_note"), x.get("resolved_by"), x.get("resolved_at")]
                 for x in mi.get("items") or []], "기록 목록")
 
+    # 8. 기술적 한계·개선사항(2차년도 고도화 기준) — 계획서 p.30, 요구사항 E01
+    ws = _sheet(wb, "한계·개선 기준", "1차년도 기술적 한계와 2차년도 고도화 기준(계획서 4.1 바)", common + [
+        "각 행은 이 결과 파일의 값에서 자동으로 판단한 한계다. 기준을 충족하면 해당 행은 '충족'으로 바뀐다."])
+    _table(ws, ["구분", "현재 상태(근거)", "판정", "2차년도 고도화 기준"], limitation_rows(payload), "한계·개선 기준")
+
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def limitation_rows(payload: dict) -> list[list]:
+    """결과 값에서 한계를 판단해 [구분, 현재 상태, 판정, 고도화 기준] 행을 만든다."""
+    kpi = payload.get("kpi") or {}
+    eff = payload.get("effect_verification") or {}
+    rev = payload.get("revenue_comparison") or {}
+    prov = kpi.get("data_provenance") or {}
+    rows = []
+    measured = [k for k, v in prov.items() if v in ("measured", "public")]
+    rows.append(["데이터 출처", f"실측·공개 표: {', '.join(measured) or '없음'} / 전체 {len(prov)}표",
+                 "충족" if len(measured) == len(prov) and prov else "한계",
+                 "EV 텔레메트리·충전 세션·계통 신호 3표 모두 실측/공개 데이터로 전환, 합성 보완분 0건"])
+    official = sum(y.get("records", 0) for y in kpi.get("data_official_by_year") or [])
+    rows.append(["성과 데이터 건수", f"실측 실적 {official:,}건 (1차 목표 4,000건)", "충족" if official >= 4000 else "한계",
+                 "2차년도 4,500건 이상(연차별 미중복), 차량 세션·충전기 세션 산출식 유지"])
+    rows.append(["방전(V2G) 실증", f"방전량은 추론값({eff.get('generation', 'inferred')}) — 물리 방전 인프라 없음", "한계",
+                 "양방향 충전기·V2G 가능 차량 확보 시 실측 방전량으로 교체, 추론 대비 오차 검증"])
+    assumptions = rev.get("assumptions") or {}
+    rows.append(["경제성 가정값", f"효율·열화비용 확정 여부 verified={assumptions.get('verified')}",
+                 "충족" if assumptions.get("verified") else "한계", "확정 요금표·배터리 열화 근거 반영 후 verified=true"])
+    cov = ((eff.get("conditions") or {}).get("coverage")) or {}
+    empty = [f"{axis}:{lbl}" for axis, m in cov.items() for lbl, n in m.items() if n == 0]
+    rows.append(["운영조건 다양성", f"데이터가 없는 조건 {len(empty)}개" + (f" ({', '.join(empty[:6])})" if empty else ""),
+                 "충족" if cov and not empty else "한계", "계절·시간대·SOC·운행유형 전 조건에서 세션 확보(하계·동계 포함)"])
+    v2g_rate = eff.get("v2g_prediction_rate_pct")
+    rows.append(["V2G 예측률", f"{v2g_rate}% (출처: {eff.get('v2g_prediction_source', '-')})",
+                 "충족" if (v2g_rate or 0) >= 80 else "한계", "누적 실측 데이터 재학습, 계획서 성능 목표(MAPE ≤20%, R² ≥0.70) 유지"])
+    return rows

@@ -33,7 +33,8 @@ class ModelRegistry:
         return self._read_meta()["active_version"]
 
     def register(self, model, feature_cols: list[str], weeks: int, holdout_mae: float, holdout_rmse: float, n_train: int,
-                 data_range: dict | None = None, data_source: str | None = None) -> int:
+                 data_range: dict | None = None, data_source: str | None = None,
+                 holdout_mape: float | None = None, holdout_r2: float | None = None) -> int:
         """data_range: 학습·검증 구간(시작~끝 시각), data_source: 'synthetic'|'measured' — 같은 조건으로 재현하기 위한 기록."""
         self.dir.mkdir(parents=True, exist_ok=True)
         meta = self._read_meta()
@@ -45,6 +46,8 @@ class ModelRegistry:
             "weeks": weeks,
             "holdout_mae": holdout_mae,
             "holdout_rmse": holdout_rmse,
+            "holdout_mape": holdout_mape,
+            "holdout_r2": holdout_r2,
             "n_train": n_train,
             "data_range": data_range,
             "data_source": data_source,

@@ -1,0 +1,26 @@
+{
+  "_comment": "출력제어 해소 에뮬레이터(C01)·재원별 편익 산정(S01)·모의 포인트 정산(E03) 가정값. verified=false인 동안 모든 결과는 '가정값·모의'로 표기한다. 근거가 확정되면 값과 source를 바꾸고 verified=true로 전환한다.",
+  "verified": false,
+  "curtailment": {
+    "_comment": "거점 3곳 마이크로그리드에 가상 태양광을 두고, 공공데이터 재생에너지 발전 패턴(정규화)으로 발전량을 재현한다. 발전량이 거점 부하+역송 한도를 넘으면 그 초과분이 출력제어(버려지는 전력)다.",
+    "pv_kwp_per_contract_kw": 1.0,
+    "over_generation_factor": 1.3,
+    "export_limit_ratio": 0.1,
+    "weekend_load_ratio": 0.6,
+    "peak_hours": [17, 18, 19, 20, 21],
+    "peak_hours_source": "태양광이 빠진 저녁 순부하(부하-태양광) 피크 시간대(가정) — 에뮬레이터 patterns.derived_peak_hours로 확인 후 확정"
+  },
+  "benefits": {
+    "demand_charge_krw_per_kw_month": 8320,
+    "demand_charge_source": "가정값(일반용 고압 기본요금 수준) — 확정 요금 약관으로 교체 필요",
+    "curtailment_value_krw_per_kwh": null,
+    "curtailment_value_source": "null이면 해당 시각 계통 가격(price_krw_per_kwh)을 흡수 전력의 가치로 쓴다"
+  },
+  "points": {
+    "_comment": "1포인트 = 1원 상당(모의). 피크 방전 kWh는 해당 시각 가격 x 참여자 배분율, 출력제어 흡수 kWh는 고정 보너스를 준다.",
+    "krw_per_point": 1,
+    "owner_share_pct": 70,
+    "absorb_bonus_points_per_kwh": 20,
+    "min_settle_kwh": 0.1
+  }
+}

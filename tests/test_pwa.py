@@ -116,12 +116,14 @@ def test_approvals_page_served_and_linked_from_dashboard():
 
 
 def test_app_page_has_plan_scope_tabs_only():
-    """계획서 범위: 홈(공지·참여 현황)·충전 시간·예측 탭만 있고, 미션·포인트·알림함은 없다."""
+    """계획서 범위: 홈(공지·참여 현황)·충전 시간·예측 탭만 있고, 미션·쿠폰은 없다.
+    모의 포인트는 신구대조표 2번 보완(가상 전력 거래·모의 정산 PoC)으로 홈 카드에만 보인다(별도 탭 아님)."""
     html = client.get("/app").text
     for tab in ("inbox", "price", "forecast"):
         assert f'data-tab="{tab}"' in html
-    for gone in ('data-tab="missions"', "/owner/missions", "/owner/points", "/owner/coupons", "/owner/consent/notify"):
+    for gone in ('data-tab="missions"', 'data-tab="points"', "/owner/missions", "/owner/coupons", "/owner/consent/notify"):
         assert gone not in html
+    assert "/owner/points" in html and "모의 포인트" in html
 
 
 def test_signup_and_home_show_supporter_operating_inputs_in_both_languages():
@@ -196,7 +198,7 @@ def test_supporter_app_has_aiv2gapp_service_parts():
     html = client.get("/app").text
     for key in ("hm_rec:", "ms_sug:", "r3_title:", "vg_title:", "ba_title:", "hs_title:", "function markKind"):
         assert key in html, key
-    assert "포인트" not in html and "미션" not in html                     # 리워드(포인트·미션)는 옮기지 않았다
+    assert "미션" not in html                     # 미션 리워드는 옮기지 않았다(모의 포인트는 신구대조표 2번 보완으로 추가)
 
 
 

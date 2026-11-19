@@ -14,10 +14,10 @@ from src.pipeline import migrations as m
 
 def test_fresh_db_gets_all_tables_and_version():
     con = sqlite3.connect(":memory:")
-    assert m.migrate(con) == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert m.migrate(con) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     names = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"charger_registry", "advisories", "vehicle_registrations", "dataset_exports", "external_forecasts",
-            "schema_migrations"} <= names
+            "schema_migrations", "virtual_trades", "point_ledger", "ess_group_members", "vehicle_replacements"} <= names
     assert not {"discharge_events", "experiment_groups", "notifications"} & names   # 계획서 범위 밖 테이블은 만들지 않는다
     assert m.current_version(con) == m.LATEST_VERSION
 

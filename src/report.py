@@ -37,7 +37,7 @@ def build_report(cfg: SimConfig | None = None) -> str:
     weekly_report = build_ev_weekly_report(ev_df, cfg)
     from src.kpi import summarize_kpi
     kpi = summarize_kpi(ev_df, charger_df, grid_df)
-    kpi_lines = [f"- {y.label}: {y.records:,}건 / 목표 {y.target:,}건 이상 (충전 세션 {y.charger_sessions:,} + 차량-일 {y.vehicle_days:,})"
+    kpi_lines = [f"- {y.label}: {y.records:,}건 / 목표 {y.target:,}건 이상 (충전 세션 {y.charger_sessions:,} + 차량 세션 {y.vehicle_days:,})"
                  for y in kpi.by_year]
 
     comparison = compare_baseline_vs_optimized(ev_df, grid_df, cfg)

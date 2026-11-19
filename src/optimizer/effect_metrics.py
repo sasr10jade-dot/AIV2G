@@ -19,6 +19,7 @@ import pandas as pd
 PEAK_QUANTILE = 0.75   # 하루 중 전력수요 상위 25% 시간(하루 6시간)을 피크 시간대로 본다
 TIME_BANDS = (("심야(00~06시)", 0, 6), ("오전(06~12시)", 6, 12), ("오후(12~18시)", 12, 18), ("저녁(18~24시)", 18, 24))
 SOC_BANDS = (("저잔량(<35%)", 0.0, 35.0), ("중간(35~80%)", 35.0, 80.0), ("고잔량(≥80%)", 80.0, 100.01))
+SEASONS = {3: "봄", 4: "봄", 5: "봄", 6: "여름", 7: "여름", 8: "여름", 9: "가을", 10: "가을", 11: "가을", 12: "겨울", 1: "겨울", 2: "겨울"}
 
 
 def peak_hours(grid_df: pd.DataFrame) -> set:
@@ -58,6 +59,7 @@ def _session_rows(run: dict, ev_df: pd.DataFrame, price_by_time: dict, economics
     eta_c = economics.charge_efficiency if economics else 1.0
     eta_d = economics.discharge_efficiency if economics else 1.0
     observed = ev_df.set_index(["ev_id", "timestamp"])["charging_kw"]
+    ev_types = ev_df.groupby("ev_id")["ev_type"].first().to_dict() if "ev_type" in ev_df.columns else {}
     rows = []
     for sid, session in run["sessions"].items():
         ev_id = run["session_ev_map"][sid]
@@ -74,6 +76,7 @@ def _session_rows(run: dict, ev_df: pd.DataFrame, price_by_time: dict, economics
         rows.append({
             "session_id": sid, "ev_id": ev_id, "start": times[0], "hour": times[0].hour,
             "weekend": times[0].dayofweek >= 5, "start_soc_pct": start_soc,
+            "ev_type": str(ev_types.get(ev_id) or "미분류"), "month": times[0].month,
             "baseline_end_soc_pct": end_soc, "optimized_end_soc_pct": min(opt_end_soc, 100.0),
             "baseline_cost_krw": float((base_kw * price).sum()),
             "optimized_cost_krw": float(((charge - discharge) * price).sum()),
@@ -114,14 +117,18 @@ def _group_summary(rows: list[dict]) -> dict:
 
 
 def condition_breakdown(rows: list[dict], comparison: pd.DataFrame, grid_df: pd.DataFrame) -> dict:
-    """조건별 반복 분석 — 같은 산식을 충전 시작 시간대·평일/주말·시작 SOC·전력수요 수준별로 나눠 계산한다."""
+    """조건별 반복 분석 — 같은 산식을 충전 시작 시간대·평일/주말·시작 SOC·차량 운행조건(유형)·전력수요 수준별로 나눠 계산한다."""
     by_time: dict[str, list] = defaultdict(list)
     by_day: dict[str, list] = defaultdict(list)
     by_soc: dict[str, list] = defaultdict(list)
+    by_type: dict[str, list] = defaultdict(list)
+    by_season: dict[str, list] = defaultdict(list)
     for r in rows:
         by_time[next(lbl for lbl, a, b in TIME_BANDS if a <= r["hour"] < b)].append(r)
         by_day["주말" if r["weekend"] else "평일"].append(r)
         by_soc[next(lbl for lbl, a, b in SOC_BANDS if a <= r["start_soc_pct"] < b)].append(r)
+        by_type[r.get("ev_type", "미분류")].append(r)
+        by_season[SEASONS.get(r.get("month", 0), "미상")].append(r)
 
     # 전력수요 수준: 시간대별 계통 수요를 3분위로 나눠 그 시간의 선단 충전량(적용 전·후)을 비교한다
     demand = comparison.merge(grid_df[["timestamp", "power_demand_mw"]], on="timestamp", how="left").dropna(subset=["power_demand_mw"])
@@ -145,7 +152,16 @@ def condition_breakdown(rows: list[dict], comparison: pd.DataFrame, grid_df: pd.
         "time_band": rows_of(by_time, [lbl for lbl, *_ in TIME_BANDS]),
         "day_type": rows_of(by_day, ["평일", "주말"]),
         "start_soc": rows_of(by_soc, [lbl for lbl, *_ in SOC_BANDS]),
+        "vehicle_type": rows_of(by_type, sorted(by_type)),
         "power_demand": by_demand,
+        # 운영조건 다양성(커버리지, 요구사항 Y2A02) — 조건별 세션 건수. 비어 있는 칸은 데이터 확보가 필요한 조건이다
+        "coverage": {
+            "season": {k: len(by_season.get(k, [])) for k in ("봄", "여름", "가을", "겨울")},
+            "time_band": {lbl: len(by_time.get(lbl, [])) for lbl, *_ in TIME_BANDS},
+            "start_soc": {lbl: len(by_soc.get(lbl, [])) for lbl, *_ in SOC_BANDS},
+            "vehicle_type": {k: len(v) for k, v in sorted(by_type.items())},
+            "day_type": {k: len(by_day.get(k, [])) for k in ("평일", "주말")},
+        },
     }
 
 

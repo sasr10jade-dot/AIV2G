@@ -110,6 +110,39 @@ def set_v2g_consent(body: ConsentIn, request: Request, user: dict = Depends(requ
     return {"v2g": after}
 
 
+LOCATION_CONSENT_VERSION = "location-v1"
+LOCATION_CONSENT_TEXT = (
+    "[위치정보 수집·이용 동의]\n"
+    "• 수집 항목: 충전 위치(충전소·거점·구역 단위), 차량 OBD 단말의 주차 위치(구역 단위)\n"
+    "• 이용 목적: 거점별 충전 수요 분석, 출력제어·피크 시간대 V2G 실증 시나리오 산정\n"
+    "• 보유 기간: 실증 종료 또는 동의 철회 시까지(철회하면 이후 수집을 중단하고 가명 처리된 분석 결과만 남습니다)\n"
+    "• 동의하지 않아도 서비스는 이용할 수 있으나, 위치 기반 분석에서 제외됩니다."
+)
+
+
+@router.get("/consent/location", summary="내 위치정보 수집·이용 동의 상태와 동의 문구")
+def get_location_consent(user: dict = Depends(require_owner)) -> dict:
+    return {"location": consent.has_consent(user["owned_ev_id"], "location"), "version": LOCATION_CONSENT_VERSION,
+            "text": LOCATION_CONSENT_TEXT}
+
+
+@router.put("/consent/location", summary="위치정보 수집·이용 동의/철회 — 본인 차량만, 변경 이력과 접속기록을 남긴다")
+def set_location_consent(body: ConsentIn, request: Request, user: dict = Depends(require_owner)) -> dict:
+    ev_id = user["owned_ev_id"]
+    before = consent.has_consent(ev_id, "location")
+    if body.granted:
+        consent.grant(ev_id, "location", LOCATION_CONSENT_VERSION, recorded_by=user["username"])
+    else:
+        consent.withdraw(ev_id, "location")
+    audit.log(user["username"], "owner_location_consent", target=ev_id, detail={"granted": body.granted})
+    after = consent.has_consent(ev_id, "location")
+    if before != after:
+        member_history.record(
+            user["username"], user["username"], "consent_grant" if after else "consent_withdraw",
+            [("location_consent", before, after)], ip=client_ip(request))
+    return {"location": after}
+
+
 @router.get("/notices", summary="공지사항(공개된 것만, 고정 먼저)")
 def owner_notices(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = Depends(require_owner)) -> dict:
     return {"notices": appadmin.notices(published_only=True, limit=20, lang=lang)}

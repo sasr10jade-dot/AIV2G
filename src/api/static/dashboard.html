@@ -679,7 +679,7 @@
         </span>
         <span class="legend-key" style="display:inline-flex; align-items:center; gap:6px;">
           <span style="width:12px; height:12px; border-radius:3px; background:#60A5FA; display:inline-block;"></span>
-          <span data-i18n>차량-일</span>
+          <span data-i18n>차량 세션</span>
         </span>
       </div>
     </div>
@@ -1037,11 +1037,42 @@
     <div class="tiles" id="ps-tiles" style="margin-bottom:12px;"></div>
     <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-top:8px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <span style="font-size:13px; font-weight:700; color:var(--text);" data-i18n>📊 VPP 다원화 수익 정산 포트폴리오 (수익원별 세부 구성)</span>
-        <span class="tag navy" data-i18n>솔링스 VPP 정산 연계 모델</span>
+        <span style="font-size:13px; font-weight:700; color:var(--text);" data-i18n>📊 재원별 편익 산정 (요금 차익 · 피크 저감 · 출력제어 완화)</span>
+        <span class="tag" id="ps-portfolio-label" data-i18n>가정값(모의)</span>
       </div>
       <div class="tiles" id="ps-portfolio-tiles" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:0;"></div>
+      <p id="ps-portfolio-note" style="font-size:11.5px; color:var(--text-muted); margin:8px 0 0;"></p>
     </div>
+  </div>
+
+  <div class="ax-section"><h1><small>05</small><span data-i18n>VPP·이익공유 실증</span></h1><p data-i18n>신구대조표 보완 항목. 신재생 출력제어 해소 시나리오, 가상 전력 거래·모의 포인트 정산, V2G 이동형 ESS 집중 실증 그룹을 운영합니다.</p></div>
+  <div class="card" id="curtail-card">
+    <h2 data-sec="05" data-kind="inferred" data-i18n>신재생 출력제어 해소 시나리오 (가상 과잉발전 에뮬레이터)</h2>
+    <p class="card-what" data-i18n>공공데이터 재생에너지 발전 패턴을 정제·분석해 거점 3곳 마이크로그리드의 가상 과잉발전 상황을 재현하고, 충·방전 제어 적용 전후의 출력제어량(버려지는 전력)을 비교합니다. 과잉발전 시간에 EV가 흡수(충전)하고 저녁 피크 시간대에 방전합니다.</p>
+    <div class="card-sub" id="curtail-sub"></div>
+    <div class="tiles" id="curtail-tiles"></div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="curtailChart"></canvas></div>
+    <div id="curtail-pattern" style="font-size:12px; margin-top:8px;"></div>
+  </div>
+
+  <div class="card" id="settle-card">
+    <h2 data-sec="05" data-kind="inferred" data-i18n>가상 전력 거래 및 모의 포인트 정산 (PoC)</h2>
+    <p class="card-what" data-i18n>참여 차량(관용·민간)의 피크 시간대 방전량과 과잉발전 흡수량을 차량·일 단위 가상 거래 실적으로 기록하고, 실적에 따라 모의 포인트를 적립합니다. 같은 차량·같은 날은 한 번만 정산됩니다. 1차년도 방전량은 최적 스케줄 기반 추론값이며 실제 금전 지급이 아닙니다.</p>
+    <div class="ocpp-controls"><button id="settle-run" data-i18n>정산 실행</button><span id="settle-msg" style="font-size:12px; color:var(--text-muted);"></span></div>
+    <div class="tiles" id="settle-tiles"></div>
+    <div id="settle-detail" style="overflow-x:auto; font-size:12px;"></div>
+  </div>
+
+  <div class="card" id="ess-card">
+    <h2 data-sec="05" data-kind="mixed" data-i18n>V2G 이동형 ESS 집중 실증 그룹 (5~10대)</h2>
+    <p class="card-what" data-i18n>운행 패턴이 규칙적이고 장기 주차 대기가 긴 차량을 골라 집중 실증 그룹으로 지정합니다. 장기 주차 중 방전 허용 시간대, 완속 충전기 체류 시간, 심야 충전 후 주간 대기 패턴을 분석해 전용 데이터셋으로 내보냅니다.</p>
+    <div class="ocpp-controls">
+      <button id="ess-recommend" data-i18n>추천 차량 선택</button>
+      <button id="ess-save" data-i18n>그룹 지정 저장</button>
+      <a id="ess-download" href="/vpp/ess-group/dataset.csv" class="preset-btn" style="text-decoration:none;" data-i18n>전용 데이터셋 내려받기(CSV)</a>
+      <span id="ess-msg" style="font-size:12px; color:var(--text-muted);"></span>
+    </div>
+    <div id="ess-table" style="overflow-x:auto; max-height:420px; font-size:12px;"></div>
   </div>
 
 
@@ -1151,6 +1182,7 @@ const I18N_EN = {
   '실증 데이터': 'Field data',
   '충전 세션': 'sessions',
   '차량-일': 'vehicle-days',
+  '차량 세션': 'vehicle sessions',
   '합성 보완분 제외': 'synthetic fill-in excluded',
   '모의(실적 아님)': 'simulated (not counted)',
   '종류 미집계': 'types not reported',
@@ -1328,7 +1360,7 @@ const I18N_EN = {
   '실증 인프라·데이터 수집': 'Pilot infrastructure & data collection',
   '계획서 \'가\'. 서포터즈 차량·충전사업자 충전기·공개 데이터를 모아 정제하고, 연차별 데이터 목표를 관리합니다.': 'Plan item A. Collects and cleans supporter EV, operator charger and public data, and tracks the yearly data targets.',
   '데이터 현황판 — 목표 대비 수집 속도': 'Data status board — collection pace vs. target',
-  '하루에 몇 건씩 모이고 있는지, 지금 속도라면 연차가 끝날 때 목표(1차년도 4,000건·2차년도 4,500건)를 채울 수 있는지 보여 줍니다. 1건 = 유효 충전 세션 1건 또는 차량이 움직인 하루 1건입니다.': 'Shows how many records arrive each day and whether the current pace will reach the yearly target (Year 1: 4,000, Year 2: 4,500). 1 record = one valid charging session or one day a vehicle was active.',
+  '하루에 몇 건씩 모이고 있는지, 지금 속도라면 연차가 끝날 때 목표(1차년도 4,000건·2차년도 4,500건)를 채울 수 있는지 보여 줍니다. 1건 = 유효 충전기 세션 1건 또는 차량 운행·충전 세션 1건입니다(계획서 p.16 산출식).': 'Shows how many records arrive each day and whether the current pace will reach the yearly target (Year 1: 4,000, Year 2: 4,500). 1 record = one valid charger session or one vehicle driving/charging session (plan p.16 formula).',
   '실증 인프라 현황 — 참여 장소·충전사업자·서포터즈 차량': 'Pilot infrastructure — sites, charging operators, supporter EVs',
   '계획서의 실증 자원(참여 장소 3곳 이상, 충전사업자 3사·충전기 150기, 서포터즈 차량 30대)이 지금 얼마나 확보·가동되고 있는지 보여 줍니다. 장소 이름·주소는 관리기관 협의 전 예시입니다.': 'Shows how much of the planned pilot resources (3+ sites, 3 operators with 150 chargers, 30 supporter EVs) is secured and active. Site names and addresses are examples pending agreement with the managing agency.',
   '참여 장소': 'Pilot sites',
@@ -1559,7 +1591,7 @@ function renderTiles(data) {
       const shown = kpi.data_is_real ? realCount : y.records;
       return { label: `${t('실증 데이터')} · ${t(y.label)}`, value: fmtInt(shown) + unit.records, prog: y.target ? shown / y.target * 100 : null,
         sub: (LANG === 'en' ? `Target ${fmtInt(y.target)}+` : `목표 ${fmtInt(y.target)}건 이상`)
-          + ` · ${t('충전 세션')} ${fmtInt(y.charger_sessions)} + ${t('차량-일')} ${fmtInt(y.vehicle_days)}`
+          + ` · ${t('충전 세션')} ${fmtInt(y.charger_sessions)} + ${t('차량 세션')} ${fmtInt(y.vehicle_days)}`
           + (kpi.data_is_real ? (official && official.records !== y.records ? ` · ${t('합성 보완분 제외')}` : '') : ` · ${t('모의(실적 아님)')}`) };
     }),
     { label: t('실증 EV'), value: kpi.ev_count + unit.ev, prog: kpi.targets ? kpi.ev_count / kpi.targets.ev * 100 : null,
@@ -1635,7 +1667,7 @@ function renderCollection(data) {
       labels: d.map(r => r.date.slice(5)),
       datasets: [
         { label: t('충전 세션'), data: d.map(r => r.charger_sessions), backgroundColor: '#1B3B78', borderRadius: 2, stack: 'n' },
-        { label: t('차량-일'), data: d.map(r => r.vehicle_days), backgroundColor: '#60A5FA', borderRadius: 2, stack: 'n' },
+        { label: t('차량 세션'), data: d.map(r => r.vehicle_days), backgroundColor: '#60A5FA', borderRadius: 2, stack: 'n' },
       ],
     },
     options: {
@@ -2172,29 +2204,170 @@ function renderProfitSharing(data) {
     </div>
   `).join('');
 
-  // 솔링스 VPP 벤치마킹: 3대 수익원 세부 포트폴리오
+}
+
+// ---- 05 VPP·이익공유 실증 (재원별 편익 · 출력제어 해소 · 모의 정산 · ESS 집중 실증 그룹) ----
+const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let curtailChart = null;
+
+async function loadRevenueSources() {
   const portEl = document.getElementById('ps-portfolio-tiles');
-  if (portEl) {
-    const total = ps.total_savings_krw || 0;
-    const p1 = Math.round(total * 0.62);
-    const p2 = Math.round(total * 0.25);
-    const p3 = Math.round(total * 0.13);
-    const portItems = [
-      { icon: '⚡', name: t('한전 경부하 충전단가 차익'), rate: '62%', amount: fmtInt(p1) + krw, desc: t('심야 23~09시 경부하 집중 충전 유도') },
-      { icon: '📉', name: t('거점 피크컷 기본요금 절감'), rate: '25%', amount: fmtInt(p2) + krw, desc: t('거점 3곳 수전 계약전력 초과 방지') },
-      { icon: '🌿', name: t('플러스DR 유연성 정산금'), rate: '13%', amount: fmtInt(p3) + krw, desc: t('호남권 태양광 잉여발전 소비 인센티브') }
-    ];
-    portEl.innerHTML = portItems.map(p => `
+  if (!portEl) return;
+  const krw = LANG === 'en' ? ' KRW' : '원';
+  try {
+    const r = await fetch('/vpp/revenue-sources');
+    if (!r.ok) throw new Error(r.status);
+    const rs = await r.json();
+    const icons = { tou_arbitrage: '⚡', peak_reduction: '📉', curtailment_relief: '🌿' };
+    document.getElementById('ps-portfolio-label').textContent = t(rs.label);
+    portEl.innerHTML = rs.items.map(p => `
       <div class="tile" style="padding:10px 14px; text-align:left; border-left:3px solid var(--accent); background:var(--card);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:12px; font-weight:700; color:var(--text);">${p.icon} ${p.name}</span>
-          <span class="tag" style="font-size:10.5px; padding:1px 6px;">${p.rate}</span>
+          <span style="font-size:12px; font-weight:700; color:var(--text);">${icons[p.key] || ''} ${escH(t(p.name))}</span>
+          <span class="tag" style="font-size:10.5px; padding:1px 6px;">${p.share_pct}%</span>
         </div>
-        <div style="font-size:16px; font-weight:800; color:var(--text); margin:4px 0 2px;">${p.amount}</div>
-        <div style="font-size:11px; color:var(--muted);">${p.desc}</div>
-      </div>
-    `).join('');
+        <div style="font-size:16px; font-weight:800; color:var(--text); margin:4px 0 2px;">${fmtInt(p.amount_krw)}${krw}</div>
+        <div style="font-size:11px; color:var(--muted);">${escH(p.formula)}</div>
+        <div style="font-size:11px; color:var(--muted);">${escH(p.basis)}</div>
+      </div>`).join('');
+    document.getElementById('ps-portfolio-note').textContent =
+      `${t('합계')} ${fmtInt(rs.total_krw)}${krw} · ${t('비중은 고정값이 아니라 재원별 산식 결과입니다.')} ${rs.sources.demand_charge || ''}`;
+  } catch (e) {
+    portEl.innerHTML = `<div style="color:var(--status-critical); font-size:12px;">${t('재원별 편익을 불러오지 못했습니다')} (${escH(e.message)})</div>`;
   }
+}
+
+async function loadCurtailment() {
+  try {
+    const r = await fetch('/vpp/curtailment');
+    if (!r.ok) throw new Error(r.status);
+    const c = await r.json();
+    const x = c.totals, s = c.scenario;
+    document.getElementById('curtail-sub').innerHTML =
+      `<span class="tag">${escH(c.label)}</span> ${t('가상 태양광')} ${fmtInt(s.pv_kwp)} kWp ×${s.over_generation_factor} · ${t('역송 한도')} ${fmtInt(s.export_limit_kw)} kW · ${s.n_days}${t('일')} · ${escH(c.pipeline.join(' → '))}`;
+    const tiles = [
+      { label: t('출력제어량 (적용 전 → 후)'), value: `${fmtInt(x.curtail_before_kwh)} → ${fmtInt(x.curtail_after_kwh)} kWh`, sub: `${t('감소')} ${fmtInt(x.curtail_reduction_kwh)} kWh (${x.curtail_reduction_pct}%)` },
+      { label: t('EV 흡수 충전량'), value: `${fmtInt(x.absorbed_kwh)} kWh`, sub: `${t('저녁 피크 방전')} ${fmtInt(x.peak_discharge_kwh)} kWh` },
+      { label: t('재생에너지 자가소비율'), value: `${x.self_consumption_before_pct}% → ${x.self_consumption_after_pct}%`, sub: t('발전량 중 버려지지 않은 비율') },
+      { label: t('거점 최대 수전전력'), value: `${fmtInt(x.site_peak_before_kw)} → ${fmtInt(x.site_peak_after_kw)} kW`, sub: `${t('피크 시간대 평균')} ${fmtInt(x.peak_window_avg_before_kw)} → ${fmtInt(x.peak_window_avg_after_kw)} kW` },
+      { label: t('출력제어 완화 편익'), value: `${fmtInt(x.curtailment_benefit_krw)}${LANG === 'en' ? ' KRW' : '원'}`, sub: t('흡수 kWh × 해당 시각 전력 가치(가정)') },
+    ];
+    document.getElementById('curtail-tiles').innerHTML = tiles.map(tl =>
+      `<div class="tile"><div class="label">${tl.label}</div><div class="value">${tl.value}</div><div class="sub">${tl.sub}</div></div>`).join('');
+    const p = c.patterns, cl = c.cleaning;
+    document.getElementById('curtail-pattern').innerHTML =
+      `<b>${t('AI 패턴분석')}</b> — ${t('과잉발전 시간대')}: ${p.surplus_hours.map(h => h + t('시')).join(', ') || '-'} · ` +
+      `${t('순부하 피크 시간대')}: ${p.derived_peak_hours.map(h => h + t('시')).join(', ')} (${t('방전 설정')}: ${s.peak_hours.join(', ')}${t('시')})<br>` +
+      `<b>${t('정제')}</b> — ${t('입력')} ${fmtInt(cl.rows_in)} → ${fmtInt(cl.rows_out)}${t('행')}, ${t('중복')} ${cl.duplicates_removed}, ${t('결측 보간')} ${cl.missing_interpolated}, ${t('음수')} ${cl.negatives_zeroed}, ${t('이상치 대체')} ${cl.outliers_replaced} · <span style="color:var(--text-muted)">${escH(cl.rule)}</span>`;
+    if (window.Chart) {
+      const ctx = document.getElementById('curtailChart');
+      if (curtailChart) curtailChart.destroy();
+      curtailChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: p.by_hour.map(h => h.hour + t('시')),
+          datasets: [
+            { label: t('출력제어 적용 전 (평균 kW)'), data: p.by_hour.map(h => h.curtail_before_kw), backgroundColor: 'rgba(120,120,120,.55)' },
+            { label: t('출력제어 적용 후 (평균 kW)'), data: p.by_hour.map(h => h.curtail_after_kw), backgroundColor: 'rgba(47,91,255,.7)' },
+          ],
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { title: { display: true, text: 'kW' } } } },
+      });
+    }
+  } catch (e) {
+    document.getElementById('curtail-tiles').innerHTML = `<div style="color:var(--status-critical); font-size:12px;">${t('출력제어 시나리오를 불러오지 못했습니다')} (${escH(e.message)})</div>`;
+  }
+}
+
+function renderSettlement(sum, preview) {
+  const krw = LANG === 'en' ? ' KRW' : '원';
+  const g = sum.groups;
+  document.getElementById('settle-tiles').innerHTML = g.map(x => `
+    <div class="tile"><div class="label">${t(x.label)} ${t('참여 차량')}</div><div class="value">${fmtInt(x.points)} P</div>
+    <div class="sub">${x.vehicles}${t('대')} · ${fmtInt(x.trade_days)}${t('건')} · ${t('피크 방전')} ${fmtInt(x.peak_discharge_kwh)} kWh · ${t('흡수')} ${fmtInt(x.absorb_kwh)} kWh</div></div>`).join('') +
+    `<div class="tile"><div class="label">${t('정산 가능범위 (차량·일 1건)')}</div><div class="value">${fmtInt(sum.settlement_range.per_vehicle_day_points.p50)} P</div>
+     <div class="sub">${t('최소')} ${fmtInt(sum.settlement_range.per_vehicle_day_points.min)} · P90 ${fmtInt(sum.settlement_range.per_vehicle_day_points.p90)} · ${t('최대')} ${fmtInt(sum.settlement_range.per_vehicle_day_points.max)} · ${sum.period.from || '-'} ~ ${sum.period.to || '-'}</div></div>`;
+  let html = '';
+  if (preview) {
+    const r = preview.rules;
+    html += `<p style="margin:6px 0;">${t('산정 규칙')}: ${t('피크 방전')} kWh × ${t('그 시각 단가')} × ${r.owner_share_pct}% ÷ ${r.krw_per_point}${krw}/P + ${t('흡수')} kWh × ${r.absorb_bonus_points_per_kwh} P · ${t('피크 시간대')} ${preview.peak_hours.join(', ')}${t('시')} · <span class="tag">${escH(preview.label)}</span></p>`;
+    html += `<table><thead><tr><th>${t('인센티브 유형 비교 (2차년도 BM 기초)')}</th><th class="num">${t('참여자 몫 합계')}</th><th class="num">${t('차량당')}</th></tr></thead><tbody>` +
+      preview.incentives.options.map(o => `<tr><td>${escH(t(o.label))}</td><td class="num">${fmtInt(o.participant_krw)}${krw}</td><td class="num">${fmtInt(o.per_vehicle_krw)}${krw}</td></tr>`).join('') + '</tbody></table>';
+  }
+  if (sum.per_vehicle.length) {
+    html += `<table style="margin-top:8px;"><thead><tr><th>${t('차량')}</th><th>${t('소속')}</th><th class="num">${t('거래일')}</th><th class="num">${t('피크 방전 kWh')}</th><th class="num">${t('흡수 kWh')}</th><th class="num">${t('포인트')}</th></tr></thead><tbody>` +
+      sum.per_vehicle.slice(0, 30).map(v => `<tr><td>${escH(v.ev_id)}</td><td>${t(v.label)}</td><td class="num">${v.trade_days}</td><td class="num">${v.peak_discharge_kwh}</td><td class="num">${v.absorb_kwh}</td><td class="num">${fmtInt(v.points)}</td></tr>`).join('') + '</tbody></table>';
+  }
+  document.getElementById('settle-detail').innerHTML = html;
+}
+
+async function loadSettlement() {
+  try {
+    const [s, p] = await Promise.all([fetch('/vpp/settlement/summary'), fetch('/vpp/settlement/preview')]);
+    if (!s.ok || !p.ok) throw new Error(s.status + '/' + p.status);
+    renderSettlement(await s.json(), await p.json());
+  } catch (e) {
+    document.getElementById('settle-tiles').innerHTML = `<div style="color:var(--status-critical); font-size:12px;">${t('정산 정보를 불러오지 못했습니다')} (${escH(e.message)})</div>`;
+  }
+}
+
+document.getElementById('settle-run').addEventListener('click', async () => {
+  const msg = document.getElementById('settle-msg');
+  msg.textContent = t('정산 중…');
+  try {
+    const r = await fetch('/vpp/settlement/run', { method: 'POST' });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || r.status);
+    msg.textContent = `${t('신규 정산')} ${fmtInt(body.inserted)}${t('건')} · ${t('이미 정산됨')} ${fmtInt(body.skipped_already_settled)}${t('건')} · ${fmtInt(body.points_issued)} P ${t('적립')}`;
+    loadSettlement();
+  } catch (e) { msg.textContent = t('정산 실패') + ': ' + e.message; }
+});
+
+let essData = null;
+function renderEss() {
+  const d = essData;
+  const members = new Set(d.members.map(m => m.ev_id));
+  document.getElementById('ess-msg').textContent =
+    `${t('지정')} ${members.size}${t('대')} (${t('목표')} ${d.group_size_target[0]}~${d.group_size_target[1]}${t('대')}) · ${t(d.criteria)} · ${t(d.label)}`;
+  document.getElementById('ess-download').style.display = members.size ? '' : 'none';
+  document.getElementById('ess-table').innerHTML = `<table><thead><tr><th>${t('선택')}</th><th>${t('차량')}</th><th>${t('구분')}</th><th class="num">${t('점수')}</th>
+    <th class="num">${t('규칙성')}</th><th class="num">${t('장기 주차(시간/일)')}</th><th class="num">${t('완속 체류(시간)')}</th><th class="num">${t('심야충전 후 주간대기')}</th>
+    <th>${t('방전 허용 시간대')}</th></tr></thead><tbody>` +
+    d.candidates.map(c => `<tr><td><input type="checkbox" class="ess-chk" value="${escH(c.ev_id)}" ${members.has(c.ev_id) ? 'checked' : ''}></td>
+      <td>${escH(c.ev_id)}${members.has(c.ev_id) ? ' <span class="tag navy">' + t('그룹') + '</span>' : ''}</td><td>${escH(t(c.group_label))}<br><span style="color:var(--text-muted)">${escH(c.ev_type)} · ${escH(c.affiliation_source)}</span></td>
+      <td class="num">${c.score}</td><td class="num">${c.regularity}</td><td class="num">${c.long_parking_h_per_day}</td><td class="num">${c.slow_charger_dwell_h}</td>
+      <td class="num">${Math.round(c.night_charge_day_idle_ratio * 100)}%</td><td>${c.discharge_allowed_hours.join(',')} (${c.discharge_allowed_h_per_day}${t('시간/일')})</td></tr>`).join('') + '</tbody></table>';
+}
+
+async function loadEss() {
+  try {
+    const r = await fetch('/vpp/ess-group');
+    if (!r.ok) throw new Error(r.status);
+    essData = await r.json();
+    renderEss();
+  } catch (e) {
+    document.getElementById('ess-table').innerHTML = `<div style="color:var(--status-critical);">${t('ESS 그룹 정보를 불러오지 못했습니다')} (${escH(e.message)})</div>`;
+  }
+}
+
+document.getElementById('ess-recommend').addEventListener('click', () => {
+  if (!essData) return;
+  const rec = new Set(essData.recommended);
+  document.querySelectorAll('.ess-chk').forEach(cb => { cb.checked = rec.has(cb.value); });
+});
+document.getElementById('ess-save').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.ess-chk:checked')].map(cb => cb.value);
+  const msg = document.getElementById('ess-msg');
+  if (ids.length < 5 || ids.length > 10) { msg.textContent = t('그룹은 5~10대를 선택하세요') + ` (${ids.length})`; return; }
+  const r = await fetch('/vpp/ess-group', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ev_ids: ids }) });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) { msg.textContent = t('저장 실패') + ': ' + (body.detail || r.status); return; }
+  loadEss();
+});
+
+function loadVppSection() {
+  // 대시보드 본 데이터와 따로, 순서대로 불러온다(서버의 무거운 계산은 한 번에 하나만 돈다)
+  loadRevenueSources().then(loadCurtailment).then(loadSettlement).then(loadEss);
 }
 
 function renderEffect(data) {
@@ -2221,7 +2394,7 @@ function renderEffect(data) {
       <div class="sub">${x.sub}</div>
     </div>
   `).join('');
-  const groups = [['time_band', t('충전 시작 시간대')], ['day_type', t('평일/주말')], ['start_soc', t('시작 SOC')]];
+  const groups = [['time_band', t('충전 시작 시간대')], ['day_type', t('평일/주말')], ['start_soc', t('시작 SOC')], ['vehicle_type', t('차량 운행조건')]];
   const rows = [];
   groups.forEach(([key, title]) => (e.conditions[key] || []).forEach(g => rows.push(
     `<tr><td>${title}</td><td>${t(g.label)}</td><td class="num">${fmtInt(g.sessions)}</td><td class="num">${fmtInt(g.baseline_cost_krw)}</td>` +
@@ -2232,7 +2405,17 @@ function renderEffect(data) {
   condEl.innerHTML = `<h3 style="margin:14px 0 6px; font-size:13px;">${t('조건별 반복 분석')}</h3>
     <table><thead><tr><th>${t('조건')}</th><th>${t('구분')}</th><th class="num">${t('세션')}</th><th class="num">${t('일반충전 비용')}</th>
     <th class="num">${t('AI 적용 비용')}</th><th class="num">${t('절감률')}</th></tr></thead><tbody>${rows.join('')}</tbody></table>
-    <p style="font-size:11.5px; color:var(--text-muted);">${t(e.note)}</p>`;
+    <p style="font-size:11.5px; color:var(--text-muted);">${t(e.note)}</p>` + coverageHtml(e.conditions.coverage);
+}
+
+// 운영조건 다양성(커버리지) — 조건별 세션 건수, 0건 칸은 추가 확보가 필요한 조건
+function coverageHtml(cov) {
+  if (!cov) return '';
+  const names = { season: t('계절'), time_band: t('시간대'), start_soc: t('시작 SOC'), vehicle_type: t('운행조건'), day_type: t('평일/주말') };
+  const cells = Object.entries(cov).map(([k, m]) => `<tr><td>${names[k] || k}</td><td>` +
+    Object.entries(m).map(([lbl, n]) => `<span class="tag" style="margin:1px 3px; ${n === 0 ? 'background:rgba(235,94,85,.18)' : ''}">${escH(t(lbl))} ${fmtInt(n)}</span>`).join('') + '</td></tr>').join('');
+  return `<h3 style="margin:14px 0 6px; font-size:13px;">${t('운영조건 다양성 (조건별 세션 건수)')}</h3><table><tbody>${cells}</tbody></table>
+    <p style="font-size:11.5px; color:var(--text-muted);">${t('붉은 칸(0건)은 아직 데이터가 없는 조건으로, 2차년도 운영조건 다양화 때 우선 확보합니다.')}</p>`;
 }
 
 document.getElementById('ps-apply').addEventListener('click', () => {
@@ -2316,6 +2499,7 @@ async function loadDashboard() {
     renderClosedLoop(data);
     renderProfitSharing(data);
     renderEffect(data);
+    loadVppSection();
     markDataKind(!!data.is_real_data);
     document.getElementById('updated').textContent = t('갱신:') + ' ' + new Date(data.generated_at).toLocaleString(locale());
     ok = true;
@@ -2417,6 +2601,7 @@ document.getElementById('cpo-specs-btn').addEventListener('click', async () => {
     body.innerHTML = '<div style="text-align:center; padding:20px;">불러오는 중…</div>';
     try {
       const card = await fetch('/models/card').then(r => r.json());
+      const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       const m = card.model_details;
       const ev = card.evaluation_metrics;
       body.innerHTML = `
@@ -2430,15 +2615,27 @@ document.getElementById('cpo-specs-btn').addEventListener('click', async () => {
           </div>
         </div>
 
-        <h4 class="sub-h" style="margin-top:14px;">1. 실측 Hold-out 성능 검증 (MAPE · RMSE)</h4>
-        <div class="tiles" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;">
-          <div class="tile"><span class="label">WAPE (가중 오차율)</span><span class="val" style="color:#2f5bff">${ev.metrics.wape_pct}%</span><span class="sub">목표치 15% 이하 달성</span></div>
-          <div class="tile"><span class="label">MAPE (절대 백분율 오차)</span><span class="val" style="color:#2f5bff">${ev.metrics.mape_pct}%</span><span class="sub">실측 대비 양호</span></div>
-          <div class="tile"><span class="label">RMSE (제곱근 오차)</span><span class="val">${ev.metrics.rmse_kw} kW</span><span class="sub">전력수요 오차</span></div>
-          <div class="tile"><span class="label">R² 결정계수</span><span class="val">${ev.metrics.r2_score}</span><span class="sub">설명력 89.2%</span></div>
+        <h4 class="sub-h" style="margin-top:14px;">1. 계획서 성능 목표 검증 (MAPE ≤ ${ev.plan_targets.mape_max_pct}% · R² ≥ ${ev.plan_targets.r2_min})</h4>
+        <p style="font-size:12px; color:var(--muted); margin:0 0 8px 0;">평가 방법: ${esc(ev.evaluation_strategy)} · 시험 구간 ${esc((ev.data_range||{}).test_start||'-').slice(0,10)} ~ ${esc((ev.data_range||{}).test_end||'-').slice(0,10)} · <b>${esc(ev.measured_or_inferred)}</b> <span class="tag ${card.training_data.actual_source==='실측'?'navy':''}">${esc(card.training_data.actual_source)}</span></p>
+        <div style="overflow-x:auto; margin-bottom:6px;">
+          <table>
+            <thead><tr><th>예측 대상</th><th>MAPE (시험)</th><th>R² (시험)</th><th>교차검증 MAPE 평균±편차</th><th>교차검증 R²</th><th>WAPE</th><th>판정</th></tr></thead>
+            <tbody>
+              ${ev.target_evaluations.map(t => `
+                <tr><td><b>${esc(t.target)}</b></td>
+                  <td>${t.mape_pct ?? '-'}% <span class="sub">${esc(t.mape_status)}</span></td>
+                  <td>${t.r2 ?? '-'} <span class="sub">${esc(t.r2_status)}</span></td>
+                  <td>${t.cv_mape_pct ? t.cv_mape_pct.mean.toFixed(1) + ' ± ' + t.cv_mape_pct.std.toFixed(1) + '%' : '-'}</td>
+                  <td>${t.cv_r2 ? t.cv_r2.mean.toFixed(3) : '-'}</td>
+                  <td>${t.wape_pct}%</td>
+                  <td><span class="tag" style="background:${t.all_met ? 'rgba(46,160,67,.15)' : 'rgba(235,94,85,.15)'}">${t.all_met ? '목표 달성' : '목표 미달'}</span></td></tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
+        <p style="font-size:11.5px; color:var(--muted); margin:0 0 14px 0;">※ ${esc(ev.mape_note || '')}. 수치는 고정값이 아니라 현재 데이터로 매번 학습·평가한 결과입니다.</p>
 
-        <h4 class="sub-h">2. 학습 데이터셋 출처 (공개 실측 6종 + 실차 OBD)</h4>
+        <h4 class="sub-h">2. 학습 데이터셋 출처 (계획상 연계 출처 · 실제 학습 데이터: ${esc(card.training_data.actual_source)})</h4>
         <div style="overflow-x:auto; margin-bottom:14px;">
           <table>
             <thead><tr><th>데이터 ID</th><th>제공처 및 데이터셋 명칭</th><th>적용 범위</th></tr></thead>

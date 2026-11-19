@@ -25,6 +25,15 @@ QUICK_LOGIN_ENV: dict[str, tuple[str, str]] = {
 }
 
 
+def _quick_login_allowed(request: Request) -> bool:
+    """QUICK_LOGIN_LAN_ONLY=1(내부망 개발 서버, scripts/run_dev_lan.cmd)이면 사설·루프백 IP에서 직접 온 요청만 허용한다.
+    설정하지 않은 서버는 기존 동작 그대로다."""
+    if os.environ.get("QUICK_LOGIN_LAN_ONLY") != "1":
+        return True
+    from src.auth.deps import is_lan_request
+    return is_lan_request(request)
+
+
 def validate_password_strength(v: str) -> str:
     """계정 발급과 모바일 가입이 같은 비밀번호 규칙을 쓰도록 공용으로 둔다."""
     if not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
@@ -105,11 +114,12 @@ def demo_access(request: Request, code: str = "") -> RedirectResponse:
 
 
 @router.get("/quick-login/available", summary="빠른 로그인이 설정된 역할 — 화면이 버튼 표시 여부를 정하는 데 사용")
-def quick_login_available() -> dict:
+def quick_login_available(request: Request) -> dict:
     """역할별로 `.env`에 아이디·비밀번호 변수가 둘 다 있는지만 알려준다(값은 노출하지 않는다).
-    설정이 없으면 화면에 버튼 자체를 보이지 않게 하려는 용도다."""
+    설정이 없으면 화면에 버튼 자체를 보이지 않게 하려는 용도다. 내부망 전용 모드에서 외부 요청이면 모두 false."""
+    allowed = _quick_login_allowed(request)
     return {
-        role: bool(os.environ.get(user_key) and os.environ.get(pass_key))
+        role: allowed and bool(os.environ.get(user_key) and os.environ.get(pass_key))
         for role, (user_key, pass_key) in QUICK_LOGIN_ENV.items()
     }
 
@@ -124,6 +134,8 @@ def quick_login(req: QuickLoginRequest, request: Request) -> dict:
     설정돼 있으면 즉시 동작)을, `admin`은 별도로 `.env`에 `DEMO_ADMIN_USERNAME`/
     `DEMO_ADMIN_PASSWORD`를 설정해야 활성화된다(안 돼 있으면 503) — 로컬 데모/개발
     편의 기능이며, 실제 운영 노출 환경에서는 쓰지 않는 것을 권장한다."""
+    if not _quick_login_allowed(request):
+        raise HTTPException(status_code=403, detail="빠른 로그인은 내부망(사내 와이파이)에서만 사용할 수 있습니다")
     username_key, password_key = QUICK_LOGIN_ENV[req.role]
     username = os.environ.get(username_key)
     password = os.environ.get(password_key)

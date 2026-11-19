@@ -7,6 +7,8 @@
   (이후 `write_table`이 새 컬럼을 포함해 만든다).
 
 사업수행계획서 v1.0 기준으로 새로 시작한 저장소라 v1~v4가 기준 스키마다.
+v10 vehicle_registrations.affiliation(관용/민간), virtual_trades·point_ledger(가상 전력 거래·모의 포인트),
+    ess_group_members(이동형 ESS 집중 실증 그룹), vehicle_replacements(예비 차량 대체 이력)
 v9  modeling_issues(모델링 예외 기록 — 계획서 4.1 다 "데이터·오류·예외상황을 수집하여 개선에 활용")
 v8  vehicle_registrations 예비 참여자(reserve·reserved_at·reserve_note) — 계획서 "이탈 시 예비 참여자 대체"
 v7  dataset_exports 파기 확인(destroyed_at·destroyed_by·destruction_note) — 계획서 6장 "참여기관은 사업 종료 시 파기"
@@ -215,10 +217,69 @@ def _v9(con: sqlite3.Connection) -> None:
     con.execute("CREATE INDEX IF NOT EXISTS ix_issues_seen ON modeling_issues (status, last_seen)")
 
 
+def _v10(con: sqlite3.Connection) -> None:
+    """요구사항 보강: A07 차량 소속(관용/민간), E03 가상 전력 거래·모의 포인트 원장, D03 이동형 ESS 집중 실증 그룹,
+    K02 활동 중단 차량 대체(교체) 이력."""
+    existing = _columns(con, "vehicle_registrations")
+    if existing and "affiliation" not in existing:
+        con.execute("ALTER TABLE vehicle_registrations ADD COLUMN affiliation TEXT NOT NULL DEFAULT 'private'")
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS virtual_trades (
+            trade_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            ev_id               TEXT NOT NULL,
+            trade_date          TEXT NOT NULL,
+            affiliation         TEXT NOT NULL,
+            peak_discharge_kwh  REAL NOT NULL,
+            absorb_kwh          REAL NOT NULL,
+            value_krw           REAL NOT NULL,
+            points              INTEGER NOT NULL,
+            generation          TEXT NOT NULL CHECK (generation IN ('measured', 'inferred')),
+            data_source         TEXT NOT NULL,
+            settled_at          TEXT NOT NULL,
+            UNIQUE (ev_id, trade_date, generation)
+        )"""
+    )
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS point_ledger (
+            entry_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            ev_id         TEXT NOT NULL,
+            kind          TEXT NOT NULL CHECK (kind IN ('earn', 'redeem', 'adjust')),
+            points        INTEGER NOT NULL,
+            trade_id      INTEGER,
+            memo          TEXT,
+            created_at    TEXT NOT NULL,
+            created_by    TEXT
+        )"""
+    )
+    con.execute("CREATE INDEX IF NOT EXISTS ix_point_ledger_ev ON point_ledger (ev_id, created_at)")
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS ess_group_members (
+            ev_id        TEXT PRIMARY KEY,
+            group_type   TEXT NOT NULL,
+            score        REAL,
+            reason       TEXT,
+            selected_at  TEXT NOT NULL,
+            selected_by  TEXT NOT NULL
+        )"""
+    )
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS vehicle_replacements (
+            replacement_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            inactive_ev_id   TEXT NOT NULL,
+            registration_id  TEXT NOT NULL,
+            new_ev_id        TEXT,
+            reason           TEXT NOT NULL,
+            replaced_at      TEXT NOT NULL,
+            replaced_by      TEXT NOT NULL
+        )"""
+    )
+
+
 MIGRATIONS = [
     (1, "ops_structure", _v1), (2, "advisories", _v2), (3, "vehicle_registrations", _v3),
     (4, "acryl_forecast_link", _v4), (5, "charger_site", _v5), (6, "odometer_logs", _v6),
     (7, "export_destruction", _v7), (8, "registration_reserve", _v8), (9, "modeling_issues", _v9),
+    (10, "vpp_settlement_ess_group", _v10),
 ]
 LATEST_VERSION = MIGRATIONS[-1][0]
 

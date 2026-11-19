@@ -2,63 +2,100 @@
 AI-V2G 실증 시스템 개발자 인수인계 퀵스타트 가이드 (Quick Start)
 ================================================================================
 
-본 소스 코드는 GitHub 원격 저장소(sasr10jade-dot/AIV2G)의 최신 'main' 브랜치
-(Commit: dd09d03)와 100% 일치하는 클린 소스 트리입니다.
+원본 소스 위치
+- 로컬 개발 폴더 : C:\Users\Jade\Desktop\바탕화면\업무\개발\올인원 AI 허브 AX 실증
+- GitHub 저장소  : https://github.com/sasr10jade-dot/AIV2G (main 브랜치)
+  로컬 폴더가 git 저장소 본체이며, 커밋한 내용을 그대로 GitHub에 올린다.
+  인수 시점의 기준 커밋은 `git log -1`로 확인한다.
 
-임시 캐시(__pycache__, .pytest_cache)와 불필요한 파일이 완벽히 정제되어 있으며,
-USB 전달 및 신규 개발 환경 셋업에 즉시 사용할 수 있습니다.
+받지 않는 것(.gitignore): data/(DB·계정·키), .env, 문서 파일(*.xlsx·*.docx·*.pdf 등),
+OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 전달한다.
 
 --------------------------------------------------------------------------------
 1. 주요 디렉터리 구성
 --------------------------------------------------------------------------------
-- docs/          : [필독] 개발자 인수인계서, PRD, 데이터 명세서(엑셀 3종 및 MD), 계획서 PDF
-- src/           : FastAPI 백엔드 라우터, LP 최적화 엔진, 정적 프론트엔드(static/)
-- config/        : CPO 3사 연계, 공공 API, 요금표, 거주지 행정동 설정 JSON
-- data/          : SQLite 데이터베이스 및 계정 정보 (curated.db, users.json)
-- scripts/       : CPO 동기화, 실차 OBD 배치, 데이터 수급 파이프라인 자동화 스크립트
-- tests/         : 단위 및 통합 테스트 스위트 (pytest 80+ 케이스)
+- docs/          : [필독] 인수인계서·PRD·데이터 명세·API 레퍼런스(api_reference.md, 자동 생성)
+- src/           : FastAPI 백엔드(src/api), 예측모델(src/model), 최적화·VPP(src/optimizer),
+                   모의 정산(src/settlement), 등록부(src/registry), 개인정보(src/privacy), 화면(src/api/static)
+- config/        : CPO 3사 연계, 공공 API, 요금표, 거점, 차종(제외 차종 포함), VPP·정산 가정값(vpp_settlement.json)
+- data/          : SQLite DB(curated.db·privacy.db), 계정(users.json), CPO 수신 실적(cpo_status.json) — 실행 중 생성
+- scripts/       : 서버 구동(run_dev_lan.cmd), CPO 동기화, 실차 OBD 배치, API 문서 생성 등
+- tests/         : pytest 테스트 스위트(약 550개)
 - android/       : 서포터즈 모바일 TWA 안드로이드 앱 빌드 프로젝트
-- downloads/     : 빌드 완료된 서포터즈 APK (AIV2G-supporter-1.1.0.apk)
 
 --------------------------------------------------------------------------------
-2. 개발 환경 셋업 및 로컬 서버 구동 (Windows PowerShell / Linux 공통)
+2. 개발 환경 셋업 및 서버 구동 (Windows)
 --------------------------------------------------------------------------------
-[1단계] 가상환경 생성 및 의존성 패키지 설치
+[1단계] 가상환경 생성 및 의존성 설치 (Python 3.14)
   python -m venv venv
-  .\venv\Scripts\activate          # (Linux: source venv/bin/activate)
-  pip install -r requirements.txt
+  .\venv\Scripts\activate
+  pip install -r requirements.txt          # 테스트까지: pip install -r requirements-dev.txt
 
 [2단계] 환경변수 파일 생성
-  copy .env.example .env           # (Linux: cp .env.example .env)
-  * .env.example에 개발용 기본 자격증명이 세팅되어 있어 별도 수정 없이 즉시 실행 가능합니다.
+  copy .env.example .env
+  * 개발용 간편 로그인 계정(SUPERADMIN_*, DEMO_*)을 .env에 넣으면 /dev 화면의 버튼이 켜진다.
 
-[3단계] 로컬 FastAPI Uvicorn 서버 기동
-  python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
+[3단계] 서버 기동 — 두 가지 방법
+  (A) 내 PC에서만:   python -m uvicorn src.api:app --host 127.0.0.1 --port 3000 --reload
+  (B) 사내 와이파이 개발 서버(서버 PC 192.168.35.92):
+        scripts\run_dev_lan.cmd                 # 0.0.0.0:3000, 간편 로그인은 내부망 IP에서만 허용
+      최초 1회(관리자 PowerShell) 방화벽 허용:
+        New-NetFirewallRule -DisplayName "AIV2G dev 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Profile Private -Action Allow
+  * 앱 객체는 src.api:app 이다(예전 문서의 src.api.main:app 은 존재하지 않는다).
+  * [주의] 서버 PC의 8000·8080 포트에는 운영 중인 다른 서비스가 있다. 개발 서버(3000)는 그 서비스와
+    다른 폴더에 별도로 clone 해서 띄우고, 8000·8080 서비스의 폴더·프로세스는 건드리지 않는다.
+  * 3000 포트를 공유기 포트포워딩·터널로 외부에 열지 않는다. 외부 공개는 scripts/run_public_demo.py 사용.
 
-[4단계] 브라우저 접속 확인
-  - 개발자 진입점 (추천): http://127.0.0.1:8000/dev
-    * '⚡ 최고관리자로 열기' 버튼을 누르면 아이디/비밀번호 입력 없이 즉시 로그인됩니다.
-  - PC 운영 대시보드 : http://127.0.0.1:8000/dashboard
-  - 가입 승인 관리   : http://127.0.0.1:8000/approvals
-  - 웹앱 관리 (어드민) : http://127.0.0.1:8000/admin
-  - 모바일 서포터즈 앱: http://127.0.0.1:8000/app
-  - 대화형 API 문서  : http://127.0.0.1:8000/docs
-
---------------------------------------------------------------------------------
-3. 핵심 인수인계 문서 및 엑셀 산출물 위치
---------------------------------------------------------------------------------
-모든 인수인계 문서는 docs/ 디렉터리에 일원화되어 있습니다:
-- docs/README.md                                           : [총괄] 인수인계 문서 맵
-- docs/developer_handover_prd_v1.0.md                      : [PRD] 아키텍처 및 런북
-- docs/data_specifications_v1.0.md                         : [데이터] 전주기 통합 명세서
-- docs/AI-V2G_외부데이터_연계_및_인프라_인수인계_명세서_v1.0.xlsx : [엑셀] 공공API/CPO/OBD 명세
+[4단계] 브라우저 접속 (내 PC면 127.0.0.1, 사내망이면 192.168.35.92)
+  - 개발자 진입점 (추천): http://192.168.35.92:3000/dev
+  - PC 운영 대시보드 : http://192.168.35.92:3000/dashboard
+  - 가입 승인 관리   : http://192.168.35.92:3000/approvals
+  - 웹앱 관리 (어드민) : http://192.168.35.92:3000/admin
+  - 모바일 서포터즈 앱: http://192.168.35.92:3000/app
+  - 대화형 API 문서  : http://192.168.35.92:3000/docs
 
 --------------------------------------------------------------------------------
-4. 단위 테스트 무결성 검증
+3. 2026-11-19 요구사항 보강 내역 (요구사항정의서 v1.0 미흡·누락 대응)
 --------------------------------------------------------------------------------
-  python -m pytest tests/ -q
-  * 전체 80개 이상의 테스트가 100% PASS하는 것을 확인하실 수 있습니다.
+- K03·B04 AI 성능: 모델 카드 수치를 고정값에서 실제 계산으로 교체
+    계획서 기준 Train/Test 80:20 + 시간순 교차검증으로 MAPE·R² 산출
+    (src/model/demand_forecast.py evaluate_plan_targets, GET /models/card, GET /models/evaluation)
+- C01 출력제어 해소 에뮬레이터: src/optimizer/curtailment.py, GET /vpp/curtailment
+    공공데이터 정제 → 과잉발전·피크 시간대 패턴 → 가상 과잉발전 재현 → 적용 전후 출력제어량 비교
+- S01 재원별 편익: 고정 비율(62/25/13%) 대신 산식으로 계산(src/optimizer/vpp_revenue.py, GET /vpp/revenue-sources)
+- E03 가상 전력 거래·모의 포인트 정산: src/settlement/ledger.py
+    관리자: POST /vpp/settlement/run(중복 정산 없음), GET /vpp/settlement/summary, GET /vpp/settlement/preview
+    차주: GET /owner/points(모바일 홈 카드)
+- D03 V2G 이동형 ESS 집중 실증 그룹(5~10대): src/optimizer/ess_group.py
+    GET·PUT /vpp/ess-group, GET /vpp/ess-group/dataset.csv(전용 데이터셋)
+- K01 데이터 건수 단위: 계획서 p.16 산출식대로 '차량 운행·충전 세션 + 충전기 세션'으로 집계(src/kpi.py)
+- A02 제주 V2G 실증 차종(EV9·아이오닉 9): 가입·승인 차단(config/vehicle_models.json excluded)
+- A07 차량 소속(관용/민간): POST /registrations/{id}/affiliation
+- K02 예비 Pool(6~9대) 부족 경고와 대체 이력: GET /registrations/reserve-status, POST /registrations/replace
+- Q04 위치정보 별도 동의: GET·PUT /owner/consent/location(모바일 마이페이지)
+- A04 CPO 수신 실적: config 파일 대신 data/cpo_status.json에 기록, 토큰(token_env) 설정 시 인증 필수
+- C04·Y2A02 조건별 분석: 차량 운행조건 축과 운영조건 커버리지(조건별 세션 수) 추가
+- E01 결과 엑셀 '한계·개선 기준' 시트 추가 / D05 추천 설명 표기 정정(규칙형 설명)
+- DB 마이그레이션 v10 자동 적용(virtual_trades, point_ledger, ess_group_members, vehicle_replacements,
+  vehicle_registrations.affiliation) — 서버 첫 기동 시 curated.db에 추가 전용으로 반영된다.
+- 가정값은 config/vpp_settlement.json(verified=false)에 있다. 확정되면 값을 바꾸고 verified=true로 전환.
+
+--------------------------------------------------------------------------------
+4. 핵심 인수인계 문서 위치
+--------------------------------------------------------------------------------
+- docs/developer_handover_prd_v1.0.md          : [PRD] 아키텍처 및 런북(서버 구동 절차 포함)
+- docs/AI-V2G_PRD_소스분석_v1.0_261118.md       : 소스 분석 PRD(요구사항 대조 기준)
+- docs/data_specifications_v1.0.md             : 데이터 전주기 통합 명세서
+- docs/api_reference.md                        : 전체 API 레퍼런스(python scripts/build_api_docs.py 로 재생성)
+- 요구사항정의서 엑셀(AI-V2G_요구사항정의서_v1.0_261118.xlsx) 등 문서 파일은 저장소 밖 — 별도 전달
+
+--------------------------------------------------------------------------------
+5. 테스트
+--------------------------------------------------------------------------------
+  python -m pytest -q
+  * 약 550개 테스트 통과(외부 연결이 필요한 3개는 건너뜀). 테스트는 data/·config/ 파일을 바꾸지 않는다.
+  * API를 바꾸면 python scripts/build_api_docs.py 로 docs/api_reference.md를 다시 생성해야 테스트가 통과한다.
 
 ================================================================================
-작성일: 2026년 11월 11일 | 올인원 AI 허브 AX 실증 (에너지·모빌리티)
+최종 갱신: 2026년 11월 19일 | 올인원 AI 허브 AX 실증 (에너지·모빌리티)
 ================================================================================

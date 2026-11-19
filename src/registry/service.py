@@ -42,7 +42,7 @@ def _now() -> str:
 _COLS = ("registration_id", "username", "plate", "vehicle_model", "occupation", "region_sido", "region_sigungu",
          "departure_time", "target_soc_pct", "min_soc_pct", "odometer_km",
          "status", "ev_id", "consent_version", "consented_at", "created_at", "reviewed_by", "reviewed_at", "reject_reason",
-         "reserve", "reserved_at", "reserve_note")
+         "reserve", "reserved_at", "reserve_note", "affiliation")
 OPERATING_FIELDS = ("departure_time", "target_soc_pct", "min_soc_pct", "odometer_km")
 HHMM_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
@@ -55,9 +55,11 @@ def view(row: dict, catalog: options.VehicleModelCatalog | None = None) -> dict:
     """응답용 표현 — 번호판은 항상 마스킹 값(DB의 plate 컬럼이 이미 마스킹 값). 표시용 라벨을 함께 싣는다."""
     catalog = catalog or options.load_catalog()
     out = dict(row)
-    out["vehicle_label"] = catalog.label(row["vehicle_model"]) if catalog.has(row["vehicle_model"]) else row["vehicle_model"]
+    out["vehicle_label"] = catalog.label(row["vehicle_model"]) if catalog.known(row["vehicle_model"]) else row["vehicle_model"]
+    out["vehicle_excluded"] = catalog.is_excluded(row["vehicle_model"])   # 제주 실증 차종 — 승인 전 확인 필요
     out["occupation_label"] = options.OCCUPATIONS.get(row["occupation"], row["occupation"])
     out["region"] = f'{row["region_sido"]} {row["region_sigungu"]}'
+    out["affiliation_label"] = {"public": "관용", "private": "민간"}.get(row.get("affiliation") or "private", row.get("affiliation"))
     return out
 
 
@@ -68,6 +70,8 @@ def _check_field(field: str, value: str, catalog: options.VehicleModelCatalog) -
         if not options.PLATE_RE.match(value):
             raise RegistryError("번호판 형식이 올바르지 않습니다(예: 43오3450)")
     elif field == "vehicle_model":
+        if catalog.is_excluded(value):
+            raise RegistryError("제주 V2G 실증 차종(EV9·아이오닉 9)은 본 실증에 참여할 수 없습니다")
         if not catalog.has(value):
             raise RegistryError("지원하지 않는 차종입니다")
     elif field == "occupation":
@@ -260,6 +264,8 @@ def approve(registration_id: str, reviewer: str, ev_id: str | None = None,
         reg = _row(r)
         if reg["status"] != "pending":
             raise RegistryError(f"이미 처리된 신청입니다({reg['status']})")
+        if options.load_catalog().is_excluded(reg["vehicle_model"]):
+            raise RegistryError("제주 V2G 실증 차종(EV9·아이오닉 9)은 승인할 수 없습니다 — 차종 정정 후 다시 심사하세요")
         if ev_id is None:
             ev_id = _next_auto_ev_id(con)
         for u in auth_store.list_users():   # 다른 차량 등록자가 이미 쓰는 차량ID는 연결할 수 없다
@@ -458,3 +464,102 @@ def update_profile(username: str, updates: dict, con: sqlite3.Connection | None 
     finally:
         if own:
             con.close()
+
+
+# ---------------------------------------------------------------- 차량 소속(관용/민간) — 요구사항 A07
+AFFILIATIONS = {"public": "관용", "private": "민간"}
+
+
+def set_affiliation(registration_id: str, affiliation: str, con: sqlite3.Connection | None = None) -> dict:
+    """차량 소속을 관용(public)/민간(private)으로 지정한다 — 관용차량 데이터 확보 현황·정산 집계를 구분하는 기준."""
+    if affiliation not in AFFILIATIONS:
+        raise RegistryError("소속은 public(관용) 또는 private(민간)이어야 합니다")
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        cur = con.execute("UPDATE vehicle_registrations SET affiliation=? WHERE registration_id=?", (affiliation, registration_id))
+        con.commit()
+        if cur.rowcount != 1:
+            raise RegistryError("신청을 찾을 수 없습니다")
+        return {"registration_id": registration_id, "affiliation": affiliation, "affiliation_label": AFFILIATIONS[affiliation]}
+    finally:
+        if own:
+            con.close()
+
+
+def affiliation_for_ev(ev_id: str, con: sqlite3.Connection | None = None) -> str | None:
+    """승인된 등록부의 차량 소속. 등록부에 없으면 None(호출자가 추정·미지정으로 처리)."""
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        r = con.execute("SELECT affiliation FROM vehicle_registrations WHERE ev_id=? AND status='approved'", (ev_id,)).fetchone()
+        return r[0] if r else None
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        if own:
+            con.close()
+
+
+def affiliation_counts(con: sqlite3.Connection | None = None) -> dict:
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        rows = con.execute("SELECT affiliation, COUNT(*) FROM vehicle_registrations WHERE status='approved' GROUP BY affiliation").fetchall()
+        return {AFFILIATIONS.get(a, a): n for a, n in rows}
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        if own:
+            con.close()
+
+
+# ---------------------------------------------------------------- 예비 Pool·대체 — 요구사항 K02
+RESERVE_TARGET_MIN, RESERVE_TARGET_MAX = 6, 9   # 계획서 p.16: 서포터즈 30대 + 예비 6~9대(Pool 36~39대)
+
+
+def reserve_status(con: sqlite3.Connection | None = None) -> dict:
+    """예비 참여자 수를 목표(6~9대)와 비교해 부족·초과 경고를 준다."""
+    n = reserve_count(con)
+    if n < RESERVE_TARGET_MIN:
+        level, msg = "warning", f"예비 참여자가 {n}대로 목표({RESERVE_TARGET_MIN}~{RESERVE_TARGET_MAX}대)보다 {RESERVE_TARGET_MIN - n}대 부족합니다"
+    elif n > RESERVE_TARGET_MAX:
+        level, msg = "info", f"예비 참여자가 {n}대로 목표 상한({RESERVE_TARGET_MAX}대)을 넘었습니다"
+    else:
+        level, msg = "ok", f"예비 참여자 {n}대 — 목표 범위 안"
+    return {"reserve_count": n, "target_min": RESERVE_TARGET_MIN, "target_max": RESERVE_TARGET_MAX, "level": level, "message": msg}
+
+
+def replace_inactive(inactive_ev_id: str, reserve_registration_id: str, reviewer: str, reason: str,
+                     new_ev_id: str | None = None) -> dict:
+    """활동 중단 차량을 예비 참여자로 대체한다 — 예비 신청을 승인하고 교체 이력(vehicle_replacements)을 남긴다."""
+    reason = " ".join((reason or "").split())[:200]
+    if not reason:
+        raise RegistryError("대체 사유를 입력하세요")
+    con = store.get_connection()
+    try:
+        r = con.execute("SELECT status, reserve FROM vehicle_registrations WHERE registration_id=?", (reserve_registration_id,)).fetchone()
+        if not r or r[0] != "pending" or not r[1]:
+            raise RegistryError("예비 참여자로 지정된 대기 신청만 대체에 쓸 수 있습니다")
+    finally:
+        con.close()
+    reg = approve(reserve_registration_id, reviewer, new_ev_id)
+    con = store.get_connection()
+    try:
+        con.execute(
+            "INSERT INTO vehicle_replacements (inactive_ev_id, registration_id, new_ev_id, reason, replaced_at, replaced_by) "
+            "VALUES (?,?,?,?,?,?)", (inactive_ev_id, reserve_registration_id, reg["ev_id"], reason, _now(), reviewer))
+        con.commit()
+    finally:
+        con.close()
+    return {"inactive_ev_id": inactive_ev_id, "new_ev_id": reg["ev_id"], "registration_id": reserve_registration_id, "reason": reason}
+
+
+def replacement_history(limit: int = 100) -> list[dict]:
+    con = store.get_connection()
+    try:
+        rows = con.execute("SELECT inactive_ev_id, registration_id, new_ev_id, reason, replaced_at, replaced_by "
+                           "FROM vehicle_replacements ORDER BY replaced_at DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(zip(("inactive_ev_id", "registration_id", "new_ev_id", "reason", "replaced_at", "replaced_by"), r)) for r in rows]
+    finally:
+        con.close()

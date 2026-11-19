@@ -15,6 +15,9 @@ def _isolated_privacy(tmp_path, monkeypatch):
     monkeypatch.setattr(pseudonym, "KEY_FILE", tmp_path / ".pseudo_key")
     monkeypatch.setattr(vault, "KEY_FILE", tmp_path / ".pii_key")   # 개인정보 암호화 키도 data/에 만들지 않게
     monkeypatch.delenv("PII_KEY", raising=False)                    # 개발자 환경변수가 테스트 키를 덮지 않게
+    from src.api.routers import cpo
+    monkeypatch.setattr(cpo, "CPO_STATUS_PATH", tmp_path / "cpo_status.json")   # CPO 수신 실적을 실제 data/에 쓰지 않게
+    monkeypatch.setenv("QUICK_LOGIN_LAN_ONLY", "0")
 
 
 @pytest.fixture

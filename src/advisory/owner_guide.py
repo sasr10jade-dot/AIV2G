@@ -272,7 +272,7 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
         reason = (f"방전 보상단가(최고 {max_sell:.0f}원/kWh)가 손익분기(약 {breakeven:.0f}원/kWh)보다 낮아서 방전은 추천하지 않아요."
                   if max_sell <= breakeven else "이번 조건에서는 방전해도 이득이 크지 않아서 추천하지 않아요.")
 
-    # AI Agent 기반 결과 근거 설명형 텍스트 생성 (계획서 4.1 라)
+    # 추천 근거 설명(계획서 4.1 라) — 최적화 결과 값을 정해진 문장 틀에 넣어 만든다(LLM 생성 아님, explanation_method 참조)
     charge_intervals = _intervals(times, charge, buy)
     chg_windows_str = ""
     if charge_intervals:
@@ -284,7 +284,7 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
 
     exp_parts = []
     if chg_windows_str:
-        exp_parts.append(f"AI 에이전트가 {chg_windows_str} 구간의 충전을 추천합니다.")
+        exp_parts.append(f"AI 최적화 결과 {chg_windows_str} 구간 충전을 추천합니다.")
         exp_parts.append("해당 시간대는 요금이 가장 저렴한 심야 경부하 구간이며 계통 전력수요가 낮아 비용과 계통 부하를 동시에 줄입니다.")
     else:
         exp_parts.append("현재 배터리 잔량으로 다음 일정 운행이 가능하여 즉시 충전을 권장하지 않습니다.")
@@ -300,6 +300,7 @@ def build_guide(profile: dict, inputs: GuideInputs, now: datetime | None = None,
 
     return {
         "ai_agent_explanation": ai_agent_explanation,
+        "explanation_method": "rule_template",   # 최적화 결과 기반 문장 틀(규칙형). LLM 연동 시 'llm'으로 바꾼다
         "vehicle": {k: profile[k] for k in ("label", "battery_kwh", "v2g_capable", "demo") if k in profile},
         "period": {"start": start.isoformat(), "departure": dep.isoformat(), "hours": n},
         "inputs": {"current_soc_pct": soc0, "need_soc_pct": need_soc, "min_soc_pct": reserve_pct,

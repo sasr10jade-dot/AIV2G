@@ -79,6 +79,43 @@ def reserve(registration_id: str, body: ReserveIn, request: Request, user: dict 
     return {"status": "reserve" if body.on else "pending", "registration": service.view(reg)}
 
 
+class AffiliationIn(BaseModel):
+    affiliation: str = Field(..., pattern="^(public|private)$", description="public(관용) / private(민간)")
+
+
+@router.post("/{registration_id}/affiliation", summary="차량 소속 지정 — 관용/민간(관용차량 데이터 확보·정산 집계 구분)")
+def set_affiliation(registration_id: str, body: AffiliationIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    try:
+        out = service.set_affiliation(registration_id, body.affiliation)
+    except service.RegistryError as exc:
+        raise HTTPException(status_code=404 if "찾을 수 없" in str(exc) else 422, detail=str(exc)) from exc
+    audit.log(user["username"], "registration_affiliation", target=registration_id,
+              detail={"affiliation": body.affiliation, "ip": client_ip(request)})
+    return out
+
+
+@router.get("/reserve-status", summary="예비 참여자 Pool 현황 — 목표(예비 6~9대) 대비 부족 경고, 대체 이력")
+def reserve_status() -> dict:
+    return {**service.reserve_status(), "replacements": service.replacement_history(), "affiliation_counts": service.affiliation_counts()}
+
+
+class ReplaceIn(BaseModel):
+    inactive_ev_id: str = Field(..., min_length=3, max_length=40, description="활동이 중단된 차량 ID")
+    reserve_registration_id: str = Field(..., min_length=3, max_length=64, description="대체할 예비 참여자 신청 ID")
+    reason: str = Field(..., min_length=2, max_length=200)
+    new_ev_id: str | None = Field(None, max_length=40)
+
+
+@router.post("/replace", summary="활동 중단 차량을 예비 참여자로 대체 — 예비 신청 승인 + 교체 이력 기록")
+def replace_inactive(body: ReplaceIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    try:
+        out = service.replace_inactive(body.inactive_ev_id, body.reserve_registration_id, user["username"], body.reason, body.new_ev_id)
+    except service.RegistryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    audit.log(user["username"], "registration_replace", target=out["new_ev_id"], detail={**out, "ip": client_ip(request)})
+    return out
+
+
 @router.post("/{registration_id}/reject", summary="신청 반려")
 def reject(registration_id: str, body: RejectIn, request: Request, user: dict = Depends(require_admin)) -> dict:
     try:

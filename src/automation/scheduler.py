@@ -37,7 +37,7 @@ def bootstrap(registry: ModelRegistry, base_cfg: SimConfig, target_col: str) -> 
     )
     result = train_forecast_model(city_hourly, target_col)
     registry.register(result.model, result.feature_cols, base_cfg.weeks, result.mae, result.rmse, result.n_train,
-                      data_range=result.data_range, data_source="synthetic")
+                      data_range=result.data_range, data_source="synthetic", holdout_mape=result.mape, holdout_r2=result.r2)
 
 
 def run_cycle(
@@ -80,6 +80,7 @@ def run_cycle(
         version = registry.register(
             candidate.model, candidate.feature_cols, cfg_new.weeks, candidate.mae, candidate.rmse, candidate.n_train,
             data_range=candidate.data_range, data_source="synthetic",
+            holdout_mape=candidate.mape, holdout_r2=candidate.r2,
         )
         cycle["action"] = "PROMOTED"
         cycle["active_version_after"] = version

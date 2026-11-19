@@ -6,6 +6,7 @@
 - research        연구·분석 목적 이용
 - profile         가입 시 받은 페르소나·운행 정보(차종·직업군·거주지·출발 시각·목표 배터리) 수집·이용 — 맞춤 안내 목적
 - v2g_discharge   방전(V2G) 추론 안내 참여 — 기본은 꺼짐, 켜야 방전 시간대를 안내한다
+- location        위치정보(충전 위치·거점·구역) 수집·이용 — 위치정보법상 개인위치정보 별도 동의(요구사항 Q04)
 
 이력은 지우지 않는다: 철회도 행의 withdrawn_at으로 남기고, 현재 유효 여부는
 withdrawn_at이 비어 있는 행이 있는지로 판단한다. 동의 문구 버전(version)을 함께 저장해
@@ -19,7 +20,7 @@ from datetime import datetime, timezone
 from src.paths import DATA_DIR
 
 PRIVACY_DB = DATA_DIR / "privacy.db"
-PURPOSES = ("collect", "share_external", "research", "profile", "v2g_discharge")
+PURPOSES = ("collect", "share_external", "research", "profile", "v2g_discharge", "location")
 
 
 def _now() -> str:

@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import json
+import os
+import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -15,12 +17,15 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
-from src.paths import PROJECT_ROOT
+from src.paths import DATA_DIR, PROJECT_ROOT
 
 from src.auth.deps import require_admin
 
 router = APIRouter()
 CPO_CONFIG_PATH = PROJECT_ROOT / "config" / "cpo_sources.json"
+# 수신 실적(연결 여부·최근 수신·누적 건수)은 실행 중 바뀌는 값이라 버전관리되는 설정 파일이 아니라 data/에 따로 둔다(요구사항 A04).
+# 설정 파일의 옛 status 블록은 읽지 않는다 — 실제 수신 실적만 화면에 보인다.
+CPO_STATUS_PATH = DATA_DIR / "cpo_status.json"
 
 
 class CpoSessionItem(BaseModel):
@@ -46,6 +51,22 @@ def load_cpo_config() -> dict:
     if not CPO_CONFIG_PATH.exists():
         return {"sources": []}
     return json.loads(CPO_CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+def load_cpo_status() -> dict:
+    if not CPO_STATUS_PATH.exists():
+        return {}
+    try:
+        return json.loads(CPO_STATUS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_cpo_status(data: dict) -> None:
+    CPO_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CPO_STATUS_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(CPO_STATUS_PATH)
 
 
 @router.get("/specs", summary="CPO 데이터 및 API 명세서 (계획서 13장 산출물)", dependencies=[Depends(require_admin)])
@@ -108,13 +129,14 @@ def get_cpo_status():
     """CPO 3사(나이스인프라·플러그링크·이브이시스)의 데이터 연계 상태 및 일별 수집 통계를 반환합니다."""
     cfg = load_cpo_config()
     sources = cfg.get("sources", [])
+    runtime = load_cpo_status()
     summary = []
     total_chargers = 0
     total_cumulative_sessions = 0
     total_received_today = 0
     for s in sources:
         target_chg = s.get("target_chargers", 50)
-        st = s.get("status", {})
+        st = runtime.get(s.get("operator_id"), {})
         total_chargers += target_chg
         total_cumulative_sessions += st.get("cumulative_sessions", 0)
         total_received_today += st.get("received_today", 0)
@@ -128,14 +150,17 @@ def get_cpo_status():
             "last_sync": st.get("last_sync"),
             "received_today": st.get("received_today", 0),
             "cumulative_sessions": st.get("cumulative_sessions", 0),
-            "error_count": st.get("error_count", 0)
+            "error_count": st.get("error_count", 0),
+            "enabled": bool(s.get("enabled")),
+            "authenticated": st.get("authenticated"),
         })
     return {
         "total_operators": len(summary),
         "total_target_chargers": total_chargers,
         "total_received_today": total_received_today,
         "total_cumulative_sessions": total_cumulative_sessions,
-        "operators": summary
+        "operators": summary,
+        "status_source": "실제 수신 실적(data/cpo_status.json) — 수신 API가 받은 건만 집계",
     }
 
 
@@ -156,6 +181,14 @@ def ingest_cpo_sessions(
 
     if authorization and not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="올바른 Bearer 토큰 형식이 아닙니다.")
+    # 사업자 토큰(token_env)이 서버에 설정돼 있으면 반드시 일치해야 한다. 설정 전(협약 전)에는 받되 '미인증'으로 기록한다.
+    expected = os.environ.get(cpo_info.get("token_env") or "", "")
+    authenticated = False
+    if expected:
+        given = (authorization or "")[7:] if authorization else ""
+        if not given or not secrets.compare_digest(given.encode(), expected.encode()):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="인증 토큰이 없거나 올바르지 않습니다.")
+        authenticated = True
 
     received_count = len(payload.sessions)
     valid_sessions = []
@@ -191,15 +224,16 @@ def ingest_cpo_sessions(
             errors.append({"index": idx, "session_id": item.session_id, "reason": str(e)})
 
     try:
-        for s in cfg.get("sources", []):
-            if s.get("operator_id") == cpo_id:
-                st = s.setdefault("status", {})
-                st["last_sync"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                st["received_today"] = len(valid_sessions)
-                st["cumulative_sessions"] = st.get("cumulative_sessions", 0) + len(valid_sessions)
-                st["error_count"] = st.get("error_count", 0) + len(errors)
-        CPO_CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
+        runtime = load_cpo_status()
+        st = runtime.setdefault(cpo_id, {})
+        st["connected"] = True
+        st["authenticated"] = authenticated
+        st["last_sync"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st["received_today"] = len(valid_sessions)
+        st["cumulative_sessions"] = st.get("cumulative_sessions", 0) + len(valid_sessions)
+        st["error_count"] = st.get("error_count", 0) + len(errors)
+        save_cpo_status(runtime)
+    except OSError:
         pass
 
     return {
