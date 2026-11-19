@@ -265,3 +265,42 @@ def test_guide_facts_have_no_personal_data_and_route_uses_llm(monkeypatch):
     monkeypatch.setattr(llm_explain, "explain", lambda facts, lang="ko", call=None: None)
     g2 = client.get("/owner/charging-guide?current_soc_pct=40").json()
     assert g2["explanation_method"] == "rule_template" and g2["ai_agent_explanation"]
+
+
+# ------------------------------------------------------------------ 관제 목록 일원화(실제 데이터 기준)·충전기 150기 거점 배분
+def test_chargers_split_50_per_site_matching_config():
+    import collections
+    import numpy as np
+    from src.datagen.charger import build_charger_registry, generate_charger_sessions
+    from src.datagen.config import SimConfig
+    from src.kpi import load_site_registry
+    cfg = SimConfig(n_ev=4, weeks=1, n_chargers=150, charger_days=7, random_seed=1, start_date="2026-11-01")
+    ch = generate_charger_sessions(cfg, np.random.default_rng(1))
+    per_site = collections.Counter(build_charger_registry(cfg, ch)["site_id"])   # 세션 없는 충전기도 포함한 마스터 기준
+    sites = load_site_registry()
+    assert per_site == {sid: s["chargers"]["total_count"] for sid, s in sites.items()} == {"SITE-01": 50, "SITE-02": 50, "SITE-03": 50}
+
+
+def test_charger_status_list_from_sessions():
+    from src.kpi import charger_status_list
+    ch = pd.DataFrame({
+        "charger_id": ["C1", "C2", "C3"], "operator_id": ["CPO-A", "CPO-B", "CPO-C"], "site_id": ["SITE-01"] * 3,
+        "start_ts": pd.to_datetime(["2026-12-10 20:00", "2026-12-10 08:00", "2026-11-20 08:00"]),
+        "end_ts": pd.to_datetime(["2026-12-10 22:00", "2026-12-10 09:00", "2026-11-20 09:00"]),
+        "energy_kwh": [10.0, 5.0, 3.0], "avg_power_kw": [7.0, 50.0, 7.0], "charger_type": ["AC_SLOW", "DC_FAST", "AC_SLOW"],
+        "connector_type": ["AC_TYPE1", "DC_COMBO1", "AC_TYPE1"]})
+    st = {c["charger_id"]: c for c in charger_status_list(ch, {"SITE-01": {"name": "거점1"}}, {"CPO-A": "가사업자"})}
+    assert st["C1"]["status"] == "charging" and st["C1"]["current_kw"] == 7.0 and st["C1"]["operator_name"] == "가사업자"
+    assert st["C2"]["status"] == "idle" and st["C2"]["is_fast"] is True
+    assert st["C3"]["status"] == "inactive"                                    # 7일 넘게 세션 없음(통신 장애와 구분)
+    assert st["C1"]["site_name"] == "거점1"
+
+
+def test_dashboard_payload_has_real_lists_not_fixed_mock(medium_cfg):
+    from src.api.routers.dashboard import build_dashboard_payload
+    data = build_dashboard_payload(medium_cfg)
+    assert 0 < len(data["charger_list"]) <= medium_cfg.n_chargers
+    assert {"plate", "odometer_km", "registered_model"} <= set(data["vehicle_status"][0])
+    html = client.get("/dashboard").text
+    assert "CPO_STATIONS" not in html and "토레스 EVX (차종B SUV)" not in html          # 고정 시연 목록 제거
+    assert "initChargersList(data)" in html and "initVehiclesList(data)" in html

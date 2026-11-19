@@ -20,7 +20,7 @@ from src.auth.deps import require_admin
 from src.automation.model_registry import ModelRegistry
 from src.closed_loop import run_closed_loop_cycle
 from src.datagen.config import SimConfig
-from src.kpi import collection_status, infra_status, load_site_registry, summarize_kpi
+from src.kpi import charger_status_list, collection_status, infra_status, load_site_registry, summarize_kpi
 from src.model.charging_efficiency import NoLinkedSessionsError, compute_charging_efficiency
 from src.model.demand_forecast import train_forecast_model
 from src.optimizer.economics import EconomicsParams
@@ -319,10 +319,35 @@ def build_dashboard_payload(
         },
         "closed_loop": closed_loop,
         "models": models,
-        "vehicle_status": build_vehicle_status_table(ev_df),
+        "vehicle_status": _vehicle_status_with_registry(ev_df),
+        # 충전기 관제 리스트 — 세션 데이터로 계산한 충전기별 상태(고정 시연 목록 아님)
+        "charger_list": charger_status_list(charger_df, load_site_registry(), _cpo_operator_names()),
         "renewable": build_renewable_summary(grid_df, window_days=CHART_WINDOW_DAYS),
     }
 
+
+
+def _cpo_operator_names() -> dict:
+    """config/cpo_sources.json의 사업자 ID → 이름(연계 전 합성 데이터의 CPO-A~C는 그대로 둔다)."""
+    try:
+        from src.api.routers.cpo import load_cpo_config
+        return {s.get("operator_id"): s.get("operator_name") for s in load_cpo_config().get("sources", [])}
+    except Exception:   # 설정이 없어도 대시보드는 열린다
+        return {}
+
+
+def _vehicle_status_with_registry(ev_df) -> list[dict]:
+    """차량 상태 표에 등록부의 마스킹 번호판·등록 차종·누적 주행거리·소속을 붙인다(승인 차량만)."""
+    from src.registry import service as registry
+    rows = build_vehicle_status_table(ev_df)
+    info = registry.approved_vehicle_info()
+    for r in rows:
+        reg = info.get(r["ev_id"])
+        r["plate"] = reg["plate"] if reg else None
+        r["registered_model"] = reg["vehicle_model"] if reg else None
+        r["odometer_km"] = reg["odometer_km"] if reg else None
+        r["affiliation"] = reg["affiliation"] if reg else None
+    return rows
 
 
 def _collection(ev_df, charger_df, provenance: dict) -> dict:

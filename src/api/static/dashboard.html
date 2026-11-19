@@ -767,30 +767,25 @@
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
       <div>
         <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>충전사업자별 충전소 및 충전기 150기 관제 리스트</h2>
-        <span class="muted" style="font-size:12px;">CPO 3사(나이스인프라·플러그링크·이브이시스) 연계 실증 충전기 현황 (UI/UX 시연용)</span>
+        <span class="muted" style="font-size:12px;" id="chg-list-sub">충전 세션 데이터로 계산한 충전기별 현재 상태</span>
       </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <span class="tag navy" id="chg-total-tag">총 150기</span>
-        <span class="tag" style="background:#10b981; color:#fff;" id="chg-avail-tag">대기중 118기</span>
-        <span class="tag" style="background:#2f5bff; color:#fff;" id="chg-busy-tag">충전중 28기</span>
-        <span class="tag gray" id="chg-wait-tag">통신대기 4기</span>
+        <span class="tag navy" id="chg-total-tag">-</span>
+        <span class="tag" style="background:#10b981; color:#fff;" id="chg-avail-tag">-</span>
+        <span class="tag" style="background:#2f5bff; color:#fff;" id="chg-busy-tag">-</span>
+        <span class="tag gray" id="chg-wait-tag">-</span>
       </div>
     </div>
     <p class="card-what" data-i18n>충전사업자 API를 통해 실시간 연계되는 150기 충전기의 위치, 종류(급속/완속), 커넥터 및 가동 상태 목록입니다. 사업자별 필터 및 실시간 검색이 지원됩니다.</p>
 
     <!-- 검색 및 필터 컨트롤 -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 14px 0;">
-      <div class="presets" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="preset-btn chg-filter-op active" data-op="all">전체 (150)</button>
-        <button class="preset-btn chg-filter-op" data-op="niceinfra">나이스인프라 (50)</button>
-        <button class="preset-btn chg-filter-op" data-op="pluglink">플러그링크 (50)</button>
-        <button class="preset-btn chg-filter-op" data-op="evsis">이브이시스 (50)</button>
-      </div>
+      <div class="presets" id="chg-op-filters" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;"></div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <select id="chg-speed-select" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px;">
           <option value="all">전체 속도 (급속/완속)</option>
-          <option value="fast">급속/초급속 (50~200kW)</option>
-          <option value="slow">완속 (7kW)</option>
+          <option value="fast">급속(DC)</option>
+          <option value="slow">완속(AC)</option>
         </select>
         <input type="text" id="chg-search" placeholder="충전기ID 또는 충전소명/주소 검색" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; width:220px;" />
       </div>
@@ -821,25 +816,20 @@
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
       <div>
         <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>서포터즈 실차 30대 OBD2 텔레메트리 관제 리스트</h2>
-        <span class="muted" style="font-size:12px;">제주 실증 제외 차종(토레스 EVX, EV6, 니로EV) 실차 30대 전수 LTE Cat.M1 수급 현황</span>
+        <span class="muted" style="font-size:12px;" id="veh-list-sub">OBD 텔레메트리 기준 차량별 최신 상태 — 번호판·주행거리는 승인된 등록 차량만 표시</span>
       </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
-        <span class="tag navy" id="veh-total-tag">총 30대</span>
-        <span class="tag" style="background:#2f5bff; color:#fff;" id="veh-charge-tag">충전중 6대</span>
-        <span class="tag" style="background:#10b981; color:#fff;" id="veh-park-tag">주차(대기) 18대</span>
-        <span class="tag gray" id="veh-drive-tag">주행중 6대</span>
+        <span class="tag navy" id="veh-total-tag">-</span>
+        <span class="tag" style="background:#2f5bff; color:#fff;" id="veh-charge-tag">-</span>
+        <span class="tag" style="background:#10b981; color:#fff;" id="veh-park-tag">-</span>
+        <span class="tag gray" id="veh-drive-tag">-</span>
       </div>
     </div>
     <p class="card-what" data-i18n>사업수행계획서에 따라 실차 30대에 부착된 OBD 단말에서 수급되는 배터리 잔량(SoC), 충전 출력, 주차 및 V2G 가용방전량을 실시간 관제합니다.</p>
 
     <!-- 검색 및 필터 컨트롤 -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 14px 0;">
-      <div class="presets" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="preset-btn veh-filter-model active" data-model="all">전체 (30)</button>
-        <button class="preset-btn veh-filter-model" data-model="torres">토레스 EVX (15)</button>
-        <button class="preset-btn veh-filter-model" data-model="ev6">EV6 (8)</button>
-        <button class="preset-btn veh-filter-model" data-model="niro">니로 EV (7)</button>
-      </div>
+      <div class="presets" id="veh-model-filters" style="margin:0; display:flex; gap:6px; flex-wrap:wrap;"></div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <input type="text" id="veh-search" placeholder="차량ID, 번호판, 구역 검색" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:12.5px; width:220px;" />
       </div>
@@ -2458,6 +2448,8 @@ async function loadDashboard() {
     renderCollection(data);
     renderInfra(data);
     renderVehicleStatus(data);
+    initChargersList(data);
+    initVehiclesList(data);
     loadChargingEfficiency();
     renderPocChart(data);
     renderForecastChart(data);
@@ -2803,137 +2795,87 @@ async function boot() {
 }
 
 
-// ------------------------------------------------------------- 충전기 150기 인프라 리스트 (UI/UX) --
-const CPO_NAMES = { niceinfra: '나이스인프라', pluglink: '플러그링크', evsis: '이브이시스' };
-const CPO_STATIONS = {
-  niceinfra: [
-    { name: '광주시청 청사 부설 충전소', addr: '광주 서구 내방로 111 (치평동)' },
-    { name: '상무시민공원 공영주차장', addr: '광주 서구 상무자유로 93 (치평동)' },
-    { name: '서구문화센터 공영 충전소', addr: '광주 서구 상무대로 1157 (금호동)' },
-    { name: '풍암생활체육공원 주차장', addr: '광주 서구 풍암동 1045' },
-    { name: '광주월드컵경기장 P2 충전소', addr: '광주 서구 금화로 240 (풍암동)' }
-  ],
-  pluglink: [
-    { name: '도시 공용 거점 충전소 (첨단산단)', addr: '광주 북구 첨단과기로 208 (오룡동)' },
-    { name: '북구청 본관 공영주차장', addr: '광주 북구 우치로 77 (용봉동)' },
-    { name: '광주비엔날레 전시관 주차장', addr: '광주 북구 비엔날레로 111 (용봉동)' },
-    { name: '일곡제1공영주차장 충전소', addr: '광주 북구 일곡택지로 53 (일곡동)' },
-    { name: '첨단종합체육관 공영주차장', addr: '광주 북구 첨단연신로 29 (신용동)' }
-  ],
-  evsis: [
-    { name: '기업 빌딩 부설 충전소 (빛가람)', addr: '전남 나주시 빛가람동 120 (전력로)' },
-    { name: '한전 본사거리 상가 복합 충전소', addr: '전남 나주시 전력로 55 (빛가람동)' },
-    { name: '나주스마트파크 에너지밸리 충전소', addr: '전남 나주시 혁신산단로 35 (동수동)' },
-    { name: '빛가람전망대 공영 충전소', addr: '전남 나주시 호수로 77 (빛가람동)' },
-    { name: '나주종합스포츠파크 주차장', addr: '전남 나주시 영산로 5400 (송월동)' }
-  ]
-};
-
+// ------------------------------------------------------------- 충전기 관제 리스트 — 서버의 충전 세션 데이터 기준(고정 목록 아님) --
 let allChargersData = [];
-function initChargersList() {
-  const ops = ['niceinfra', 'pluglink', 'evsis'];
-  let list = [];
-  ops.forEach(op => {
-    const stations = CPO_STATIONS[op];
-    for (let i = 1; i <= 50; i++) {
-      const st = stations[(i - 1) % stations.length];
-      const isFast = (i % 3 === 0);
-      const isSuper = (i % 10 === 0);
-      const chgType = isSuper ? '초급속' : (isFast ? '급속' : '완속');
-      const kw = isSuper ? 200 : (isFast ? 100 : 7);
-      const conn = isFast || isSuper ? 'DC콤보1' : 'AC단상5핀';
-      
-      let status = 'idle';
-      if (i % 5 === 0) status = 'charging';
-      else if (i === 49) status = 'offline';
-      
-      const energyToday = status === 'charging' ? (Math.random() * 25 + 15).toFixed(1) : (Math.random() * 40 + 5).toFixed(1);
-      const pKw = status === 'charging' ? (kw * (Math.random() * 0.3 + 0.65)).toFixed(1) : '0.0';
-      const cid = `CHG-${op === 'niceinfra' ? 'NI' : op === 'pluglink' ? 'PL' : 'EV'}-${String(i).padStart(3, '0')}`;
+let activeOpFilter = 'all';
+const CHG_STATUS = {
+  charging: c => `<span class="badge good" style="background:#2f5bff; color:#fff;">${t('충전중')} (${c.currentKw}kW)</span>`,
+  idle: () => `<span class="badge good">${t('대기(사용 가능)')}</span>`,
+  inactive: () => `<span class="badge neutral">${t('장기 미사용(7일 세션 없음)')}</span>`,
+};
+function fmtWhen(iso) {
+  return iso ? new Date(iso).toLocaleString(locale(), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+}
 
-      list.push({
-        cid,
-        op,
-        opName: CPO_NAMES[op],
-        stName: st.name + ` (${Math.floor((i-1)/5)+1}구역)`,
-        addr: st.addr,
-        chgType,
-        kw,
-        conn,
-        status,
-        currentKw: pKw,
-        energyToday,
-        lastSeen: '14:' + String((i * 7) % 60).padStart(2, '0') + ':25'
-      });
-    }
-  });
-  allChargersData = list;
+function initChargersList(data) {
+  allChargersData = (data.charger_list || []).map(c => ({
+    cid: c.charger_id, op: c.operator_id, opName: c.operator_name || c.operator_id,
+    stName: c.site_name ? `${c.site_name} (${c.site_id})` : (c.site_id || '-'),
+    addr: c.site_address || '-', fast: !!c.is_fast, chgType: c.is_fast ? t('급속') : t('완속'), kw: c.max_kw,
+    conn: c.connector_type || '-', status: c.status, currentKw: c.current_kw,
+    energyToday: c.energy_last_day_kwh, sessions: c.sessions, lastSeen: fmtWhen(c.last_session_end),
+  }));
+  const counts = {};
+  allChargersData.forEach(c => { counts[c.op] = counts[c.op] || { n: 0, name: c.opName }; counts[c.op].n += 1; });
+  const box = document.getElementById('chg-op-filters');
+  if (box) {
+    if (activeOpFilter !== 'all' && !counts[activeOpFilter]) activeOpFilter = 'all';
+    box.innerHTML = `<button class="preset-btn chg-filter-op ${activeOpFilter === 'all' ? 'active' : ''}" data-op="all">${t('전체')} (${allChargersData.length})</button>` +
+      Object.keys(counts).sort().map(op => `<button class="preset-btn chg-filter-op ${activeOpFilter === op ? 'active' : ''}" data-op="${escH(op)}">${escH(counts[op].name)} (${counts[op].n})</button>`).join('');
+  }
+  const sub = document.getElementById('chg-list-sub');
+  if (sub) sub.textContent = `${t('충전 세션 데이터로 계산한 충전기별 현재 상태')} · ${data.is_real_data ? t('실측') : t('모의(합성 데이터 — 사업자 연계 전)')}`;
   renderChargersTable();
 }
 
-let activeOpFilter = 'all';
 function renderChargersTable() {
   const tbody = document.getElementById('chargers-tbody');
   if (!tbody) return;
   const speed = document.getElementById('chg-speed-select')?.value || 'all';
   const query = (document.getElementById('chg-search')?.value || '').trim().toLowerCase();
-
-  let filtered = allChargersData.filter(c => {
+  const filtered = allChargersData.filter(c => {
     if (activeOpFilter !== 'all' && c.op !== activeOpFilter) return false;
-    if (speed === 'fast' && c.kw < 50) return false;
-    if (speed === 'slow' && c.kw >= 50) return false;
-    if (query) {
-      const match = c.cid.toLowerCase().includes(query) || c.stName.toLowerCase().includes(query) || c.addr.toLowerCase().includes(query);
-      if (!match) return false;
-    }
+    if (speed === 'fast' && !c.fast) return false;
+    if (speed === 'slow' && c.fast) return false;
+    if (query && !(c.cid.toLowerCase().includes(query) || c.stName.toLowerCase().includes(query) || c.addr.toLowerCase().includes(query))) return false;
     return true;
   });
-
   tbody.innerHTML = filtered.map(c => `
     <tr>
-      <td><code><b>${c.cid}</b></code></td>
-      <td><span class="tag ${c.op === 'niceinfra' ? 'navy' : c.op === 'pluglink' ? 'gray' : 'ok'}">${c.opName}</span></td>
-      <td><b>${c.stName}</b></td>
-      <td><span style="font-size:12px; color:var(--muted);">${c.addr}</span></td>
+      <td><code><b>${escH(c.cid)}</b></code></td>
+      <td><span class="tag navy">${escH(c.opName)}</span></td>
+      <td><b>${escH(c.stName)}</b></td>
+      <td><span style="font-size:12px; color:var(--muted);">${escH(c.addr)}</span></td>
       <td><b>${c.chgType} ${c.kw}kW</b></td>
-      <td><span style="font-size:11.5px;">${c.conn}</span></td>
-      <td>
-        ${c.status === 'charging' 
-          ? `<span class="badge good" style="background:#2f5bff; color:#fff;">충전중 (${c.currentKw}kW)</span>`
-          : c.status === 'idle'
-          ? `<span class="badge good">대기중(사용가능)</span>`
-          : `<span class="badge neutral">통신대기</span>`}
-      </td>
+      <td><span style="font-size:11.5px;">${escH(c.conn)}</span></td>
+      <td>${(CHG_STATUS[c.status] || CHG_STATUS.idle)(c)}</td>
       <td class="num"><b>${c.energyToday}</b> kWh</td>
-      <td><span style="font-size:11.5px; color:var(--muted);">오늘 ${c.lastSeen}</span></td>
-    </tr>
-  `).join('');
-
-  // 태그 숫자 업데이트
-  const total = allChargersData.length;
-  const busy = allChargersData.filter(x => x.status === 'charging').length;
-  const idle = allChargersData.filter(x => x.status === 'idle').length;
-  const wait = allChargersData.filter(x => x.status === 'offline').length;
-  if (document.getElementById('chg-total-tag')) document.getElementById('chg-total-tag').textContent = `총 ${total}기`;
-  if (document.getElementById('chg-avail-tag')) document.getElementById('chg-avail-tag').textContent = `대기중 ${idle}기`;
-  if (document.getElementById('chg-busy-tag')) document.getElementById('chg-busy-tag').textContent = `충전중 ${busy}기`;
-  if (document.getElementById('chg-wait-tag')) document.getElementById('chg-wait-tag').textContent = `통신대기 ${wait}기`;
+      <td><span style="font-size:11.5px; color:var(--muted);">${c.lastSeen}</span></td>
+    </tr>`).join('') || `<tr><td colspan="9" class="muted">${t('조건에 맞는 충전기가 없습니다.')}</td></tr>`;
+  const n = st => allChargersData.filter(x => x.status === st).length;
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  set('chg-total-tag', `${t('총')} ${allChargersData.length}${t('기')}`);
+  set('chg-avail-tag', `${t('대기')} ${n('idle')}${t('기')}`);
+  set('chg-busy-tag', `${t('충전중')} ${n('charging')}${t('기')}`);
+  set('chg-wait-tag', `${t('장기 미사용')} ${n('inactive')}${t('기')}`);
 }
 
-// 이벤트 리스너 등록
 document.addEventListener('DOMContentLoaded', () => {
-  initChargersList();
-  initVehiclesList();
-  document.querySelectorAll('.chg-filter-op').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.chg-filter-op').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeOpFilter = btn.dataset.op;
-      renderChargersTable();
-    });
+  document.getElementById('chg-op-filters')?.addEventListener('click', e => {
+    const b = e.target.closest('.chg-filter-op'); if (!b) return;
+    activeOpFilter = b.dataset.op;
+    document.querySelectorAll('.chg-filter-op').forEach(x => x.classList.toggle('active', x === b));
+    renderChargersTable();
   });
   document.getElementById('chg-speed-select')?.addEventListener('change', renderChargersTable);
   document.getElementById('chg-search')?.addEventListener('input', renderChargersTable);
+  document.getElementById('veh-model-filters')?.addEventListener('click', e => {
+    const b = e.target.closest('.veh-filter-model'); if (!b) return;
+    activeVehModelFilter = b.dataset.model;
+    document.querySelectorAll('.veh-filter-model').forEach(x => x.classList.toggle('active', x === b));
+    renderVehiclesTable();
+  });
+  document.getElementById('veh-search')?.addEventListener('input', () => renderVehiclesTable());
 });
 
 
@@ -2975,73 +2917,36 @@ document.addEventListener('DOMContentLoaded', () => {
 boot();
 
 
-// ---- 서포터즈 실차 30대 OBD2 관제 리스트 렌더링 (사업수행계획서 과업 기준)
+// ---- 서포터즈 차량 OBD 관제 리스트 — 서버의 차량 상태(vehicle_status) 기준, 등록 차량은 마스킹 번호판·주행거리 표시
 let allVehiclesData = [];
 let activeVehModelFilter = 'all';
 
-function initVehiclesList() {
-  const zones = ['1구역 (광주 서구청사)', '2구역 (나주 혁신도시)', '3구역 (광주 첨단산단)'];
-  let list = [];
-  for (let i = 1; i <= 30; i++) {
-    const idNum = String(i).padStart(3, '0');
-    const vid = `EV-${idNum}`;
-    let model, capacityKwh, plate;
-    if (i <= 15) {
-      model = '토레스 EVX (차종B SUV)';
-      capacityKwh = 73.4;
-      plate = `${10 + i}오***${i % 10}`;
-    } else if (i <= 23) {
-      model = 'EV6 (차종A 승용)';
-      capacityKwh = 77.4;
-      plate = `${20 + i}하***${i % 10}`;
-    } else {
-      model = '니로 EV (차종A 승용)';
-      capacityKwh = 64.8;
-      plate = `${30 + i}가***${i % 10}`;
-    }
-
-    let status = 'parked';
-    let soc = 70 + (i * 2) % 25;
-    let powerText = '';
-    if (i % 5 === 1) {
-      status = 'charging_fast';
-      soc = 45 + (i * 2) % 40;
-      powerText = `52.4 kW (${Math.round(capacityKwh * (soc / 100))} kWh)`;
-    } else if (i % 5 === 2) {
-      status = 'charging_slow';
-      soc = 60 + (i * 3) % 30;
-      powerText = `6.8 kW (${Math.round(capacityKwh * (soc / 100))} kWh)`;
-    } else if (i % 5 === 3) {
-      status = 'driving';
-      soc = 50 + (i * 4) % 35;
-      powerText = '-';
-    } else {
-      const dischargeAvail = Math.round(capacityKwh * Math.max(0, soc - 30) / 100 * 10) / 10;
-      powerText = `가용방전 ${dischargeAvail} kWh`;
-    }
-
-    const zone = zones[(i - 1) % 3];
-    const odo = (12000 + i * 840).toLocaleString() + ' km';
-    const lastSeen = `오늘 ${String(14 - (i % 4)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`;
-
-    list.push({ vid, model, plate, soc, status, powerText, odo, zone, lastSeen });
-  }
-  allVehiclesData = list;
-
-  document.querySelectorAll('.veh-filter-model').forEach(btn => {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.veh-filter-model').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      activeVehModelFilter = this.getAttribute('data-model');
-      renderVehiclesTable();
-    });
+function initVehiclesList(data) {
+  allVehiclesData = (data.vehicle_status || []).map(v => {
+    let status = 'unplugged';
+    if (v.driving) status = 'driving';
+    else if (v.charging_kw > 0) status = v.charging_kw >= 22 ? 'charging_fast' : 'charging_slow';
+    else if (v.connected) status = 'plugged';
+    const powerText = status.startsWith('charging') ? `${v.charging_kw} kW`
+      : status === 'driving' ? '-'
+      : (v.v2g_capable ? `${t('방전 가능')} ${v.v2g_dischargeable_kwh_now ?? 0} kWh` : t('방전 미지원 차종'));
+    return {
+      vid: v.ev_id, model: v.registered_model || v.vehicle_model || t('미상'), plate: v.plate || t('미등록'),
+      soc: v.soc_pct == null ? 0 : v.soc_pct, status, powerText,
+      odo: v.odometer_km != null ? `${fmtInt(v.odometer_km)} km` : '-',
+      zone: v.zone != null ? `${v.zone}${t('구역')}` : '-', lastSeen: fmtWhen(v.timestamp),
+    };
   });
-
-  const searchInput = document.getElementById('veh-search');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => renderVehiclesTable());
+  const counts = {};
+  allVehiclesData.forEach(v => { counts[v.model] = (counts[v.model] || 0) + 1; });
+  const box = document.getElementById('veh-model-filters');
+  if (box) {
+    if (activeVehModelFilter !== 'all' && !counts[activeVehModelFilter]) activeVehModelFilter = 'all';
+    box.innerHTML = `<button class="preset-btn veh-filter-model ${activeVehModelFilter === 'all' ? 'active' : ''}" data-model="all">${t('전체')} (${allVehiclesData.length})</button>` +
+      Object.keys(counts).sort().map(m => `<button class="preset-btn veh-filter-model ${activeVehModelFilter === m ? 'active' : ''}" data-model="${escH(m)}">${escH(m)} (${counts[m]})</button>`).join('');
   }
-
+  const sub = document.getElementById('veh-list-sub');
+  if (sub) sub.textContent = `${t('OBD 텔레메트리 기준 차량별 최신 상태 — 번호판·주행거리는 승인된 등록 차량만 표시')} · ${data.is_real_data ? t('실측') : t('모의(합성 데이터)')}`;
   renderVehiclesTable();
 }
 
@@ -3049,46 +2954,45 @@ function renderVehiclesTable() {
   const tbody = document.getElementById('vehicles-tbody');
   if (!tbody) return;
   const query = (document.getElementById('veh-search')?.value || '').trim().toLowerCase();
-
-  let filtered = allVehiclesData.filter(v => {
-    if (activeVehModelFilter === 'torres' && !v.model.includes('토레스')) return false;
-    if (activeVehModelFilter === 'ev6' && !v.model.includes('EV6')) return false;
-    if (activeVehModelFilter === 'niro' && !v.model.includes('니로')) return false;
-
-    if (query) {
-      const match = v.vid.toLowerCase().includes(query) || v.plate.toLowerCase().includes(query) || v.zone.toLowerCase().includes(query);
-      if (!match) return false;
-    }
+  const filtered = allVehiclesData.filter(v => {
+    if (activeVehModelFilter !== 'all' && v.model !== activeVehModelFilter) return false;
+    if (query && !(v.vid.toLowerCase().includes(query) || v.plate.toLowerCase().includes(query) || v.zone.toLowerCase().includes(query))) return false;
     return true;
   });
-
+  const badge = {
+    charging_fast: `<span class="tag" style="background:#2f5bff; color:#fff;">⚡ ${t('급속충전중')}</span>`,
+    charging_slow: `<span class="tag" style="background:#3b82f6; color:#fff;">🔌 ${t('완속충전중')}</span>`,
+    driving: `<span class="tag gray">🚗 ${t('주행중')}</span>`,
+    plugged: `<span class="tag" style="background:#10b981; color:#fff;">🔌 ${t('연결·대기')}</span>`,
+    unplugged: `<span class="tag gray">🅿️ ${t('주차(미연결)')}</span>`,
+  };
   tbody.innerHTML = filtered.map(v => {
     const socColor = v.soc >= 80 ? '#10b981' : v.soc >= 40 ? '#2f5bff' : '#ef4444';
-    let statusBadge = '';
-    if (v.status === 'charging_fast') statusBadge = '<span class="tag" style="background:#2f5bff; color:#fff;">⚡ 급속충전중</span>';
-    else if (v.status === 'charging_slow') statusBadge = '<span class="tag" style="background:#3b82f6; color:#fff;">🔌 완속충전중</span>';
-    else if (v.status === 'driving') statusBadge = '<span class="tag gray">🚗 주행중 (62km/h)</span>';
-    else statusBadge = '<span class="tag" style="background:#10b981; color:#fff;">🅿️ 주차(V2G대기)</span>';
-
     return `<tr>
-      <td><code><b>${v.vid}</b></code></td>
-      <td><b>${v.model}</b></td>
-      <td><span style="font-family:monospace; font-weight:600;">${v.plate}</span></td>
+      <td><code><b>${escH(v.vid)}</b></code></td>
+      <td><b>${escH(v.model)}</b></td>
+      <td><span style="font-family:monospace; font-weight:600;">${escH(v.plate)}</span></td>
       <td>
         <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-weight:700; width:34px; text-align:right;">${v.soc}%</span>
+          <span style="font-weight:700; width:44px; text-align:right;">${v.soc}%</span>
           <div style="width:50px; height:6px; background:rgba(0,0,0,0.08); border-radius:3px; overflow:hidden;">
-            <div style="width:${v.soc}%; height:100%; background:${socColor};"></div>
+            <div style="width:${Math.max(0, Math.min(100, v.soc))}%; height:100%; background:${socColor};"></div>
           </div>
         </div>
       </td>
-      <td>${statusBadge}</td>
-      <td><b>${v.powerText}</b></td>
+      <td>${badge[v.status]}</td>
+      <td><b>${escH(v.powerText)}</b></td>
       <td>${v.odo}</td>
-      <td><span style="font-size:12px; color:var(--muted);">${v.zone}</span></td>
+      <td><span style="font-size:12px; color:var(--muted);">${escH(v.zone)}</span></td>
       <td><span style="font-size:12px; color:var(--muted);">${v.lastSeen}</span></td>
     </tr>`;
-  }).join('');
+  }).join('') || `<tr><td colspan="9" class="muted">${t('조건에 맞는 차량이 없습니다.')}</td></tr>`;
+  const n = f => allVehiclesData.filter(f).length;
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  set('veh-total-tag', `${t('총')} ${allVehiclesData.length}${t('대')}`);
+  set('veh-charge-tag', `${t('충전중')} ${n(v => v.status.startsWith('charging'))}${t('대')}`);
+  set('veh-park-tag', `${t('연결·대기')} ${n(v => v.status === 'plugged')}${t('대')}`);
+  set('veh-drive-tag', `${t('주행중')} ${n(v => v.status === 'driving')}${t('대')}`);
 }
 
 </script>

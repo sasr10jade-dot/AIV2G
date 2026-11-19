@@ -1,5 +1,5 @@
 {
-  "_comment": "도시형 실증 참여 장소 3곳(계획서 4.1 가 — 공공기관·기업 빌딩·도시 공용 충전소). 업종별 전력사용량(OD-04)·기상(OD-05)·요금표(OD-07) 기반 부하 추정 모델 연계.",
+  "_comment": "도시형 실증 참여 장소 3곳(계획서 4.1 가 — 공공기관·기업 빌딩·도시 공용 충전소). 업종별 전력사용량(OD-04)·기상(OD-05)·요금표(OD-07) 기반 부하 추정 모델 연계. 충전기 수는 계획서 150기 기준으로 거점마다 50기(급속 10·완속 40)로 맞췄다(협의 전 배분, confirmed=false).",
   "sites": [
     {
       "site_id": "SITE-01",
@@ -9,9 +9,9 @@
       "contract_power_kw": 500,
       "transformer_capacity_kva": 750,
       "chargers": {
-        "rapid_count": 4,
-        "slow_count": 16,
-        "total_count": 20
+        "rapid_count": 10,
+        "slow_count": 40,
+        "total_count": 50
       },
       "estimated_base_load_profile": [
         95,
@@ -55,9 +55,9 @@
       "contract_power_kw": 800,
       "transformer_capacity_kva": 1000,
       "chargers": {
-        "rapid_count": 6,
-        "slow_count": 24,
-        "total_count": 30
+        "rapid_count": 10,
+        "slow_count": 40,
+        "total_count": 50
       },
       "estimated_base_load_profile": [
         160,
@@ -101,9 +101,9 @@
       "contract_power_kw": 1200,
       "transformer_capacity_kva": 1500,
       "chargers": {
-        "rapid_count": 12,
-        "slow_count": 28,
-        "total_count": 40
+        "rapid_count": 10,
+        "slow_count": 40,
+        "total_count": 50
       },
       "estimated_base_load_profile": [
         180,

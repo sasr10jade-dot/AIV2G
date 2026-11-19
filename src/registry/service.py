@@ -466,6 +466,23 @@ def update_profile(username: str, updates: dict, con: sqlite3.Connection | None 
             con.close()
 
 
+def approved_vehicle_info(con: sqlite3.Connection | None = None) -> dict:
+    """승인된 차량별 표시 정보 — {ev_id: {plate(마스킹), vehicle_model, odometer_km, affiliation}}. 대시보드 관제 목록용."""
+    own = con is None
+    con = con or store.get_connection()
+    try:
+        rows = con.execute("SELECT ev_id, plate, vehicle_model, odometer_km, affiliation FROM vehicle_registrations "
+                           "WHERE status='approved' AND ev_id IS NOT NULL").fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        if own:
+            con.close()
+    catalog = options.load_catalog()
+    return {r[0]: {"plate": r[1], "vehicle_model": catalog.label(r[2]) if catalog.known(r[2]) else r[2],
+                   "odometer_km": r[3], "affiliation": r[4]} for r in rows}
+
+
 # ---------------------------------------------------------------- 차량 소속(관용/민간) — 요구사항 A07
 AFFILIATIONS = {"public": "관용", "private": "민간"}
 

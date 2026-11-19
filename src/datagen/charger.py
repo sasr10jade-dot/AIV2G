@@ -33,9 +33,11 @@ CHARGER_TYPES = {"AC_SLOW": ("AC_SLOW", "AC_TYPE1", SESSION_KW), "DC_FAST": ("DC
 SITE_IDS = ("SITE-01", "SITE-02", "SITE-03")
 
 
-def site_for_charger(charger_idx: int) -> str:
-    """사업자 3사가 장소마다 고르게 들어가도록 사업자 순환 단위로 장소를 바꾼다."""
-    return SITE_IDS[(charger_idx // len(OPERATOR_IDS)) % len(SITE_IDS)]
+def site_for_charger(charger_idx: int, n_chargers: int = 150) -> str:
+    """충전기를 연속 구간으로 나눠 거점마다 같은 수를 배정한다(150기 → 거점 3곳 × 50기, config/sites.json과 일치).
+    사업자는 charger_idx % 3이라 각 거점에 3사가 고르게 섞이고, 급속은 5기 중 1기라 거점마다 급속 10·완속 40기가 된다."""
+    n = max(int(n_chargers), 1)
+    return SITE_IDS[min(charger_idx * len(SITE_IDS) // n, len(SITE_IDS) - 1)]
 
 
 def operator_for_charger(charger_idx: int) -> str:
@@ -88,7 +90,7 @@ def generate_charger_sessions(
         charger_id = f"CHG-{charger_idx + 1:04d}"
         zone = int(rng.integers(0, cfg.n_zones))
         operator_id = operator_for_charger(charger_idx)
-        site_id = site_for_charger(charger_idx)
+        site_id = site_for_charger(charger_idx, cfg.n_chargers)
         charger_type, connector_type, max_kw = charger_type_for(charger_idx)
         fast = charger_type == "DC_FAST"
         for day in range(cfg.charger_days):
@@ -135,7 +137,7 @@ def build_charger_registry(cfg: SimConfig, charger_df: pd.DataFrame) -> pd.DataF
     for idx in range(cfg.n_chargers):
         cid = f"CHG-{idx + 1:04d}"
         charger_type, connector_type, max_kw = charger_type_for(idx)
-        rows.append((cid, operator_for_charger(idx), None, site_for_charger(idx), int(zone_of.get(cid, 0)), charger_type, connector_type, max_kw, 0, 1))
+        rows.append((cid, operator_for_charger(idx), None, site_for_charger(idx, cfg.n_chargers), int(zone_of.get(cid, 0)), charger_type, connector_type, max_kw, 0, 1))
     return pd.DataFrame(rows, columns=[
         "charger_id", "operator_id", "operator_name", "site_id", "zone",
         "charger_type", "connector_type", "max_kw", "v2g_capable", "active",

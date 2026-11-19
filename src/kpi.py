@@ -218,6 +218,60 @@ def load_site_registry() -> dict:
     return {s["site_id"]: s for s in json.loads(path.read_text(encoding="utf-8")).get("sites", [])}
 
 
+def charger_status_list(charger_df: pd.DataFrame, site_registry: dict | None = None, operator_names: dict | None = None,
+                        inactive_hours: float = 168.0) -> list[dict]:
+    """충전기별 현재 상태 — 대시보드 '충전기 관제 리스트'의 근거(세션 데이터에서 계산, 고정 목록 아님).
+
+    기준 시각 = 데이터의 마지막 세션 종료 시각. 그 시각에 진행 중인 세션이 있으면 '충전중'(평균 출력),
+    최근 inactive_hours(7일) 안에 세션이 있으면 '대기(사용 가능)', 없으면 'inactive'(장기 미사용 — 통신 장애와 구분).
+    """
+    if charger_df is None or charger_df.empty or "charger_id" not in charger_df.columns:
+        return []
+    site_registry = site_registry or {}
+    operator_names = operator_names or {}
+    df = charger_df.copy()
+    df["start_ts"] = pd.to_datetime(df["start_ts"], errors="coerce")
+    if "end_ts" in df.columns:
+        df["end_ts"] = pd.to_datetime(df["end_ts"], errors="coerce")
+    else:
+        df["end_ts"] = df["start_ts"] + pd.to_timedelta(pd.to_numeric(df.get("duration_h", 0), errors="coerce").fillna(0), unit="h")
+    df["end_ts"] = df["end_ts"].fillna(df["start_ts"])
+    now = df["end_ts"].max()
+    day0 = now.normalize()
+    out = []
+    for cid, g in df.groupby("charger_id"):
+        g = g.sort_values("start_ts")
+        last = g.iloc[-1]
+        active = g[(g["start_ts"] <= now) & (g["end_ts"] >= now)]
+        site = site_registry.get(last.get("site_id"), {})
+        ctype = str(last.get("charger_type") or "")
+        if not active.empty:
+            status, current_kw = "charging", round(float(active.iloc[-1].get("avg_power_kw") or 0.0), 1)
+        elif (now - last["end_ts"]).total_seconds() <= inactive_hours * 3600:
+            status, current_kw = "idle", 0.0
+        else:
+            status, current_kw = "inactive", 0.0
+        op = str(last.get("operator_id") or "-")
+        out.append({
+            "charger_id": cid,
+            "operator_id": op,
+            "operator_name": operator_names.get(op, op),
+            "site_id": last.get("site_id"),
+            "site_name": site.get("name"),
+            "site_address": site.get("address"),
+            "charger_type": ctype,
+            "is_fast": ctype.upper().startswith("DC"),
+            "max_kw": round(float(pd.to_numeric(g.get("avg_power_kw"), errors="coerce").max() or 0.0), 1),
+            "connector_type": last.get("connector_type"),
+            "status": status,
+            "current_kw": current_kw,
+            "energy_last_day_kwh": round(float(pd.to_numeric(g.loc[g["start_ts"] >= day0, "energy_kwh"], errors="coerce").sum()), 1),
+            "sessions": int(len(g)),
+            "last_session_end": last["end_ts"].isoformat() if pd.notna(last["end_ts"]) else None,
+        })
+    return out
+
+
 def infra_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, site_registry: dict | None = None) -> dict:
     """관리자 현황판(계획서 4.1 가: 서포터즈·차량, 충전소·충전기, 데이터 현황) — 참여 장소·사업자별 충전기·활동 차량.
     장소·사업자 컬럼이 없는 데이터면 해당 목록은 비워 두고 count를 None으로 둔다(미집계)."""
