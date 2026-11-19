@@ -2275,7 +2275,7 @@ function renderSettlement(sum, preview) {
   let html = '';
   if (preview) {
     const r = preview.rules;
-    html += `<p style="margin:6px 0;">${t('산정 규칙')}: ${t('피크 방전')} kWh × ${t('그 시각 단가')} × ${r.owner_share_pct}% ÷ ${r.krw_per_point}${krw}/P + ${t('흡수')} kWh × ${r.absorb_bonus_points_per_kwh} P · ${t('피크 시간대')} ${preview.peak_hours.join(', ')}${t('시')} · <span class="tag">${escH(preview.label)}</span></p>`;
+    html += `<p style="margin:6px 0;">${t('산정 규칙')}: ${t('재원별 편익(요금 차익·피크 저감·출력제어 완화)을 차량 기여도(절감액·피크 방전 kWh·흡수 kWh)로 배분')} × ${t('참여자 배분율')} ${r.owner_share_pct}% ÷ ${r.krw_per_point}${krw}/P · ${t('피크 시간대')} ${preview.peak_hours.join(', ')}${t('시')} · ${t('방전 미동의 차량은 방전 실적 제외')} · <span class="tag">${escH(preview.label)}</span></p>`;
     html += `<table><thead><tr><th>${t('인센티브 유형 비교 (2차년도 BM 기초)')}</th><th class="num">${t('참여자 몫 합계')}</th><th class="num">${t('차량당')}</th></tr></thead><tbody>` +
       preview.incentives.options.map(o => `<tr><td>${escH(t(o.label))}</td><td class="num">${fmtInt(o.participant_krw)}${krw}</td><td class="num">${fmtInt(o.per_vehicle_krw)}${krw}</td></tr>`).join('') + '</tbody></table>';
   }
@@ -2311,6 +2311,20 @@ document.getElementById('settle-run').addEventListener('click', async () => {
 });
 
 let essData = null;
+// [0,1,2,5,6,23] → "0~2, 5~6, 23시" — 24개 숫자를 나열하지 않게 연속 구간으로 묶는다
+function hourRanges(hours) {
+  if (!hours || !hours.length) return '-';
+  if (hours.length === 24) return t('모든 시간대');
+  const out = []; let s = hours[0], p = hours[0];
+  for (let i = 1; i <= hours.length; i++) {
+    const h = hours[i];
+    if (h === p + 1) { p = h; continue; }
+    out.push(s === p ? `${s}` : `${s}~${p}`);
+    s = p = h;
+  }
+  return out.join(', ') + t('시');
+}
+
 function renderEss() {
   const d = essData;
   const members = new Set(d.members.map(m => m.ev_id));
@@ -2323,7 +2337,7 @@ function renderEss() {
     d.candidates.map(c => `<tr><td><input type="checkbox" class="ess-chk" value="${escH(c.ev_id)}" ${members.has(c.ev_id) ? 'checked' : ''}></td>
       <td>${escH(c.ev_id)}${members.has(c.ev_id) ? ' <span class="tag navy">' + t('그룹') + '</span>' : ''}</td><td>${escH(t(c.group_label))}<br><span style="color:var(--text-muted)">${escH(c.ev_type)} · ${escH(c.affiliation_source)}</span></td>
       <td class="num">${c.score}</td><td class="num">${c.regularity}</td><td class="num">${c.long_parking_h_per_day}</td><td class="num">${c.slow_charger_dwell_h}</td>
-      <td class="num">${Math.round(c.night_charge_day_idle_ratio * 100)}%</td><td>${c.discharge_allowed_hours.join(',')} (${c.discharge_allowed_h_per_day}${t('시간/일')})</td></tr>`).join('') + '</tbody></table>';
+      <td class="num">${Math.round(c.night_charge_day_idle_ratio * 100)}%</td><td>${hourRanges(c.discharge_allowed_hours)} (${t('평균')} ${c.discharge_allowed_h_per_day}${t('시간/일')})</td></tr>`).join('') + '</tbody></table>';
 }
 
 async function loadEss() {

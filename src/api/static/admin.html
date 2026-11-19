@@ -610,6 +610,7 @@
     var b = ev.target.closest('button[data-tab]');
     if (!b) return;
     tab = b.getAttribute('data-tab'); editing = null; say('');
+    if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab);   // 새로고침해도 같은 탭이 열리게
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
     render();
   });
@@ -626,6 +627,12 @@
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-tab') === tab)); });
     render();
   })();
+  // 주소의 #탭만 바뀌어도(다른 화면의 바로가기 등) 그 탭을 연다
+  window.addEventListener('hashchange', function () {
+    var h = location.hash.slice(1);
+    var b = document.querySelector('.tabs button[data-tab="' + h + '"]');
+    if (b && h !== tab) b.click();
+  });
 })();
 // 사이드바 숨김/열기 토글 (디폴트 열림, localStorage 상태 보존)
 (function initSidebarToggle() {

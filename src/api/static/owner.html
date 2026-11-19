@@ -20,80 +20,6 @@
   document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
   document.documentElement.setAttribute('lang', l === 'en' ? 'en' : 'ko');   // 기본 한국어
 
-  // 알림함 모달 제어 및 뱃지 업데이트
-  async function updateNotifBadge() {
-    try {
-      var r = await api('/owner/notifications?lang=' + lang);
-      if (r.ok && r.body) {
-        var badge = document.getElementById('notifBadge');
-        if (badge) {
-          if (r.body.unread_count > 0) {
-            badge.textContent = r.body.unread_count;
-            badge.style.display = 'block';
-          } else {
-            badge.style.display = 'none';
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  async function openNotifModal() {
-    var modal = document.getElementById('notifModal');
-    var list = document.getElementById('notifList');
-    modal.hidden = false;
-    clear(list);
-    list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:16px;', text: t('loading') }));
-    try {
-      var r = await api('/owner/notifications?lang=' + lang);
-      clear(list);
-      if (!r.ok || !r.body || !r.body.notifications || !r.body.notifications.length) {
-        list.appendChild(el('div', { class: 'muted', style: 'text-align:center; padding:20px;', text: '도착한 알림이 없습니다.' }));
-        return;
-      }
-      r.body.notifications.forEach(function (n) {
-        var item = el('div', {
-          class: 'card',
-          style: 'padding:12px; margin-bottom:10px; cursor:pointer; background:' + (n.read ? 'var(--card)' : 'rgba(47,91,255,0.05)') + '; border-left:4px solid ' + (n.type === 'peak_avoid' ? '#f77f00' : 'var(--accent)') + ';'
-        }, [
-          el('div', { style: 'display:flex; justify-content:space-between; margin-bottom:4px;' }, [
-            el('b', { style: 'font-size:14px;', text: n.title }),
-            el('span', { class: 'tag ' + (n.read ? 'gray' : 'navy'), text: n.tag })
-          ]),
-          el('p', { style: 'font-size:12.5px; margin:0 0 6px 0; color:var(--text);', text: n.body }),
-          el('div', { style: 'font-size:11px; color:var(--muted); display:flex; justify-content:space-between;' }, [
-            el('span', { text: n.time_range ? '시간대: ' + n.time_range : '' }),
-            el('span', { text: n.created_at })
-          ])
-        ]);
-        item.addEventListener('click', async function () {
-          await api('/owner/notifications/' + n.id + '/read', { method: 'POST' });
-          item.style.background = 'var(--card)';
-          updateNotifBadge();
-          if (n.action_tab && n.action_tab !== state.tab) {
-            modal.hidden = true;
-            state.tab = n.action_tab;
-            renderHome();
-          }
-        });
-        list.appendChild(item);
-      });
-    } catch (e) {
-      clear(list);
-      list.appendChild(el('div', { class: 'error', text: '알림을 불러오지 못했습니다.' }));
-    }
-  }
-
-  document.getElementById('notifBtn').addEventListener('click', openNotifModal);
-  document.getElementById('notifCloseBtn').addEventListener('click', function () {
-    document.getElementById('notifModal').hidden = true;
-  });
-  document.getElementById('notifReadAllBtn').addEventListener('click', async function () {
-    await api('/owner/notifications/read-all', { method: 'POST' });
-    openNotifModal();
-    updateNotifBadge();
-  });
-
 })();
 </script>
 <style>
@@ -113,7 +39,9 @@ button, input, select { font: inherit; color: inherit; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -0.02em; font-size: 15px; white-space: nowrap; flex-shrink: 0; }
 .brand b { font-weight: 800; color: var(--accent); }
 .brand .ax-logo-badge { width: 28px; height: 28px; border-radius: 9px; font-size: 12px; font-weight: 800; display: grid; place-items: center; flex: none; letter-spacing: 0; }
-.brand .ax-logo-badge + span b { margin-left: -4px; }
+.brand .ax-logo-badge + span { margin-left: -5px; }   /* 배지 바로 옆에 "-V2G"가 붙어 보이게(로고-V2G) */
+.brand .ax-logo-badge + span b { letter-spacing: 0; }
+:root[data-theme="dark"] body.fo .brand .ax-logo-badge { background: var(--accent); color: #0b1220; }   /* 다크 배경에서 배지가 묻히지 않게 */
 .tools { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .seg button { min-height: 28px; min-width: 32px; padding: 0 6px; border: 0; background: transparent; cursor: pointer; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
@@ -1252,7 +1180,6 @@ label.check input { width: 22px; height: 22px; flex: none; }
   function kstString(ms) {   // 브라우저 시간대와 무관하게 한국시간 문자열(서버는 한국시간 기준으로 읽는다)
     return new Date(ms).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace(' ', 'T');
   }
-  function won(n) { return t('won_fmt', { n: Number(n).toLocaleString(t('locale')) }); }
   // 시간 구간 라벨은 서버 한글 문구 대신 시작·끝 시각으로 만들어 두 언어에서 같게 보이게 한다
   function rangeLabel(p) {
     var f = function (iso) { return new Date(iso).toLocaleString(t('locale'), { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }); };
