@@ -529,7 +529,7 @@
         if (r.status === 'draft') {
           var ok = el('button', { type: 'button', class: 'ok', text: '확정' });
           ok.addEventListener('click', function () { act(ok, function () { return send('POST', '/vpp/settlement/runs/' + r.run_id + '/confirm', { note: '' }); }, '확정했습니다. 참여자 잔액에 반영됐습니다.'); });
-          var reason = el('input', { type: 'text', maxlength: '200', placeholder: '취소 사유', 'aria-label': '취소 사유' });
+          var reason = el('input', { type: 'text', maxlength: '200', placeholder: '취소 사유', 'aria-label': '취소 사유', style: 'width:200px; flex:none' });
           var no = el('button', { type: 'button', class: 'no', text: '취소' });
           no.addEventListener('click', function () { act(no, function () { return send('POST', '/vpp/settlement/runs/' + r.run_id + '/cancel', { note: reason.value }); }, '산정을 취소했습니다.'); });
           line.appendChild(ok); line.appendChild(reason); line.appendChild(no);

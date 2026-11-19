@@ -1173,7 +1173,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     var mc = el('div', { class: 'card', style: 'padding:14px;' }, [el('h2', { text: '🎯 미션' }),
       el('p', { class: 'muted', style: 'font-size:12px; margin:0 0 8px;', text: '실증에 도움이 되는 참여를 하면 포인트를 받아요. 완료하면 [받기]를 눌러 주세요.' })]);
     m.missions.forEach(function (x) {
-      var btn = el('button', { type: 'button', class: x.completed && !x.claimed ? 'primary' : '', style: 'padding:6px 12px; font-size:12.5px; white-space:nowrap;',
+      var btn = el('button', { type: 'button', class: x.completed && !x.claimed ? 'primary' : '', style: 'padding:6px 12px; font-size:12.5px; white-space:nowrap; width:auto; flex:none; min-width:64px;',
         text: x.claimed ? '받음' : (x.completed ? '받기 +' + x.points : x.points + 'P') });
       btn.disabled = x.claimed || !x.completed;
       btn.addEventListener('click', async function () {
