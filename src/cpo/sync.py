@@ -23,10 +23,13 @@ def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> i
     out["session_id"] = adapter.operator_id + ":" + out["session_id"].astype(str)
     out["operator_id"] = adapter.operator_id
     out["source"] = adapter.source_kind
+    out["data_source"] = "cpo"            # 행 단위 출처·생성방식(요구사항 A15) — 충전사업자 실측
+    out["generation"] = "measured"
     out["start_ts"] = out["start_ts"].astype(str)
     if "end_ts" in out.columns:
         out["end_ts"] = out["end_ts"].astype(str)
-    cols = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id", "operator_id", "source"]
+    cols = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id", "operator_id", "source",
+            "data_source", "generation"]
     cols += [c for c in OPTIONAL_COLUMNS if c in out.columns]
     exists = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='charger_sessions'").fetchone()
     if not exists:

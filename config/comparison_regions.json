@@ -1,0 +1,10 @@
+{
+  "_comment": "타 지역 비교(대조군) 설정 — 요구사항 Y2E01(계획서 p.33). 실증 지역(pilot)과 대조 지역(controls)의 기상청 ASOS 관측소 번호. 관측소 번호는 기상청 지점 목록 기준이며, 대조 지역 선정은 관리기관 협의 전 예시(verified=false)다. 지역을 추가하려면 controls에 항목만 넣는다.",
+  "verified": false,
+  "pilot": {"id": "gwangju", "label": "광주·나주(실증)", "asos_station": "156"},
+  "controls": [
+    {"id": "daejeon", "label": "대전(내륙 대조군)", "asos_station": "133"},
+    {"id": "daegu", "label": "대구(하계 고온 대조군)", "asos_station": "143"},
+    {"id": "jeju", "label": "제주(V2G 시범지역)", "asos_station": "184"}
+  ]
+}

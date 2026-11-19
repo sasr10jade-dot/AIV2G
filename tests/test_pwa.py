@@ -116,14 +116,14 @@ def test_approvals_page_served_and_linked_from_dashboard():
 
 
 def test_app_page_has_plan_scope_tabs_only():
-    """계획서 범위: 홈(공지·참여 현황)·충전 시간·예측 탭만 있고, 미션·쿠폰은 없다.
-    모의 포인트는 신구대조표 2번 보완(가상 전력 거래·모의 정산 PoC)으로 홈 카드에만 보인다(별도 탭 아님)."""
+    """홈·충전 시간·예측·리포트·리워드 탭. 리워드(모의 포인트·미션·정산 내역)는 신구대조표 2번 보완(가상 전력 거래·모의 정산 PoC)이다.
+    쿠폰·실제 금전 보상 기능은 없다(계획서 p.48 — 제도 마련 전 실제 금전 보상 불가)."""
     html = client.get("/app").text
-    for tab in ("inbox", "price", "forecast"):
+    for tab in ("inbox", "price", "forecast", "report", "reward"):
         assert f'data-tab="{tab}"' in html
-    for gone in ('data-tab="missions"', 'data-tab="points"', "/owner/missions", "/owner/coupons", "/owner/consent/notify"):
+    for gone in ("/owner/coupons", "/owner/consent/notify"):
         assert gone not in html
-    assert "/owner/points" in html and "모의 포인트" in html
+    assert "/owner/points" in html and "/owner/missions" in html and "모의 포인트" in html and "/owner/points/inquiries" in html
 
 
 def test_signup_and_home_show_supporter_operating_inputs_in_both_languages():
@@ -198,7 +198,7 @@ def test_supporter_app_has_aiv2gapp_service_parts():
     html = client.get("/app").text
     for key in ("hm_rec:", "ms_sug:", "r3_title:", "vg_title:", "ba_title:", "hs_title:", "function markKind"):
         assert key in html, key
-    assert "미션" not in html                     # 미션 리워드는 옮기지 않았다(모의 포인트는 신구대조표 2번 보완으로 추가)
+    assert "미션" in html and "실제 금전 지급 아님" in html          # 미션·리워드는 모의 포인트로만(계획서 p.48)
 
 
 

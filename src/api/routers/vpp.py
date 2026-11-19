@@ -96,31 +96,104 @@ def get_revenue_sources() -> dict:
     return b["revenue_sources"]
 
 
-# ------------------------------------------------------------------ E03 가상 전력 거래·모의 정산
+# ------------------------------------------------------------------ E03 가상 전력 거래·모의 정산(리워드)
+def _consent_of(ev_id: str):
+    """등록 차량이면 방전(V2G) 참여 동의 여부, 등록부에 없는 데모 차량이면 None."""
+    from src.privacy import consent
+    from src.registry import service as registry
+    if registry.profile_for_ev(ev_id) is None:
+        return None
+    return consent.has_consent(ev_id, "v2g_discharge")
+
+
 def _trades(b: dict):
     from src.settlement import ledger
-    return ledger.compute_trades(b["run"], b["ev_df"], b["curtailment"], b["params"], _affiliation_of(b["ev_df"]))
+    return ledger.compute_trades(b["run"], b["ev_df"], b["curtailment"], b["revenue_sources"], b["params"],
+                                 _affiliation_of(b["ev_df"]), _consent_of)
 
 
-@router.post("/vpp/settlement/run", summary="가상 전력 거래 정산 실행 — 차량·일별 피크 방전·흡수 실적을 포인트로 적립(중복 정산 없음)")
+def _data_source(b: dict) -> str:
+    return "measured_telemetry" if b["provenance"].get("ev_telemetry") == "measured" else "synthetic"
+
+
+def _settle_err(fn, *args):
+    from src.settlement import ledger
+    try:
+        return fn(*args)
+    except ledger.SettlementError as exc:
+        raise HTTPException(status_code=404 if "찾을 수 없" in str(exc) else 409, detail=str(exc)) from exc
+
+
+class RunIn(BaseModel):
+    period_from: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="정산 기간 시작(YYYY-MM-DD). 비우면 실적 첫날")
+    period_to: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="정산 기간 끝. 비우면 실적 마지막 날")
+
+
+@router.post("/vpp/settlement/runs", summary="정산 회차 산정 — 기간 실적을 재원별로 배분해 포인트 계산(확정 전, 원장 미적립)")
+def create_settlement_run(body: RunIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    from src.settlement import ledger
+    b = bundle()
+    trades = _trades(b)
+    if trades.empty:
+        raise HTTPException(status_code=409, detail="정산할 실적이 없습니다")
+    pf = body.period_from or trades["trade_date"].min()
+    pt = body.period_to or trades["trade_date"].max()
+    run = _settle_err(ledger.create_run, trades, pf, pt, b["params"], user["username"], "inferred", _data_source(b))
+    audit.log(user["username"], "settlement_run_create", target=str(run["run_id"]), detail={"from": pf, "to": pt, "ip": client_ip(request)})
+    return run
+
+
+@router.get("/vpp/settlement/runs", summary="정산 회차 목록(산정·확정·취소)", dependencies=[Depends(require_admin)])
+def list_settlement_runs() -> dict:
+    from src.settlement import ledger
+    return {"runs": ledger.list_runs()}
+
+
+@router.get("/vpp/settlement/runs/{run_id}", summary="정산 회차 상세 — 차량·일별 재원 배분·포인트", dependencies=[Depends(require_admin)])
+def get_settlement_run(run_id: int) -> dict:
+    from src.settlement import ledger
+    return {**_settle_err(ledger.get_run, run_id), "trades": ledger.run_trades(run_id)}
+
+
+class DecideIn(BaseModel):
+    note: str = Field("", max_length=200)
+
+
+@router.post("/vpp/settlement/runs/{run_id}/confirm", summary="정산 회차 확정 — 포인트를 원장에 적립(참여자 잔액 반영)")
+def confirm_settlement_run(run_id: int, body: DecideIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    from src.settlement import ledger
+    run = _settle_err(ledger.confirm_run, run_id, user["username"], body.note)
+    audit.log(user["username"], "settlement_run_confirm", target=str(run_id), detail={"ip": client_ip(request)})
+    return run
+
+
+@router.post("/vpp/settlement/runs/{run_id}/cancel", summary="정산 회차 취소(산정 상태만) — 사유 필수, 같은 기간을 다시 산정할 수 있다")
+def cancel_settlement_run(run_id: int, body: DecideIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    from src.settlement import ledger
+    run = _settle_err(ledger.cancel_run, run_id, user["username"], body.note)
+    audit.log(user["username"], "settlement_run_cancel", target=str(run_id), detail={"note": body.note, "ip": client_ip(request)})
+    return run
+
+
+@router.post("/vpp/settlement/run", summary="정산 한 번에 실행(전체 기간 산정 + 즉시 확정) — 간편 실행용, 중복 정산 없음")
 def run_settlement(request: Request, user: dict = Depends(require_admin)) -> dict:
     from src.settlement import ledger
     b = bundle()
     trades = _trades(b)
-    measured = b["provenance"].get("ev_telemetry") == "measured"
-    # 1차년도는 물리 방전이 없어 방전량은 최적 스케줄 기반 추론값이다
-    result = ledger.settle(trades, generation="inferred", data_source="measured_telemetry" if measured else "synthetic")
+    result = ledger.settle(trades, "inferred", _data_source(b), b["params"], user["username"])
     audit.log(user["username"], "vpp_settlement_run", detail={**result, "ip": client_ip(request)})
-    return {**result, "trades_computed": len(trades), "summary": ledger.summary()}
+    return {**result, "trades_computed": len(trades), "summary": ledger.summary(b["params"])}
 
 
-@router.get("/vpp/settlement/summary", summary="모의 정산 집계 — 관용/민간별 참여·kWh·포인트, 정산 가능범위", dependencies=[Depends(require_admin)])
+@router.get("/vpp/settlement/summary", summary="모의 정산 집계 — 관용/민간별 참여·포인트(확정 기준), 정산 가능범위, 경제성 검증",
+            dependencies=[Depends(require_admin)])
 def settlement_summary() -> dict:
+    from src.optimizer.curtailment import load_params
     from src.settlement import ledger
-    return ledger.summary()
+    return ledger.summary(load_params())
 
 
-@router.get("/vpp/settlement/preview", summary="정산 미리보기(원장에 쓰지 않음) + 인센티브 유형별(포인트·충전요금 할인·수익배분) 비교",
+@router.get("/vpp/settlement/preview", summary="정산 미리보기(원장에 쓰지 않음) — 재원 배분·경제성 검증·인센티브 유형 비교(포인트·할인·수익배분·마일리지)",
             dependencies=[Depends(require_admin)])
 def settlement_preview(discount_rate_pct: float = Query(10.0, ge=0, le=100),
                        revenue_share_pct: float | None = Query(None, ge=0, le=100)) -> dict:
@@ -130,17 +203,68 @@ def settlement_preview(discount_rate_pct: float = Query(10.0, ge=0, le=100),
     return {
         "rules": b["params"]["points"],
         "peak_hours": b["params"]["curtailment"]["peak_hours"],
+        "revenue_sources": b["revenue_sources"],
         "trades": trades.head(200).to_dict("records"),
         "n_trades": len(trades),
+        "economics": ledger.economics_check(trades, b["params"]),
         "incentives": ledger.simulate_incentives(trades, b["params"], discount_rate_pct, revenue_share_pct),
         "label": "모의(추론 방전량·가정 단가)",
     }
 
 
-@router.get("/owner/points", summary="내 모의 포인트 — 잔액·거래 내역(가상 전력 거래 정산)")
-def owner_points(user: dict = Depends(require_owner)) -> dict:
+class AdjustIn(BaseModel):
+    ev_id: str = Field(..., min_length=3, max_length=40)
+    points: int = Field(..., ge=-1_000_000, le=1_000_000)
+    reason: str = Field(..., min_length=2, max_length=200)
+
+
+@router.post("/vpp/settlement/adjust", summary="포인트 조정(가산·차감) — 사유 필수, 원장에 남는다")
+def adjust_points(body: AdjustIn, request: Request, user: dict = Depends(require_admin)) -> dict:
     from src.settlement import ledger
-    return ledger.owner_statement(user["owned_ev_id"])
+    out = _settle_err(ledger.adjust, body.ev_id, body.points, body.reason, user["username"])
+    audit.log(user["username"], "points_adjust", target=body.ev_id, detail={"points": body.points, "reason": body.reason, "ip": client_ip(request)})
+    return out
+
+
+@router.get("/vpp/settlement/inquiries", summary="참여자 정산 문의 목록", dependencies=[Depends(require_admin)])
+def list_settlement_inquiries(status: str | None = Query(None, pattern="^(open|resolved)$")) -> dict:
+    from src.settlement import ledger
+    return {"inquiries": ledger.list_inquiries(status)}
+
+
+class ResolveIn(BaseModel):
+    answer: str = Field(..., min_length=2, max_length=500)
+    adjust_points: int = Field(0, ge=-1_000_000, le=1_000_000, description="답변과 함께 조정할 포인트(0이면 조정 없음)")
+
+
+@router.post("/vpp/settlement/inquiries/{inquiry_id}/resolve", summary="정산 문의 답변(필요 시 포인트 조정)")
+def resolve_settlement_inquiry(inquiry_id: int, body: ResolveIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    from src.settlement import ledger
+    out = _settle_err(ledger.resolve_inquiry, inquiry_id, body.answer, user["username"], body.adjust_points)
+    audit.log(user["username"], "settlement_inquiry_resolve", target=str(inquiry_id), detail={"adjust": body.adjust_points, "ip": client_ip(request)})
+    return out
+
+
+@router.get("/owner/points", summary="내 모의 포인트 — 확정 잔액·확정 대기·재원별 내역·조정·문의·등급")
+def owner_points(user: dict = Depends(require_owner)) -> dict:
+    from src.settlement import ledger, missions
+    out = ledger.owner_statement(user["owned_ev_id"])
+    out["level"] = missions.level_of(out["balance_points"])
+    return out
+
+
+class InquiryIn(BaseModel):
+    message: str = Field(..., min_length=2, max_length=500)
+    trade_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
+@router.post("/owner/points/inquiries", summary="정산 문의 남기기(본인 차량) — 관리자가 답변·조정")
+def owner_points_inquiry(body: InquiryIn, user: dict = Depends(require_owner)) -> dict:
+    from src.settlement import ledger
+    try:
+        return ledger.create_inquiry(user["owned_ev_id"], body.message, body.trade_date)
+    except ledger.SettlementError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 # ------------------------------------------------------------------ D03 이동형 ESS 집중 실증 그룹
@@ -218,3 +342,47 @@ def ess_dataset() -> StreamingResponse:
     df.to_csv(buf, index=False)
     return StreamingResponse(iter(["﻿" + buf.getvalue()]), media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": "attachment; filename=ess_group_dataset.csv"})
+
+
+# ------------------------------------------------------------------ 서포터즈 미션(가상 리워드)
+def _mission_err(fn, *args):
+    from src.settlement import missions
+    try:
+        return fn(*args)
+    except missions.MissionError as exc:
+        raise HTTPException(status_code=409 if "이미" in str(exc) or "아직" in str(exc) else 422, detail=str(exc)) from exc
+
+
+@router.get("/owner/missions", summary="내 미션 — 진행도·완료·보상 수령 여부, 등급")
+def owner_missions(user: dict = Depends(require_owner)) -> dict:
+    from src.settlement import ledger, missions
+    bal = ledger.balance(user["owned_ev_id"])
+    return {"missions": missions.status_for(user["owned_ev_id"], user["username"]), "level": missions.level_of(bal),
+            "note": "미션 보상은 모의 포인트입니다(실제 금전 지급 아님)."}
+
+
+@router.post("/owner/missions/{mission_id}/claim", summary="완료한 미션 보상 받기 — 기간당 1회, 포인트 원장 적립")
+def owner_mission_claim(mission_id: str, user: dict = Depends(require_owner)) -> dict:
+    from src.settlement import missions
+    out = _mission_err(missions.claim, user["owned_ev_id"], mission_id, user["username"])
+    audit.log(user["username"], "mission_claim", target=mission_id, detail={"points": out["points"], "period": out["period_key"]})
+    return out
+
+
+@router.get("/vpp/missions", summary="미션 관리 — 미션별 설정·완료(보상) 현황, 등급 기준", dependencies=[Depends(require_admin)])
+def admin_missions() -> dict:
+    from src.settlement import missions
+    return missions.admin_overview()
+
+
+class MissionSettingIn(BaseModel):
+    enabled: bool = True
+    points: int = Field(..., ge=0, le=100_000)
+
+
+@router.put("/vpp/missions/{mission_id}", summary="미션 설정 변경 — 사용 여부·보상 포인트")
+def admin_update_mission(mission_id: str, body: MissionSettingIn, request: Request, user: dict = Depends(require_admin)) -> dict:
+    from src.settlement import missions
+    out = _mission_err(missions.update_setting, mission_id, body.enabled, body.points, user["username"])
+    audit.log(user["username"], "mission_update", target=mission_id, detail={"enabled": body.enabled, "points": body.points, "ip": client_ip(request)})
+    return out

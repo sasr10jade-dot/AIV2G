@@ -275,6 +275,35 @@ def sync_weather_holiday(start: str, end: str, station: str = weather_holiday.DE
     return {"status": "ok", "station": station, "fetched_hours": len(temp), **stats, "note": note}
 
 
+@router.get("/regions/compare", summary="타 지역 비교(대조군) — 실증 지역과 대조 지역의 기상 조건(기온·영하·고온 시간 비율)")
+def region_compare() -> dict:
+    """config/comparison_regions.json의 대조 지역별로 수집해 둔 기온과 실증 지역 grid_signal 기온을 비교한다(요구사항 Y2E01)."""
+    from src.pipeline import region_compare as rc
+    _ev, _ch, grid_df, _real = source.load_scenario(SimConfig())
+    pilot_src = "기상청 ASOS(실측 반영)" if source.provenance().get("grid_signal") == "public" else "합성(모의)"
+    return rc.compare(grid_df, pilot_src)
+
+
+@router.post("/regions/{region_id}/sync-temperature", summary="대조 지역 기온 수집(기상청 ASOS) — 최대 92일")
+def region_sync_temperature(region_id: str, start: str, end: str) -> dict:
+    from src.pipeline import region_compare as rc
+    try:
+        d0, d1 = pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="start·end는 YYYY-MM-DD 형식이어야 합니다") from exc
+    if d1 < d0 or (d1 - d0).days > 91:
+        raise HTTPException(status_code=422, detail="기간은 시작일 이후 최대 92일까지입니다")
+    try:
+        return rc.sync_region_temperature(region_id, d0, d1)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"설정에 없는 지역입니다: {region_id}") from exc
+    except ApiNotConfigured as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (ApiResponseError, OSError) as exc:
+        issues.record("public_data", f"대조 지역 기온 호출 실패: {type(exc).__name__}", detail={"region": region_id, "error": str(exc)[:200]})
+        raise HTTPException(status_code=502, detail=f"공개 데이터 호출 실패: {exc}") from exc
+
+
 @router.post("/public-csv/{kind}", summary="공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable)")
 async def upload_public_csv(kind: str, file: UploadFile = File(..., description="공공데이터포털에서 받은 시간별 CSV(가로형 1~24시 또는 세로형)"),
                             region: str | None = Form(None, description="세로형에 지역 열이 있으면 거를 지역(예: 전남)")) -> dict:

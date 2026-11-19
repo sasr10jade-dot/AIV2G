@@ -140,3 +140,92 @@ def test_effect_conditions_have_vehicle_type_axis_and_coverage(small_cfg):
     from src.reporting import limitation_rows
     rows = limitation_rows({"kpi": {"data_provenance": {"ev_telemetry": "synthetic"}}, "effect_verification": e})
     assert rows and all(len(r) == 4 for r in rows) and rows[0][2] == "한계"
+
+
+# ------------------------------------------------------------------ A15
+def test_rows_carry_source_and_generation():
+    from src.pipeline.source import annotate_rows
+    ev = pd.DataFrame({"ev_id": ["A", "B"]})
+    real = annotate_rows(ev, "ev_telemetry", {"ev_telemetry": "measured"})
+    assert set(real["data_source"]) == {"obd"} and set(real["generation"]) == {"measured"}
+    demo = annotate_rows(ev, "ev_telemetry", {"ev_telemetry": "synthetic"})
+    assert set(demo["data_source"]) == {"synthetic"} and set(demo["generation"]) == {"synthetic"}
+    ch = pd.DataFrame({"session_id": ["s1", "s2"], "source": ["rest", "synthetic"]})
+    mixed = annotate_rows(ch, "charger_sessions", {"charger_sessions": "measured"})
+    assert list(mixed["data_source"]) == ["cpo", "synthetic"]                 # 부분 실증 보완분은 행 단위로 합성 표시
+    kept = annotate_rows(mixed.assign(generation=["inferred", "synthetic"]), "charger_sessions", {"charger_sessions": "measured"})
+    assert list(kept["generation"]) == ["inferred", "synthetic"]               # 이미 있는 값은 덮어쓰지 않는다
+
+
+# ------------------------------------------------------------------ Y2E05 VoC 설문
+def test_survey_create_respond_once_and_aggregate():
+    _admin()
+    body = {"title": "1차 만족도", "questions": [
+        {"type": "scale", "text": "만족하시나요?"},
+        {"type": "choice", "text": "도움 된 기능", "options": ["추천", "리포트"]},
+        {"type": "text", "text": "개선점"}]}
+    assert client.post("/admin/surveys", json={"title": "x", "questions": [{"type": "choice", "text": "a", "options": ["only"]}]}).status_code == 422
+    sid = client.post("/admin/surveys", json=body).json()["id"]
+    client.post("/auth/logout")
+    auth_store.create_user("owner-voc", "owner-pass-1", "owner", owned_ev_id="EV-VOC-1")
+    assert client.post("/auth/login", json={"username": "owner-voc", "password": "owner-pass-1"}).status_code == 200
+    mine = client.get("/owner/surveys").json()["surveys"]
+    assert mine[0]["id"] == sid and mine[0]["answered"] is False
+    assert client.post(f"/owner/surveys/{sid}/responses", json={"answers": {"q1": 9, "q2": "추천"}}).status_code == 422
+    assert client.post(f"/owner/surveys/{sid}/responses", json={"answers": {"q1": 4, "q2": "추천", "q3": "좋아요"}}).status_code == 200
+    assert client.post(f"/owner/surveys/{sid}/responses", json={"answers": {"q1": 5, "q2": "리포트"}}).status_code == 409
+    assert client.get("/owner/surveys").json()["surveys"][0]["answered"] is True
+    client.post("/auth/logout")
+    _admin_login = client.post("/auth/login", json={"username": "admin-gap", "password": "admin-pass-1"})
+    assert _admin_login.status_code == 200
+    res = client.get(f"/admin/surveys/{sid}/results").json()
+    q1, q2, q3 = res["questions"]
+    assert res["responses"] == 1 and q1["average"] == 4.0 and q2["counts"] == {"추천": 1, "리포트": 0} and q3["texts"] == ["좋아요"]
+    csv = client.get(f"/admin/surveys/{sid}/results.csv").text
+    assert "EV-VOC-1" not in csv and "좋아요" in csv                         # 차량 ID 없이 내보낸다
+    assert client.post(f"/admin/surveys/{sid}/close").json()["status"] == "closed"
+
+
+# ------------------------------------------------------------------ 공용 로딩 표시
+def test_every_screen_loads_shared_loading_overlay():
+    js = client.get("/loading.js")
+    assert js.status_code == 200 and "javascript" in js.headers["content-type"] and "axQuiet" in js.text
+    for path in ("/dashboard", "/admin", "/approvals", "/dev", "/app", "/login"):
+        assert '<script src="/loading.js"></script>' in client.get(path).text, path
+    assert "axLoading.quiet(loadDashboard)" in client.get("/dashboard").text      # 자동 새로고침은 화면을 가리지 않는다
+
+
+# ------------------------------------------------------------------ Y2B02 운영 데이터 재학습 사이클
+def test_retrain_cycle_on_current_data_bootstraps_then_checks_drift(tmp_path, medium_cfg):
+    import numpy as np
+    from src.automation.model_registry import ModelRegistry
+    from src.automation.scheduler import run_cycle_on_data
+    from src.datagen.ev import generate_ev_telemetry
+    from src.datagen.grid import generate_grid_signal
+    from src.pipeline.store import build_city_hourly
+    rng = np.random.default_rng(3)
+    city = build_city_hourly(generate_ev_telemetry(medium_cfg, rng), generate_grid_signal(medium_cfg, rng), medium_cfg)
+    reg = ModelRegistry("ev_charging_demand_kw", base_dir=tmp_path)
+    first = run_cycle_on_data(reg, city, "ev_charging_demand_kw", "synthetic")
+    assert first["action"] == "BOOTSTRAPPED" and reg.active_version() == 1
+    second = run_cycle_on_data(reg, city, "ev_charging_demand_kw", "synthetic")
+    assert second["action"] in ("NO_RETRAIN", "PROMOTED", "REJECTED_KEEP_ACTIVE") and "drift_pct" in second
+    assert reg.load()[2]["data_source"] == "synthetic"
+
+
+# ------------------------------------------------------------------ Y2E01 타 지역 비교
+def test_region_compare_marks_uncollected_and_compares_collected(tmp_path, monkeypatch):
+    from src.pipeline import region_compare as rc
+    monkeypatch.setattr(rc, "REGION_DIR", tmp_path / "regions")
+    ts = pd.date_range("2026-12-01", periods=48, freq="h")
+    grid = pd.DataFrame({"timestamp": ts, "temperature_c": [5.0] * 48})
+    out = rc.compare(grid, "합성(모의)")
+    assert out["regions"][0]["role"] == "실증" and out["regions"][0]["mean_c"] == 5.0
+    assert all(r["status"] == "수집 전" for r in out["regions"][1:])            # 값을 지어내지 않는다
+    fake = lambda start, end, station: pd.DataFrame({"timestamp": ts, "temperature_c": [-2.0] * 24 + [1.0] * 24})
+    res = rc.sync_region_temperature("daejeon", ts[0], ts[-1], fetch=fake)
+    assert res["station"] == "133" and res["stored_hours"] == 48
+    dj = next(r for r in rc.compare(grid, "합성(모의)")["regions"] if r["id"] == "daejeon")
+    assert dj["status"] == "수집됨" and dj["below_zero_pct"] == 50.0 and dj["mean_diff_c"] == round(-0.5 - 5.0, 1)
+    _admin()
+    assert client.post("/ingest/regions/nowhere/sync-temperature?start=2026-12-01&end=2026-12-02").status_code == 404

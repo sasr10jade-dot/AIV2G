@@ -79,6 +79,7 @@
   }
 </style>
 <link rel="stylesheet" href="/theme.css" />
+<script src="/loading.js"></script>
 </head>
 <body class="ax-page">
 <div class="ax-layout">
@@ -125,7 +126,7 @@
     <div class="ax-main-body">
   <div class="ax-page-head">
       <h1>웹앱 관리</h1>
-      <div class="sub">서포터즈 모바일 앱의 공지사항·안내 문구, ㈜아크릴 예측모델 연계(학습 데이터 제공·예측 결과 수신), AI 운영 지표, 모델링 예외 기록을 관리합니다.</div>
+      <div class="sub">서포터즈 모바일 앱의 공지사항·안내 문구, ㈜아크릴 예측모델 연계(학습 데이터 제공·예측 결과 수신), AI 운영 지표, 모델링 예외 기록, 참여주체 VoC 설문, 서포터즈 리워드(가상 전력 거래 모의 정산·미션)를 관리합니다.</div>
   </div>
   <div class="tabs" role="group" aria-label="메뉴">
     <button type="button" data-tab="notices" aria-pressed="true">공지사항</button>
@@ -133,6 +134,8 @@
     <button type="button" data-tab="content" aria-pressed="false">앱 안내 문구</button>
     <button type="button" data-tab="kpi" aria-pressed="false">AI 운영 지표</button>
     <button type="button" data-tab="issues" aria-pressed="false">예외 기록</button>
+    <button type="button" data-tab="surveys" aria-pressed="false">VoC 설문</button>
+    <button type="button" data-tab="reward" aria-pressed="false">리워드·정산</button>
   </div>
   <div id="msg" class="msg" role="status"></div>
   <div id="panel"></div>
@@ -142,7 +145,8 @@
 <script>
 (function () {
   var panel = document.getElementById('panel'), msgEl = document.getElementById('msg');
-  var tab = 'notices', busy = false, editing = null;
+  var tab = ['notices', 'acryl', 'content', 'kpi', 'issues', 'surveys', 'reward'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'notices';
+  var busy = false, editing = null;
 
   async function api(path, opts) {
     var res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}));
@@ -171,42 +175,7 @@
       var r = await fn();
       if (!r.ok) { say(detail(r, '처리에 실패했습니다.'), true); return; }
       say(doneText, false);
-      await 
-// 사이드바 숨김/열기 토글 (디폴트 열림, localStorage 상태 보존)
-(function initSidebarToggle() {
-  const layout = document.querySelector('.ax-layout');
-  const hideBtn = document.getElementById('sidebar-hide-btn');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  if (!layout) return;
-
-  function updateToggleUI(collapsed) {
-    if (toggleBtn) {
-      const txt = toggleBtn.querySelector('.toggle-txt');
-      if (txt) txt.textContent = collapsed ? '메뉴 열기' : '메뉴';
-      toggleBtn.title = collapsed ? '좌측 메뉴 열기' : '좌측 메뉴 숨기기';
-    }
-  }
-
-  // 디폴트는 열림(false), localStorage에 'true'로 저장된 경우만 숨김 처리
-  const isCollapsed = localStorage.getItem('ai-v2g-sidebar-collapsed') === 'true';
-  if (isCollapsed) {
-    layout.classList.add('sidebar-collapsed');
-  }
-  updateToggleUI(isCollapsed);
-
-  function toggle() {
-    const collapsed = layout.classList.toggle('sidebar-collapsed');
-    try {
-      localStorage.setItem('ai-v2g-sidebar-collapsed', collapsed ? 'true' : 'false');
-    } catch (e) {}
-    updateToggleUI(collapsed);
-  }
-
-  if (hideBtn) hideBtn.addEventListener('click', toggle);
-  if (toggleBtn) toggleBtn.addEventListener('click', toggle);
-})();
-
-    render();
+      await render();
     } catch (e) { say('네트워크 오류입니다.', true); }
     finally { busy = false; btn.disabled = false; }
   }
@@ -414,12 +383,221 @@
     });
   }
 
+
+  // ---------------------------------------------------------------- 참여주체 VoC 설문(요구사항 Y2E05)
+  var surveyOpen = null;
+  var TYPE_LABEL = { scale: '5점 척도', choice: '객관식', text: '주관식' };
+  function questionRow(q) {
+    var type = el('select', { 'aria-label': '문항 유형' });
+    [['scale', '5점 척도'], ['choice', '객관식'], ['text', '주관식']].forEach(function (o) {
+      var op = el('option', { value: o[0], text: o[1] }); if (q && q.type === o[0]) op.selected = true; type.appendChild(op);
+    });
+    var text = el('input', { type: 'text', maxlength: '200', placeholder: '문항 내용', 'aria-label': '문항 내용' });
+    text.style.flex = '2';
+    var opts = el('input', { type: 'text', maxlength: '400', placeholder: '선택지(쉼표로 구분, 2~8개)', 'aria-label': '선택지' });
+    opts.style.flex = '2';
+    var del = el('button', { type: 'button', text: '삭제', class: 'no' });
+    var row = el('div', { class: 'row q-row', style: 'gap:6px; margin-bottom:6px; align-items:center' }, [type, text, opts, del]);
+    if (q) { text.value = q.text || ''; opts.value = (q.options || []).join(', '); }
+    function sync() { opts.style.display = type.value === 'choice' ? '' : 'none'; }
+    type.addEventListener('change', sync); sync();
+    del.addEventListener('click', function () { row.remove(); });
+    row._get = function () {
+      var o = { type: type.value, text: text.value.trim() };
+      if (type.value === 'choice') o.options = opts.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      return o;
+    };
+    return row;
+  }
+  async function renderSurveys() {
+    var r = await api('/admin/surveys');
+    if (!r.ok) { say(detail(r, '불러오지 못했습니다.'), true); return; }
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'muted',
+      text: '서포터즈에게 앱으로 설문을 보내 참여주체 의견(VoC)을 모읍니다(계획서 레퍼런스 3). 응답은 차량당 1회이며, 집계·CSV에는 차량 ID가 나오지 않습니다.' })]));
+    var title = el('input', { type: 'text', maxlength: '80', placeholder: '설문 제목(예: 1차 실증 참여 만족도)' });
+    var desc = el('textarea', { maxlength: '500', placeholder: '안내 문구(선택)' });
+    var qbox = el('div', {});
+    [{ type: 'scale', text: '서비스에 전반적으로 만족하시나요?' }, { type: 'choice', text: '가장 도움이 된 기능은 무엇인가요?', options: ['충전 시간 추천', '충전 리포트', '모의 포인트'] },
+     { type: 'text', text: '개선이 필요한 점을 자유롭게 적어 주세요.' }].forEach(function (q) { qbox.appendChild(questionRow(q)); });
+    var addQ = el('button', { type: 'button', text: '+ 문항 추가' });
+    addQ.addEventListener('click', function () { qbox.appendChild(questionRow({ type: 'scale' })); });
+    var save = el('button', { type: 'button', class: 'ok', text: '설문 공개' });
+    save.addEventListener('click', function () {
+      var qs = Array.prototype.map.call(qbox.querySelectorAll('.q-row'), function (row) { return row._get(); });
+      act(save, function () { return send('POST', '/admin/surveys', { title: title.value, description: desc.value, questions: qs }); },
+        '설문을 공개했습니다. 서포터즈 앱 홈에 표시됩니다.');
+    });
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'name', text: '새 설문' }), title, desc,
+      el('div', { class: 'muted', style: 'margin:6px 0', text: '문항(최대 15개)' }), qbox, el('div', { class: 'row', style: 'gap:8px' }, [addQ, save])]));
+
+    if (!r.body.surveys.length) { panel.appendChild(el('div', { class: 'card muted', text: '아직 만든 설문이 없습니다.' })); return; }
+    for (var i = 0; i < r.body.surveys.length; i++) {
+      var s = r.body.surveys[i];
+      var head = el('div', { class: 'row', style: 'gap:8px; align-items:center' }, [
+        el('span', { class: s.status === 'open' ? 'tag on' : 'tag off', text: s.status === 'open' ? '진행 중' : '마감' }),
+        el('span', { class: 'name', text: s.title }),
+        el('span', { class: 'muted', text: '응답 ' + s.responses + '건 · 문항 ' + s.questions.length + '개 · ' + fmt(s.created_at) })]);
+      var btns = el('div', { class: 'row', style: 'gap:6px; margin-top:8px' });
+      (function (s) {
+        var view = el('button', { type: 'button', text: surveyOpen === s.id ? '결과 닫기' : '결과 보기' });
+        view.addEventListener('click', function () { surveyOpen = surveyOpen === s.id ? null : s.id; render(); });
+        btns.appendChild(view);
+        btns.appendChild(el('a', { class: 'btn', href: '/admin/surveys/' + s.id + '/results.csv', text: 'CSV 내려받기' }));
+        if (s.status === 'open') {
+          var closeBtn = el('button', { type: 'button', class: 'no', text: '마감' });
+          closeBtn.addEventListener('click', function () { act(closeBtn, function () { return send('POST', '/admin/surveys/' + s.id + '/close'); }, '설문을 마감했습니다.'); });
+          btns.appendChild(closeBtn);
+        }
+      })(s);
+      var card = el('div', { class: 'card' }, [head, btns]);
+      if (surveyOpen === s.id) {
+        var rr = await api('/admin/surveys/' + s.id + '/results');
+        if (rr.ok) rr.body.questions.forEach(function (q) {
+          var line;
+          if (q.type === 'scale') {
+            line = '평균 ' + (q.average == null ? '-' : q.average) + '점 · ' + Object.keys(q.distribution).map(function (k) { return k + '점 ' + q.distribution[k]; }).join(' / ');
+          } else if (q.type === 'choice') {
+            line = Object.keys(q.counts).map(function (k) { return k + ' ' + q.counts[k] + '건'; }).join(' / ');
+          } else {
+            line = q.texts.length ? q.texts.slice(-10).map(function (t) { return '· ' + t; }).join('\n') : '응답 없음';
+          }
+          card.appendChild(el('div', { style: 'margin-top:10px' }, [
+            el('div', { class: 'name', text: q.text + ' (' + TYPE_LABEL[q.type] + ', ' + q.answered + '명)' }),
+            el('div', { class: 'muted', style: 'white-space:pre-wrap', text: line })]));
+        });
+      }
+      panel.appendChild(card);
+    }
+  }
+
+
+  // ---------------------------------------------------------------- 리워드·정산(가상 전력 거래 모의 정산·미션) — 계획서 p.30~31, p.48
+  var runOpen = null;
+  function won(n) { return n == null ? '-' : Math.round(n).toLocaleString('ko-KR') + '원'; }
+  function pts(n) { return Math.round(n || 0).toLocaleString('ko-KR') + 'P'; }
+  function table(head, rows) {
+    var tb = el('tbody', {}, rows.map(function (r) { return el('tr', {}, r.map(function (c) { return el('td', { text: c == null ? '-' : String(c) }); })); }));
+    return el('div', { style: 'overflow-x:auto' }, [el('table', { style: 'width:100%; border-collapse:collapse; font-size:12.5px' }, [
+      el('thead', {}, [el('tr', {}, head.map(function (h) { return el('th', { style: 'text-align:left; border-bottom:1px solid var(--border); padding:4px 6px', text: h }); }))]), tb])]);
+  }
+  async function renderReward() {
+    var rs = await Promise.all([api('/vpp/settlement/runs'), api('/vpp/settlement/summary'), api('/vpp/settlement/preview'),
+                                api('/vpp/settlement/inquiries?status=open'), api('/vpp/missions')]);
+    if (!rs.every(function (r) { return r.ok; })) { say(detail(rs.find(function (r) { return !r.ok; }), '불러오지 못했습니다.'), true); return; }
+    var runs = rs[0].body.runs, sm = rs[1].body, pv = rs[2].body, inq = rs[3].body.inquiries, ms = rs[4].body;
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'muted',
+      text: '정산 프로세스: ① 실적 계측(추론) → ② 재원별(요금 차익·피크 저감·출력제어 완화) 배분 → ③ 포인트 산출(참여자 배분율) → ④ 회차 산정·검토·확정 → ⑤ 참여자 조회·문의·조정 → ⑥ 경제성 검증. ' +
+            '등록 차량은 방전 참여 동의가 있을 때만 방전 실적을 인정합니다. 모든 포인트는 모의이며 실제 금전 지급은 없습니다(계획서 p.48).' })]));
+
+    // 요약
+    var e = sm.economics || pv.economics || {};
+    panel.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' }, [
+      stat('확정 포인트', pts(sm.total_points), '확정 대기 ' + pts(sm.pending_points)),
+      stat('관용 / 민간', pts(sm.groups[0].points) + ' / ' + pts(sm.groups[1].points), '차량 ' + sm.groups[0].vehicles + ' / ' + sm.groups[1].vehicles + '대'),
+      stat('참여자 지급률', e.payout_ratio_pct == null ? '-' : e.payout_ratio_pct + '%', '재원 ' + won(e.benefit_krw) + ' 중 ' + won(e.participant_krw)),
+      stat('차량당 월 포인트', pts(e.per_vehicle_month_krw), (e.judgement || '') + ' (기준 ' + pts(e.min_expected_reward_krw_per_month) + ')'),
+      stat('처리 대기 문의', sm.open_inquiries + '건', '참여자 정산 문의')]));
+
+    // ④ 정산 회차
+    var pf = el('input', { type: 'date', 'aria-label': '정산 시작일' }), pt = el('input', { type: 'date', 'aria-label': '정산 종료일' });
+    var mk = el('button', { type: 'button', class: 'ok', text: '정산 산정' });
+    mk.addEventListener('click', function () {
+      act(mk, function () { return send('POST', '/vpp/settlement/runs', { period_from: pf.value || null, period_to: pt.value || null }); },
+        '정산을 산정했습니다. 내용을 검토한 뒤 확정하세요.');
+    });
+    var rc = el('div', { class: 'card' }, [el('div', { class: 'name', text: '정산 회차' }),
+      el('div', { class: 'muted', text: '기간을 비우면 실적 전체 기간을 산정합니다. 이미 다른 회차에 들어간 차량·일은 건너뜁니다. 산정 상태에서는 잔액에 반영되지 않습니다.' }),
+      el('div', { class: 'row', style: 'gap:8px; margin:8px 0' }, [pf, el('span', { text: '~' }), pt, mk])]);
+    if (!runs.length) rc.appendChild(el('div', { class: 'muted', text: '아직 정산 회차가 없습니다.' }));
+    for (var i = 0; i < runs.length; i++) {
+      (function (r) {
+        var tt = r.totals || {}, ec = tt.economics || {};
+        var line = el('div', { class: 'row', style: 'gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--border)' }, [
+          el('span', { class: r.status === 'confirmed' ? 'tag on' : 'tag', text: r.status_label }),
+          el('span', { class: 'name', text: '회차 ' + r.run_id + ' · ' + r.period_from + ' ~ ' + r.period_to }),
+          el('span', { class: 'muted', text: (tt.trades || 0) + '건 · ' + pts(tt.points) + ' · 지급률 ' + (ec.payout_ratio_pct == null ? '-' : ec.payout_ratio_pct + '%') +
+            (r.decided_by ? ' · ' + r.decided_by + (r.note ? '(' + r.note + ')' : '') : '') })]);
+        var view = el('button', { type: 'button', text: runOpen === r.run_id ? '상세 닫기' : '상세' });
+        view.addEventListener('click', function () { runOpen = runOpen === r.run_id ? null : r.run_id; render(); });
+        line.appendChild(view);
+        if (r.status === 'draft') {
+          var ok = el('button', { type: 'button', class: 'ok', text: '확정' });
+          ok.addEventListener('click', function () { act(ok, function () { return send('POST', '/vpp/settlement/runs/' + r.run_id + '/confirm', { note: '' }); }, '확정했습니다. 참여자 잔액에 반영됐습니다.'); });
+          var reason = el('input', { type: 'text', maxlength: '200', placeholder: '취소 사유', 'aria-label': '취소 사유' });
+          var no = el('button', { type: 'button', class: 'no', text: '취소' });
+          no.addEventListener('click', function () { act(no, function () { return send('POST', '/vpp/settlement/runs/' + r.run_id + '/cancel', { note: reason.value }); }, '산정을 취소했습니다.'); });
+          line.appendChild(ok); line.appendChild(reason); line.appendChild(no);
+        }
+        rc.appendChild(line);
+        if (runOpen === r.run_id) {
+          var holder = el('div', { class: 'muted', text: '불러오는 중…' });
+          rc.appendChild(holder);
+          api('/vpp/settlement/runs/' + r.run_id).then(function (d) {
+            clear(holder);
+            if (!d.ok) { holder.textContent = detail(d, '불러오지 못했습니다.'); return; }
+            holder.appendChild(table(['차량', '날짜', '소속', '피크 방전 kWh', '흡수 kWh', '요금 차익', '피크 저감', '출력제어 완화', '포인트', '동의'],
+              d.body.trades.slice(0, 200).map(function (x) { return [x.ev_id, x.trade_date, x.affiliation === 'public' ? '관용' : '민간', x.peak_discharge_kwh, x.absorb_kwh,
+                won(x.tou_krw), won(x.peak_krw), won(x.curtail_krw), pts(x.points), x.consent_note]; })));
+          });
+        }
+      })(runs[i]);
+    }
+    panel.appendChild(rc);
+
+    // ⑥ 경제성 검증·인센티브 비교(미리보기, 원장 미반영)
+    var inc = pv.incentives || { options: [] };
+    panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'name', text: '경제성 검증 · 인센티브 유형 비교 (미리보기)' }),
+      el('div', { class: 'muted', text: '재원 ' + won(pv.economics.benefit_krw) + ' = 요금 차익 ' + won(pv.economics.benefit_by_source_krw['요금 차익']) +
+        ' + 피크 저감 ' + won(pv.economics.benefit_by_source_krw['피크 저감']) + ' + 출력제어 완화 ' + won(pv.economics.benefit_by_source_krw['출력제어 완화']) +
+        ' · 참여자 배분율 ' + pv.rules.owner_share_pct + '% · ' + pv.label }),
+      table(['인센티브 유형', '참여자 몫', '차량당', '재원 대비'], inc.options.map(function (o) { return [o.label, won(o.participant_krw), won(o.per_vehicle_krw), o.benefit_ratio_pct == null ? '-' : o.benefit_ratio_pct + '%']; })),
+      el('div', { class: 'muted', style: 'margin-top:6px', text: inc.note || '' })]));
+
+    // ⑤ 문의·조정
+    var qc = el('div', { class: 'card' }, [el('div', { class: 'name', text: '참여자 정산 문의 (처리 대기 ' + inq.length + '건)' })]);
+    inq.forEach(function (q) {
+      var ans = el('input', { type: 'text', maxlength: '500', placeholder: '답변', 'aria-label': '답변' }); ans.style.flex = '2';
+      var adj = el('input', { type: 'number', value: '0', step: '10', 'aria-label': '조정 포인트', style: 'width:90px' });
+      var go = el('button', { type: 'button', class: 'ok', text: '답변' });
+      go.addEventListener('click', function () { act(go, function () { return send('POST', '/vpp/settlement/inquiries/' + q.inquiry_id + '/resolve', { answer: ans.value, adjust_points: Number(adj.value) || 0 }); }, '답변했습니다.'); });
+      qc.appendChild(el('div', { style: 'padding:8px 0; border-top:1px solid var(--border)' }, [
+        el('div', { text: q.ev_id + (q.trade_date ? ' · ' + q.trade_date : '') + ' · ' + fmt(q.created_at) }), el('div', { class: 'muted', text: q.message }),
+        el('div', { class: 'row', style: 'gap:6px; margin-top:6px' }, [ans, adj, el('span', { class: 'muted', text: 'P 조정' }), go])]));
+    });
+    var aev = el('input', { type: 'text', maxlength: '40', placeholder: '차량 ID', 'aria-label': '차량 ID' });
+    var apt = el('input', { type: 'number', step: '10', placeholder: '±포인트', 'aria-label': '조정 포인트', style: 'width:110px' });
+    var arsn = el('input', { type: 'text', maxlength: '200', placeholder: '조정 사유(필수)', 'aria-label': '조정 사유' }); arsn.style.flex = '2';
+    var abtn = el('button', { type: 'button', text: '포인트 조정' });
+    abtn.addEventListener('click', function () { act(abtn, function () { return send('POST', '/vpp/settlement/adjust', { ev_id: aev.value.trim(), points: Number(apt.value) || 0, reason: arsn.value }); }, '조정했습니다.'); });
+    qc.appendChild(el('div', { class: 'row', style: 'gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid var(--border)' }, [aev, apt, arsn, abtn]));
+    panel.appendChild(qc);
+
+    // 미션 관리
+    var mcard = el('div', { class: 'card' }, [el('div', { class: 'name', text: '미션 관리 (가상 리워드)' }),
+      el('div', { class: 'muted', text: ms.note + ' 등급: ' + ms.levels.map(function (l) { return l.name + ' ' + pts(l.from_points) + '~'; }).join(' · ') })]);
+    ms.missions.forEach(function (x) {
+      var en = el('input', { type: 'checkbox', 'aria-label': x.title + ' 사용' }); en.checked = x.enabled;
+      var pp = el('input', { type: 'number', min: '0', max: '100000', step: '10', value: String(x.points), 'aria-label': x.title + ' 보상', style: 'width:90px' });
+      var sv = el('button', { type: 'button', text: '저장' });
+      sv.addEventListener('click', function () { act(sv, function () { return send('PUT', '/vpp/missions/' + x.id, { enabled: en.checked, points: Number(pp.value) || 0 }); }, '미션 설정을 저장했습니다.'); });
+      mcard.appendChild(el('div', { class: 'row', style: 'gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--border)' }, [
+        en, el('div', { style: 'flex:1; min-width:200px' }, [el('div', { class: 'name', text: x.title + ' · ' + x.period_label + ' · 목표 ' + x.target + x.unit }),
+          el('div', { class: 'muted', text: x.description + ' — 완료 ' + x.completions + '건(' + x.vehicles + '대), 지급 ' + pts(x.points_paid != null ? x.points_paid : 0) })]),
+        pp, el('span', { class: 'muted', text: 'P' }), sv]));
+    });
+    if (ms.recent.length) mcard.appendChild(el('div', { style: 'margin-top:8px' }, [el('div', { class: 'muted', text: '최근 보상' }),
+      table(['차량', '미션', '기간', '포인트', '시각'], ms.recent.slice(0, 10).map(function (r) { return [r.ev_id, r.mission_id, r.period_key, pts(r.points), fmt(r.completed_at)]; }))]));
+    panel.appendChild(mcard);
+  }
+
   async function render() {
     clear(panel);
     if (tab === 'notices') await renderNotices();
     else if (tab === 'acryl') await renderAcryl();
     else if (tab === 'kpi') await renderKpi();
     else if (tab === 'issues') await renderIssues();
+    else if (tab === 'surveys') await renderSurveys();
+    else if (tab === 'reward') await renderReward();
     else await renderContent();
   }
   document.querySelector('.tabs').addEventListener('click', function (ev) {
@@ -439,9 +617,44 @@
     if (ub) ub.textContent = me.body.username + ' (' + roleLabel + ')';
     var lo = document.getElementById('logout-btn');
     if (lo) lo.addEventListener('click', async function () { await api('/auth/logout', { method: 'POST' }); location.href = '/login'; });
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-tab') === tab)); });
     render();
   })();
 })();
+// 사이드바 숨김/열기 토글 (디폴트 열림, localStorage 상태 보존)
+(function initSidebarToggle() {
+  const layout = document.querySelector('.ax-layout');
+  const hideBtn = document.getElementById('sidebar-hide-btn');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (!layout) return;
+
+  function updateToggleUI(collapsed) {
+    if (toggleBtn) {
+      const txt = toggleBtn.querySelector('.toggle-txt');
+      if (txt) txt.textContent = collapsed ? '메뉴 열기' : '메뉴';
+      toggleBtn.title = collapsed ? '좌측 메뉴 열기' : '좌측 메뉴 숨기기';
+    }
+  }
+
+  // 디폴트는 열림(false), localStorage에 'true'로 저장된 경우만 숨김 처리
+  const isCollapsed = localStorage.getItem('ai-v2g-sidebar-collapsed') === 'true';
+  if (isCollapsed) {
+    layout.classList.add('sidebar-collapsed');
+  }
+  updateToggleUI(isCollapsed);
+
+  function toggle() {
+    const collapsed = layout.classList.toggle('sidebar-collapsed');
+    try {
+      localStorage.setItem('ai-v2g-sidebar-collapsed', collapsed ? 'true' : 'false');
+    } catch (e) {}
+    updateToggleUI(collapsed);
+  }
+
+  if (hideBtn) hideBtn.addEventListener('click', toggle);
+  if (toggleBtn) toggleBtn.addEventListener('click', toggle);
+})();
+
 </script>
 </body>
 </html>

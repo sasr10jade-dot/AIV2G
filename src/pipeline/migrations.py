@@ -275,11 +275,72 @@ def _v10(con: sqlite3.Connection) -> None:
     )
 
 
+def _v11(con: sqlite3.Connection) -> None:
+    """모의 정산 프로세스 보강: 정산 회차(산정→확정/취소), 거래별 재원 배분 내역, 방전 동의 반영 여부, 참여자 정산 문의."""
+    existing = _columns(con, "virtual_trades")
+    for name, typ in (("run_id", "INTEGER"), ("tou_krw", "REAL NOT NULL DEFAULT 0"), ("peak_krw", "REAL NOT NULL DEFAULT 0"),
+                      ("curtail_krw", "REAL NOT NULL DEFAULT 0"), ("consent_note", "TEXT")):
+        if existing and name not in existing:
+            con.execute(f"ALTER TABLE virtual_trades ADD COLUMN {name} {typ}")
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS settlement_runs (
+            run_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            period_from   TEXT NOT NULL,
+            period_to     TEXT NOT NULL,
+            status        TEXT NOT NULL CHECK (status IN ('draft', 'confirmed', 'cancelled')),
+            totals        TEXT,
+            created_at    TEXT NOT NULL,
+            created_by    TEXT NOT NULL,
+            decided_at    TEXT,
+            decided_by    TEXT,
+            note          TEXT
+        )"""
+    )
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS settlement_inquiries (
+            inquiry_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+            ev_id         TEXT NOT NULL,
+            trade_date    TEXT,
+            message       TEXT NOT NULL,
+            status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+            created_at    TEXT NOT NULL,
+            resolved_at   TEXT,
+            resolved_by   TEXT,
+            answer        TEXT,
+            adjust_points INTEGER
+        )"""
+    )
+
+
+def _v12(con: sqlite3.Connection) -> None:
+    """서포터즈 미션(참여 행동 → 모의 포인트 보상): 관리자 설정(사용 여부·보상 포인트), 완료·보상 이력(기간당 1회)."""
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS mission_settings (
+            mission_id  TEXT PRIMARY KEY,
+            enabled     INTEGER NOT NULL DEFAULT 1,
+            points      INTEGER NOT NULL,
+            updated_by  TEXT,
+            updated_at  TEXT NOT NULL
+        )"""
+    )
+    con.execute(
+        """CREATE TABLE IF NOT EXISTS mission_completions (
+            completion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ev_id         TEXT NOT NULL,
+            mission_id    TEXT NOT NULL,
+            period_key    TEXT NOT NULL,
+            points        INTEGER NOT NULL,
+            completed_at  TEXT NOT NULL,
+            UNIQUE (ev_id, mission_id, period_key)
+        )"""
+    )
+
+
 MIGRATIONS = [
     (1, "ops_structure", _v1), (2, "advisories", _v2), (3, "vehicle_registrations", _v3),
     (4, "acryl_forecast_link", _v4), (5, "charger_site", _v5), (6, "odometer_logs", _v6),
     (7, "export_destruction", _v7), (8, "registration_reserve", _v8), (9, "modeling_issues", _v9),
-    (10, "vpp_settlement_ess_group", _v10),
+    (10, "vpp_settlement_ess_group", _v10), (11, "settlement_process", _v11), (12, "missions", _v12),
 ]
 LATEST_VERSION = MIGRATIONS[-1][0]
 

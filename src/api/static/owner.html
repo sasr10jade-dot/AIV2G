@@ -161,7 +161,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 .gap { margin-top: 16px !important; }
 .error { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 10px; }
 .tabs {
-  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+  position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--card) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
 }
 .tab { min-height: 58px; background: none; border: 0; border-top: 2px solid transparent; margin-top: -1px; cursor: pointer; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; position: relative; }
@@ -225,6 +225,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
 [hidden] { display: none !important; }
 </style>
 <link rel="stylesheet" href="/theme.css" />
+<script src="/loading.js"></script>
 </head>
 <body class="fo">
 <div class="app">
@@ -273,6 +274,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
     <button class="tab" role="tab" data-tab="price" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13h6l-1 8 8-10h-6z"/></svg><span data-i18n="tab_price">충전 시간</span></button>
     <button class="tab" role="tab" data-tab="forecast" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg><span data-i18n="tab_forecast">예측</span></button>
     <button class="tab" role="tab" data-tab="report" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span data-i18n="tab_report">리포트</span></button>
+    <button class="tab" role="tab" data-tab="reward" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5 7 21l5-3 5 3-1.5-7.5"/></svg><span data-i18n="tab_reward">리워드</span></button>
   </nav>
 
 </div>
@@ -294,7 +296,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       install_hint: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.',
       install_ios: '홈 화면에 추가하면 앱처럼 쓸 수 있어요.', install_how: '설치 방법',
       resv_title: '예비 참여자로 등록됐어요', resv_desc: '지금은 실증 차량 정원이 차 있어요. 참여 차량에 빈자리가 생기면 순서대로 승인해 연락드릴게요.',
-      premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트',
+      premise: 'ⓘ 수행전제', tab_inbox: '홈', tab_price: '충전 시간', tab_forecast: '예측', tab_report: '리포트', tab_reward: '리워드',
       rp_title: '최근 4주 내 충전', rp_ai: 'AI 충전 분석', rp_odo: '누적 주행거리 기록', rp_odo_btn: '기록하기',
       rp_odo_hint: '계기판의 누적 주행거리(ODO)를 적어 주세요. 2번 이상 기록하면 주간 주행거리·전비·1km당 요금을 계산해요.',
       rp_odo_done: '기록했어요.', rp_wait: '리포트를 준비하고 있어요', rp_peer: '다른 서포터즈', rp_none: '아직 기록 없음',
@@ -368,7 +370,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       install_hint: 'Add to your home screen to use it like an app.',
       install_ios: 'Tap Share, then "Add to Home Screen", to use it like an app.', install_how: 'How to install',
       resv_title: 'You are on the reserve list', resv_desc: 'The pilot is currently full. When a spot opens up, we will approve reserve participants in order and let you know.',
-      premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast', tab_report: 'Report',
+      premise: 'ⓘ Premise', tab_inbox: 'Home', tab_price: 'Charge', tab_forecast: 'Forecast', tab_report: 'Report', tab_reward: 'Rewards',
       rp_title: 'My charging, last 4 weeks', rp_ai: 'AI charging analysis', rp_odo: 'Log odometer', rp_odo_btn: 'Save',
       rp_odo_hint: 'Enter the odometer reading. With two or more entries we calculate weekly distance, efficiency and cost per km.',
       rp_odo_done: 'Saved.', rp_wait: 'Preparing your report', rp_peer: 'Other supporters', rp_none: 'No entries yet',
@@ -1018,6 +1020,53 @@ label.check input { width: 22px; height: 22px; flex: none; }
     box.appendChild(esgCard);
     box.appendChild(notifAlertCard);
 
+    // 참여주체 VoC 설문(계획서 레퍼런스 3) — 진행 중이고 아직 답하지 않은 설문만 홈에 보인다
+    var surveyBox = el('div', {});
+    box.appendChild(surveyBox);
+    api('/owner/surveys').then(function (r) {
+      if (!r || !r.ok || !surveyBox.isConnected) return;
+      r.body.surveys.filter(function (s) { return !s.answered; }).forEach(function (s) {
+        var answers = {};
+        var card = el('div', { class: 'card', style: 'padding:12px 14px; margin-bottom:12px; border:1.5px solid var(--accent);' }, [
+          el('span', { class: 'chip', style: 'font-size:11px; font-weight:700;', text: '📝 설문' }),
+          el('div', { class: 'big', style: 'font-size:16px; margin:6px 0 2px;', text: s.title })]);
+        if (s.description) card.appendChild(el('p', { class: 'muted', style: 'font-size:12.5px; margin:0 0 6px;', text: s.description }));
+        s.questions.forEach(function (q) {
+          card.appendChild(el('div', { style: 'font-size:13px; font-weight:600; margin:10px 0 6px;', text: q.text + (q.required ? '' : ' (선택)') }));
+          if (q.type === 'text') {
+            var ta = el('textarea', { maxlength: '500', rows: '3', style: 'width:100%; box-sizing:border-box;' });
+            ta.addEventListener('input', function () { answers[q.id] = ta.value; });
+            card.appendChild(ta);
+          } else {
+            var opts = q.type === 'scale' ? ['1', '2', '3', '4', '5'] : q.options;
+            var row = el('div', { style: 'display:flex; flex-wrap:wrap; gap:6px;' });
+            opts.forEach(function (o) {
+              var b = el('button', { type: 'button', class: 'chip', style: 'cursor:pointer; padding:6px 12px;', text: q.type === 'scale' ? o + '점' : o, 'aria-pressed': 'false' });
+              b.addEventListener('click', function () {
+                answers[q.id] = q.type === 'scale' ? Number(o) : o;
+                Array.prototype.forEach.call(row.children, function (x) { x.setAttribute('aria-pressed', 'false'); x.style.outline = ''; });
+                b.setAttribute('aria-pressed', 'true'); b.style.outline = '2px solid var(--accent)';
+              });
+              row.appendChild(b);
+            });
+            card.appendChild(row);
+            if (q.type === 'scale') card.appendChild(el('div', { class: 'muted', style: 'font-size:11px; margin-top:4px;', text: '1점 매우 불만족 · 5점 매우 만족' }));
+          }
+        });
+        var msg = el('div', { class: 'muted', style: 'font-size:12px; margin-top:8px;' });
+        var submit = el('button', { class: 'primary', type: 'button', style: 'width:100%; margin-top:10px;', text: '응답 보내기' });
+        submit.addEventListener('click', async function () {
+          submit.disabled = true; msg.textContent = '';
+          var res = await api('/owner/surveys/' + s.id + '/responses', { method: 'POST', body: JSON.stringify({ answers: answers }) }).catch(function () { return null; });
+          if (res && res.ok) { clear(card); card.appendChild(el('div', { class: 'big', style: 'font-size:15px;', text: '응답해 주셔서 감사합니다 🙏' })); return; }
+          msg.textContent = (res && res.body && typeof res.body.detail === 'string') ? res.body.detail : '보내지 못했습니다. 다시 시도해 주세요.';
+          submit.disabled = false;
+        });
+        card.appendChild(submit); card.appendChild(msg);
+        surveyBox.appendChild(card);
+      });
+    }).catch(function () {});
+
     // 가상 전력 거래 모의 포인트(계획서 p.30~31 — 피크 방전·과잉발전 흡수 실적에 따른 모의 정산)
     var pointsCard = el('div', { class: 'card', style: 'padding:12px 14px; margin-bottom:12px;' }, [
       el('span', { class: 'chip', style: 'font-size:11px; font-weight:700;', text: '💰 V2G 모의 포인트' }),
@@ -1030,7 +1079,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       clear(pointsCard);
       pointsCard.appendChild(el('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
         el('span', { class: 'chip', style: 'font-size:11px; font-weight:700;', text: '💰 V2G 모의 포인트' }),
-        el('span', { class: 'muted', style: 'font-size:11.5px;', text: '거래 ' + p.trade_days + '일' })
+        el('span', { class: 'muted', style: 'font-size:11.5px;', text: (p.level ? '🏅 ' + p.level.name + ' · ' : '') + '거래 ' + p.trade_days + '일' + (p.pending_points ? ' · 확정 대기 ' + Number(p.pending_points).toLocaleString(t('locale')) + 'P' : '') })
       ]));
       pointsCard.appendChild(el('div', { class: 'big', style: 'font-size:20px; margin:6px 0 2px;', text: Number(p.balance_points).toLocaleString(t('locale')) + ' P' }));
       pointsCard.appendChild(el('div', { class: 'muted', style: 'font-size:12px;', text: '피크 방전 ' + p.total_peak_discharge_kwh + ' kWh · 재생에너지 흡수 ' + p.total_absorb_kwh + ' kWh' }));
@@ -1041,6 +1090,9 @@ label.check input { width: 22px; height: 22px; flex: none; }
         ]));
       });
       pointsCard.appendChild(el('p', { class: 'muted', style: 'font-size:11px; margin:6px 0 0; line-height:1.4;', text: p.note }));
+      var goReward = el('button', { type: 'button', class: 'primary', style: 'width:100%; margin-top:8px; padding:8px;', text: '🎯 미션·리워드 보기' });
+      goReward.addEventListener('click', function () { state.tab = 'reward'; renderHome(); });
+      pointsCard.appendChild(goReward);
     }).catch(function () {});
 
     box.appendChild(el('div', { class: 'card' }, [el('p', { text: t('home_intro') }),
@@ -1088,10 +1140,103 @@ label.check input { width: 22px; height: 22px; flex: none; }
     }
     await renderNotices(box);
   }
+
+  // ---------------------------------------------------------------- 리워드(모의 포인트·미션·정산 내역) — 계획서 p.30~31, p.48
+  function bar(pct) {
+    var b = el('div', { class: 'bar', style: 'margin:6px 0 2px;' }); var f = el('i', {}); f.style.width = Math.max(0, Math.min(100, pct)) + '%'; b.appendChild(f); return b;
+  }
+  function fmtP(n) { return Number(n || 0).toLocaleString(t('locale')) + ' P'; }
+  async function renderReward(box) {
+    box.appendChild(el('div', { class: 'card muted', text: '불러오는 중…' }));
+    var rs;
+    try { rs = await Promise.all([api('/owner/points'), api('/owner/missions')]); } catch (e) { rs = null; }
+    if (state.tab !== 'reward' || !box.isConnected) return;
+    clear(box);
+    if (!rs || !rs[0].ok || !rs[1].ok) { box.appendChild(el('div', { class: 'card', text: t('net_err') })); return; }
+    var p = rs[0].body, m = rs[1].body, lv = p.level;
+
+    // 등급·잔액
+    var lvCard = el('div', { class: 'card', style: 'padding:14px;' }, [
+      el('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
+        el('span', { class: 'chip', style: 'font-weight:700;', text: '🏅 ' + lv.name }),
+        el('span', { class: 'muted', style: 'font-size:12px;', text: '모의 포인트 · 실제 금전 지급 아님' })]),
+      el('div', { class: 'big', style: 'font-size:26px; margin:8px 0 2px;', text: fmtP(p.balance_points) }),
+      el('div', { class: 'muted', style: 'font-size:12.5px;', text: '확정 대기 ' + fmtP(p.pending_points) + ' · 피크 방전 ' + p.total_peak_discharge_kwh + ' kWh · 재생에너지 흡수 ' + p.total_absorb_kwh + ' kWh' })]);
+    if (lv.next_name) {
+      lvCard.appendChild(bar(lv.points / lv.next_points * 100));
+      lvCard.appendChild(el('div', { class: 'muted', style: 'font-size:11.5px;', text: lv.next_name + '까지 ' + fmtP(lv.to_next) }));
+    }
+    box.appendChild(lvCard);
+
+    // 미션
+    var mc = el('div', { class: 'card', style: 'padding:14px;' }, [el('h2', { text: '🎯 미션' }),
+      el('p', { class: 'muted', style: 'font-size:12px; margin:0 0 8px;', text: '실증에 도움이 되는 참여를 하면 포인트를 받아요. 완료하면 [받기]를 눌러 주세요.' })]);
+    m.missions.forEach(function (x) {
+      var btn = el('button', { type: 'button', class: x.completed && !x.claimed ? 'primary' : '', style: 'padding:6px 12px; font-size:12.5px; white-space:nowrap;',
+        text: x.claimed ? '받음' : (x.completed ? '받기 +' + x.points : x.points + 'P') });
+      btn.disabled = x.claimed || !x.completed;
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        var r = await api('/owner/missions/' + encodeURIComponent(x.id) + '/claim', { method: 'POST' }).catch(function () { return null; });
+        if (r && r.ok) { renderHome(); return; }
+        btn.disabled = false;
+        alertMsg.textContent = (r && r.body && typeof r.body.detail === 'string') ? r.body.detail : t('net_err');
+      });
+      mc.appendChild(el('div', { style: 'padding:10px 0; border-top:1px solid var(--border);' }, [
+        el('div', { style: 'display:flex; justify-content:space-between; gap:8px; align-items:center;' }, [
+          el('div', {}, [el('div', { style: 'font-weight:700; font-size:14px;', text: x.title + ' · ' + x.period_label }),
+            el('div', { class: 'muted', style: 'font-size:12px;', text: x.description })]), btn]),
+        bar(x.progress_pct),
+        el('div', { class: 'muted', style: 'font-size:11px;', text: x.progress + ' / ' + x.target + ' ' + x.unit })]));
+    });
+    var alertMsg = el('div', { class: 'muted', style: 'font-size:12px; color:var(--bad, #c62828);', role: 'alert' });
+    mc.appendChild(alertMsg);
+    box.appendChild(mc);
+
+    // 정산 내역(재원별)
+    var hc = el('div', { class: 'card', style: 'padding:14px;' }, [el('h2', { text: '🧾 가상 전력 거래 정산 내역' }),
+      el('p', { class: 'muted', style: 'font-size:12px; margin:0 0 6px;', text: '피크 시간대 방전·재생에너지 흡수·요금 절감 실적을 재원별로 나눠 포인트로 적립해요. 확정된 정산만 잔액에 들어가요.' })]);
+    if (!p.history.length) hc.appendChild(el('div', { class: 'muted', text: '아직 정산 내역이 없어요.' }));
+    p.history.slice(0, 15).forEach(function (h) {
+      var src = h.by_source_krw || {};
+      hc.appendChild(el('div', { style: 'padding:8px 0; border-top:1px solid var(--border); font-size:12.5px;' }, [
+        el('div', { style: 'display:flex; justify-content:space-between;' }, [
+          el('b', { text: h.date + ' · ' + h.status_label }), el('b', { text: '+' + fmtP(h.points) })]),
+        el('div', { class: 'muted', text: '요금 차익 ' + Math.round(src['요금 차익'] || 0) + '원 · 피크 저감 ' + Math.round(src['피크 저감'] || 0) + '원 · 출력제어 완화 ' + Math.round(src['출력제어 완화'] || 0) + '원' }),
+        el('div', { class: 'muted', text: '방전 ' + h.peak_discharge_kwh + ' kWh · 흡수 ' + h.absorb_kwh + ' kWh · ' + h.generation_label + (h.consent_note ? ' · ' + h.consent_note : '') })]));
+    });
+    (p.adjustments || []).forEach(function (a) {
+      hc.appendChild(el('div', { class: 'kv', style: 'font-size:12px;' }, [el('span', { text: '조정 · ' + a.memo }), el('span', { text: (a.points > 0 ? '+' : '') + fmtP(a.points) })]));
+    });
+    box.appendChild(hc);
+
+    // 정산 문의
+    var ic = el('div', { class: 'card', style: 'padding:14px;' }, [el('h2', { text: '💬 정산 문의' })]);
+    (p.inquiries || []).forEach(function (q) {
+      ic.appendChild(el('div', { style: 'font-size:12.5px; padding:6px 0; border-top:1px solid var(--border);' }, [
+        el('div', { text: q.message }),
+        el('div', { class: 'muted', text: q.status === 'resolved' ? '답변: ' + q.answer + (q.adjust_points ? ' (' + (q.adjust_points > 0 ? '+' : '') + q.adjust_points + 'P 조정)' : '') : '답변 대기 중' })]));
+    });
+    var ta = el('textarea', { maxlength: '500', rows: '2', placeholder: '포인트가 이상하거나 궁금한 점을 적어 주세요', style: 'width:100%; box-sizing:border-box; margin-top:6px;' });
+    var qmsg = el('div', { class: 'muted', style: 'font-size:12px;' });
+    var send = el('button', { type: 'button', class: 'primary', style: 'width:100%; margin-top:6px;', text: '문의 보내기' });
+    send.addEventListener('click', async function () {
+      send.disabled = true;
+      var r = await api('/owner/points/inquiries', { method: 'POST', body: JSON.stringify({ message: ta.value }) }).catch(function () { return null; });
+      if (r && r.ok) { renderHome(); return; }
+      qmsg.textContent = (r && r.body && typeof r.body.detail === 'string') ? r.body.detail : '보내지 못했어요.';
+      send.disabled = false;
+    });
+    ic.appendChild(ta); ic.appendChild(send); ic.appendChild(qmsg);
+    box.appendChild(ic);
+    box.appendChild(el('p', { class: 'muted', style: 'font-size:11px; padding:0 4px;', text: p.note }));
+  }
+
   var TAB_VIEWS = {
     inbox: renderInbox,
     price: renderPrice,
     forecast: renderForecast,
+    reward: renderReward,
     report: renderReport,
   };
 

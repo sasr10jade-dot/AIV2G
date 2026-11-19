@@ -66,6 +66,12 @@ def theme_css() -> FileResponse:
     return FileResponse(STATIC_DIR / "theme.css", media_type="text/css", headers=NO_CACHE)
 
 
+@router.get("/loading.js")
+def loading_js() -> FileResponse:
+    """모든 화면 공용 로딩 표시(데이터 요청 중 딤 + 프로그레스 링)."""
+    return FileResponse(STATIC_DIR / "loading.js", media_type="application/javascript", headers=NO_CACHE)
+
+
 @router.get("/sw.js")
 def service_worker() -> FileResponse:
     return FileResponse(

@@ -55,6 +55,32 @@ def provenance() -> dict:
     }
 
 
+# 행 단위 출처·생성방식(요구사항 A15 — 계획서 p.26 "데이터 출처(실측·공개·참여자 입력)와 생성 방식(실측·추론)을 구분하여 기록")
+ROW_SOURCE_LABELS = {"obd": "실측(차량 OBD)", "cpo": "실측(충전사업자)", "public": "공개 데이터", "participant_input": "참여자 입력",
+                     "synthetic": "합성(모의)"}
+GENERATION_LABELS = {"measured": "실측", "inferred": "추론", "synthetic": "합성"}
+_TABLE_SOURCE = {"ev_telemetry": "obd", "charger_sessions": "cpo", "grid_signal": "public"}
+
+
+def annotate_rows(df, table: str, prov: dict | None = None):
+    """표에 행 단위 `data_source`·`generation` 컬럼을 붙인 복사본을 돌려준다(이미 있으면 그 값을 유지).
+
+    - 표 출처가 measured/public이면 그 표의 원천(obd·cpo·public), 아니면 synthetic
+    - 충전 세션의 `source` 컬럼이 'synthetic'인 행은 표 출처와 관계없이 합성으로 본다(부분 실증 보완분)
+    """
+    prov = prov if prov is not None else provenance()
+    out = df.copy()
+    real = prov.get(table) in ("measured", "public")
+    base = _TABLE_SOURCE.get(table, "synthetic") if real else "synthetic"
+    if "data_source" not in out.columns:
+        out["data_source"] = base
+        if "source" in out.columns:
+            out.loc[out["source"].astype(str).str.lower() == "synthetic", "data_source"] = "synthetic"
+    if "generation" not in out.columns:
+        out["generation"] = out["data_source"].map(lambda v: "synthetic" if v == "synthetic" else "measured")
+    return out
+
+
 def mark_source(kind: str) -> None:
     SOURCE_MARKER.write_text(kind, encoding="utf-8")
 

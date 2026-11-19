@@ -143,6 +143,27 @@ def set_location_consent(body: ConsentIn, request: Request, user: dict = Depends
     return {"location": after}
 
 
+class SurveyAnswerIn(BaseModel):
+    answers: dict = Field(..., description="{문항 id: 값} — 척도 1~5, 객관식 선택지 문자열, 주관식 500자 이하")
+
+
+@router.get("/surveys", summary="참여 중인 VoC 설문(진행 중) — 응답 여부 표시")
+def owner_surveys(user: dict = Depends(require_owner)) -> dict:
+    from src.appadmin import survey
+    return {"surveys": survey.open_for(user["owned_ev_id"])}
+
+
+@router.post("/surveys/{survey_id}/responses", summary="VoC 설문 응답(설문당 1회, 본인 차량)")
+def owner_survey_respond(survey_id: int, body: SurveyAnswerIn, user: dict = Depends(require_owner)) -> dict:
+    from src.appadmin import survey
+    try:
+        survey.respond(survey_id, user["owned_ev_id"], body.answers)
+    except survey.SurveyError as exc:
+        raise HTTPException(status_code=409 if "이미" in str(exc) else 422, detail=str(exc)) from exc
+    audit.log(user["username"], "survey_respond", target=str(survey_id))
+    return {"status": "ok"}
+
+
 @router.get("/notices", summary="공지사항(공개된 것만, 고정 먼저)")
 def owner_notices(lang: str = Query("ko", pattern="^(ko|en)$"), user: dict = Depends(require_owner)) -> dict:
     return {"notices": appadmin.notices(published_only=True, limit=20, lang=lang)}

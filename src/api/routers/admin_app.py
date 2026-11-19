@@ -3,9 +3,11 @@
 이용자 모바일 앱은 `/owner/notices`·`/owner/app-content`로 읽는다.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from src.appadmin import service
+from src.appadmin import survey
 from src.automation import issues
 from src.auth.deps import require_admin
 from src.privacy import audit
@@ -101,3 +103,56 @@ def resolve_modeling_issue(issue_id: int, body: ResolveIn, user: dict = Depends(
         raise HTTPException(status_code=409 if "이미" in str(exc) else 422, detail=str(exc)) from exc
     audit.log(user["username"], "modeling_issue_resolve", target=str(issue_id), detail={"note": item["resolution_note"]})
     return item
+
+
+# ---------------------------------------------------------------- 참여주체 VoC 설문(요구사항 Y2E05)
+class SurveyQuestionIn(BaseModel):
+    type: str = Field(..., pattern="^(scale|choice|text)$", description="scale(1~5점) · choice(객관식) · text(주관식)")
+    text: str = Field(..., min_length=1, max_length=200)
+    options: list[str] | None = Field(None, description="객관식 선택지 2~8개")
+    required: bool | None = None
+
+
+class SurveyIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=80)
+    description: str | None = Field(None, max_length=500)
+    questions: list[SurveyQuestionIn] = Field(..., min_length=1, max_length=survey.MAX_QUESTIONS)
+
+
+def _survey(fn, *args):
+    try:
+        return fn(*args)
+    except survey.SurveyError as exc:
+        raise HTTPException(status_code=404 if "찾을 수 없" in str(exc) else 422, detail=str(exc)) from exc
+
+
+@router.get("/surveys", summary="VoC 설문 목록(응답 수 포함)")
+def list_surveys() -> dict:
+    return {"surveys": survey.list_all()}
+
+
+@router.post("/surveys", summary="VoC 설문 만들기 — 공개되면 서포터즈 앱 홈에 표시")
+def create_survey(body: SurveyIn, user: dict = Depends(require_admin)) -> dict:
+    s = _survey(survey.create, body.title, body.description,
+                [q.model_dump(exclude_none=True) for q in body.questions], user["username"])
+    audit.log(user["username"], "survey_create", target=str(s["id"]), detail={"questions": len(s["questions"])})
+    return s
+
+
+@router.post("/surveys/{survey_id}/close", summary="VoC 설문 마감")
+def close_survey(survey_id: int, user: dict = Depends(require_admin)) -> dict:
+    s = _survey(survey.close, survey_id)
+    audit.log(user["username"], "survey_close", target=str(survey_id))
+    return s
+
+
+@router.get("/surveys/{survey_id}/results", summary="VoC 설문 집계 — 척도 평균·분포, 객관식 건수, 주관식 목록")
+def survey_results(survey_id: int) -> dict:
+    return _survey(survey.results, survey_id)
+
+
+@router.get("/surveys/{survey_id}/results.csv", summary="VoC 설문 응답 원자료(CSV, 차량 ID 없음)")
+def survey_results_csv(survey_id: int) -> Response:
+    data = _survey(survey.results_csv, survey_id)
+    return Response(data, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename=survey_{survey_id}.csv"})

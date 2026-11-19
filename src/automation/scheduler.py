@@ -91,3 +91,51 @@ def run_cycle(
                               "candidate_mae": candidate.mae, "improvement_pct": round(improvement_pct, 1)})
 
     return cycle
+
+
+def run_cycle_on_data(registry: ModelRegistry, city_hourly, target_col: str, data_source: str) -> dict:
+    """운영 데이터(실측이 있으면 실측)로 한 주기를 돈다 — 요구사항 Y2B01·Y2B02.
+
+    합성 데이터를 새로 만드는 `run_cycle`(데모)과 달리, 지금 쌓인 데이터의 마지막 2주에 활성 모델을 적용해
+    드리프트를 재고, 임계치를 넘으면 같은 데이터로 후보를 재학습해 승격/거부한다. 레지스트리가 비어 있으면 첫 모델을 등록한다.
+    결과(재학습 전후 오차 포함)를 돌려주고, 예외 상황은 modeling_issues에 남긴다.
+    """
+    if registry.active_version() is None:
+        first = train_forecast_model(city_hourly, target_col)
+        v = registry.register(first.model, first.feature_cols, None, first.mae, first.rmse, first.n_train,
+                              data_range=first.data_range, data_source=data_source, holdout_mape=first.mape, holdout_r2=first.r2)
+        return {"target_col": target_col, "action": "BOOTSTRAPPED", "active_version_after": v, "candidate_mae": first.mae,
+                "data_source": data_source}
+    feat_df, _ = build_features(city_hourly, target_col)
+    new_period = feat_df.iloc[-TEST_HOURS:]
+    active_model, active_features, active_info = registry.load()
+    missing = [c for c in active_features if c not in new_period.columns]
+    if missing:
+        issues.record("retrain", "활성 모델 피처가 현재 데이터에 없어 드리프트를 잴 수 없음", kind="exception",
+                      detail={"target": target_col, "missing": missing[:10]})
+        return {"target_col": target_col, "action": "SKIPPED_FEATURE_MISMATCH", "missing": missing[:10]}
+    stale_pred = active_model.predict(new_period[active_features]).clip(min=0)
+    stale_mae = float(mean_absolute_error(new_period[target_col], stale_pred))
+    base = active_info["holdout_mae"] or 1e-9
+    drift_pct = (stale_mae - base) / base * 100
+    cycle = {"target_col": target_col, "data_source": data_source, "active_version_before": active_info["version"],
+             "stale_mae": round(stale_mae, 3), "drift_pct": round(drift_pct, 1),
+             "retrain_triggered": drift_pct > DRIFT_TRIGGER_PCT, "active_version_after": active_info["version"],
+             "action": "NO_RETRAIN", "candidate_mae": None}
+    if not cycle["retrain_triggered"]:
+        return cycle
+    candidate = train_forecast_model(city_hourly, target_col)
+    cycle["candidate_mae"] = candidate.mae
+    improvement_pct = (stale_mae - candidate.mae) / stale_mae * 100 if stale_mae else 0.0
+    cycle["improvement_pct"] = round(improvement_pct, 1)
+    if improvement_pct >= MIN_IMPROVEMENT_TO_PROMOTE_PCT:
+        cycle["active_version_after"] = registry.register(
+            candidate.model, candidate.feature_cols, None, candidate.mae, candidate.rmse, candidate.n_train,
+            data_range=candidate.data_range, data_source=data_source, holdout_mape=candidate.mape, holdout_r2=candidate.r2)
+        cycle["action"] = "PROMOTED"
+    else:
+        cycle["action"] = "REJECTED_KEEP_ACTIVE"
+        issues.record("retrain", "재학습 후보가 기존 모델보다 충분히 낫지 않아 승격 거부(기존 모델 유지)", kind="exception",
+                      detail={"target": target_col, "stale_mae": cycle["stale_mae"], "candidate_mae": candidate.mae,
+                              "improvement_pct": cycle["improvement_pct"]})
+    return cycle

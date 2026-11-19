@@ -77,6 +77,7 @@
   }
 </style>
 <link rel="stylesheet" href="/theme.css" />
+<script src="/loading.js"></script>
 </head>
 <body class="ax-page">
 <div class="ax-layout">
@@ -214,7 +215,9 @@
   async function load(keepMsg) {
     if (!keepMsg) say('');
     var r;
-    try { r = await api('/registrations' + (status ? '?status=' + status : '')); } catch (e) { say('네트워크 오류입니다.', true); return; }
+    var path = '/registrations' + (status ? '?status=' + status : '');
+    // 10초 자동 새로고침(keepMsg)은 화면을 가리지 않는다
+    try { r = keepMsg && window.axLoading ? await window.axLoading.quiet(function () { return api(path); }) : await api(path); } catch (e) { say('네트워크 오류입니다.', true); return; }
     if (r.status === 401 || r.status === 403) { location.href = '/login?next=/approvals'; return; }
     if (!r.ok) { say(detail(r, '목록을 불러오지 못했습니다.'), true); return; }
     document.getElementById('pendingCount').textContent = r.body.pending_count ? '(' + r.body.pending_count + ')' : '';
@@ -229,7 +232,23 @@
     if (!b) return;
     status = b.getAttribute('data-status');
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-    
+    load();
+  });
+
+  (async function boot() {
+    var me;
+    try { me = await api('/auth/me'); } catch (e) { me = null; }
+    if (!me || !me.ok) { location.href = '/login?next=/approvals'; return; }
+    if (me.body.role === 'owner') { location.href = '/login?next=/approvals&reason=owner'; return; }
+    var roleLabel = me.body.role === 'super_admin' ? '최고관리자' : '관리자';
+    var ub = document.getElementById('user-badge');
+    if (ub) ub.textContent = me.body.username + ' (' + roleLabel + ')';
+    var lo = document.getElementById('logout-btn');
+    if (lo) lo.addEventListener('click', async function () { await api('/auth/logout', { method: 'POST' }); location.href = '/login'; });
+    load();
+    setInterval(function () { if (!busy && document.visibilityState === 'visible' && !document.activeElement.matches('input')) load(true); }, 10000);
+  })();
+})();
 // 사이드바 숨김/열기 토글 (디폴트 열림, localStorage 상태 보존)
 (function initSidebarToggle() {
   const layout = document.querySelector('.ax-layout');
@@ -264,23 +283,6 @@
   if (toggleBtn) toggleBtn.addEventListener('click', toggle);
 })();
 
-    load();
-  });
-
-  (async function boot() {
-    var me;
-    try { me = await api('/auth/me'); } catch (e) { me = null; }
-    if (!me || !me.ok) { location.href = '/login?next=/approvals'; return; }
-    if (me.body.role === 'owner') { location.href = '/login?next=/approvals&reason=owner'; return; }
-    var roleLabel = me.body.role === 'super_admin' ? '최고관리자' : '관리자';
-    var ub = document.getElementById('user-badge');
-    if (ub) ub.textContent = me.body.username + ' (' + roleLabel + ')';
-    var lo = document.getElementById('logout-btn');
-    if (lo) lo.addEventListener('click', async function () { await api('/auth/logout', { method: 'POST' }); location.href = '/login'; });
-    load();
-    setInterval(function () { if (!busy && document.visibilityState === 'visible' && !document.activeElement.matches('input')) load(true); }, 10000);
-  })();
-})();
 </script>
 </body>
 </html>

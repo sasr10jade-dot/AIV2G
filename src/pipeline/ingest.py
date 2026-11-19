@@ -27,11 +27,13 @@ def run(cfg: SimConfig | None = None) -> dict:
     weekly_report = store.build_ev_weekly_report(ev_df, cfg)
     city_hourly = store.build_city_hourly(ev_df, grid_df, cfg)
 
+    from .source import annotate_rows, provenance
+    prov = provenance()   # 행마다 출처(data_source)·생성방식(generation)을 붙여 저장한다(요구사항 A15)
     con = store.get_connection()
     try:
-        store.write_table(ev_df, "ev_telemetry", con)
-        store.write_table(charger_df, "charger_sessions", con)
-        store.write_table(grid_df, "grid_signal", con)
+        store.write_table(annotate_rows(ev_df, "ev_telemetry", prov), "ev_telemetry", con)
+        store.write_table(annotate_rows(charger_df, "charger_sessions", prov), "charger_sessions", con)
+        store.write_table(annotate_rows(grid_df, "grid_signal", prov), "grid_signal", con)
         store.write_table(weekly_report, "ev_weekly_report", con)
         store.write_table(city_hourly, "city_hourly", con)
         con.commit()

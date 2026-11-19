@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 1.0.0 · 엔드포인트 109개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 1.0.0 · 엔드포인트 131개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -69,6 +69,8 @@
 | GET | `/owner/registration` | 이용자 계정(승인 전 포함) | 내 차량 등록 상태(승인 대기·승인·반려) |
 | POST | `/owner/registration` | 이용자 계정(승인 전 포함) | 반려된 뒤 차량 정보를 고쳐 다시 신청 |
 | GET | `/owner/report` | 이용자(차량이 연결된 차량 등록자) | 내 충전 리포트 — 최근 4주 충전·주행 지표, 다른 실증 차량과 비교, 최소 보장 배터리 제안 |
+| GET | `/owner/surveys` | 이용자(차량이 연결된 차량 등록자) | 참여 중인 VoC 설문(진행 중) — 응답 여부 표시 |
+| POST | `/owner/surveys/{survey_id}/responses` | 이용자(차량이 연결된 차량 등록자) | VoC 설문 응답(설문당 1회, 본인 차량) |
 
 ## signup
 
@@ -120,6 +122,11 @@
 | POST | `/admin/notices` | 관리자 이상(관리자·최고관리자) | 공지사항 등록 |
 | DELETE | `/admin/notices/{notice_id}` | 관리자 이상(관리자·최고관리자) | 공지사항 삭제 |
 | PUT | `/admin/notices/{notice_id}` | 관리자 이상(관리자·최고관리자) | 공지사항 수정(공개·고정 포함) |
+| GET | `/admin/surveys` | 관리자 이상(관리자·최고관리자) | VoC 설문 목록(응답 수 포함) |
+| POST | `/admin/surveys` | 관리자 이상(관리자·최고관리자) | VoC 설문 만들기 — 공개되면 서포터즈 앱 홈에 표시 |
+| POST | `/admin/surveys/{survey_id}/close` | 관리자 이상(관리자·최고관리자) | VoC 설문 마감 |
+| GET | `/admin/surveys/{survey_id}/results` | 관리자 이상(관리자·최고관리자) | VoC 설문 집계 — 척도 평균·분포, 객관식 건수, 주관식 목록 |
+| GET | `/admin/surveys/{survey_id}/results.csv` | 관리자 이상(관리자·최고관리자) | VoC 설문 응답 원자료(CSV, 차량 ID 없음) |
 
 ## models
 
@@ -193,6 +200,8 @@
 | POST | `/ingest/obd-emulator/run` | 관리자 이상(관리자·최고관리자) | 가상 실증차량 OBD 배치를 합성해 실제 파이프라인으로 흘려보냄 |
 | GET | `/ingest/public-apis/status` | 관리자 이상(관리자·최고관리자) | 공개 데이터(기상·공휴일) 연동 준비 상태 — 키·명세 여부만, 값은 노출하지 않음 |
 | POST | `/ingest/public-csv/{kind}` | 관리자 이상(관리자·최고관리자) | 공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable) |
+| GET | `/ingest/regions/compare` | 관리자 이상(관리자·최고관리자) | 타 지역 비교(대조군) — 실증 지역과 대조 지역의 기상 조건(기온·영하·고온 시간 비율) |
+| POST | `/ingest/regions/{region_id}/sync-temperature` | 관리자 이상(관리자·최고관리자) | 대조 지역 기온 수집(기상청 ASOS) — 최대 92일 |
 | POST | `/ingest/run` | 관리자 이상(관리자·최고관리자) | raw → curated 파이프라인 실행 |
 | GET | `/ingest/status` | 관리자 이상(관리자·최고관리자) | 현재 데이터 소스 모드 확인 (데모/실증) |
 | POST | `/ingest/sync-kpx-smp` | 관리자 이상(관리자·최고관리자) | 한국전력거래소(KPX) 실시간 SMP를 grid_signal.price_krw_per_kwh에 반영 |
@@ -226,12 +235,25 @@
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
-| GET | `/owner/points` | 이용자(차량이 연결된 차량 등록자) | 내 모의 포인트 — 잔액·거래 내역(가상 전력 거래 정산) |
+| GET | `/owner/missions` | 이용자(차량이 연결된 차량 등록자) | 내 미션 — 진행도·완료·보상 수령 여부, 등급 |
+| POST | `/owner/missions/{mission_id}/claim` | 이용자(차량이 연결된 차량 등록자) | 완료한 미션 보상 받기 — 기간당 1회, 포인트 원장 적립 |
+| GET | `/owner/points` | 이용자(차량이 연결된 차량 등록자) | 내 모의 포인트 — 확정 잔액·확정 대기·재원별 내역·조정·문의·등급 |
+| POST | `/owner/points/inquiries` | 이용자(차량이 연결된 차량 등록자) | 정산 문의 남기기(본인 차량) — 관리자가 답변·조정 |
 | GET | `/vpp/curtailment` | 관리자 이상(관리자·최고관리자) | 신재생 출력제어 해소 시나리오 — 과잉발전 패턴·전후 출력제어량 비교(에뮬레이터) |
 | GET | `/vpp/ess-group` | 관리자 이상(관리자·최고관리자) | V2G 이동형 ESS 집중 실증 그룹 — 후보 지표(규칙성·장기주차·완속 체류·심야충전 후 주간대기)와 지정 현황 |
 | PUT | `/vpp/ess-group` | 관리자 이상(관리자·최고관리자) | ESS 집중 실증 그룹 지정(5~10대) — 기존 지정을 바꾼다 |
 | GET | `/vpp/ess-group/dataset.csv` | 관리자 이상(관리자·최고관리자) | 전기차 배터리 가상 ESS 자원화 전용 데이터셋(CSV) — 지정 그룹 차량의 시간별 ESS 파생 지표 |
+| GET | `/vpp/missions` | 관리자 이상(관리자·최고관리자) | 미션 관리 — 미션별 설정·완료(보상) 현황, 등급 기준 |
+| PUT | `/vpp/missions/{mission_id}` | 관리자 이상(관리자·최고관리자) | 미션 설정 변경 — 사용 여부·보상 포인트 |
 | GET | `/vpp/revenue-sources` | 관리자 이상(관리자·최고관리자) | 재원별 편익 — 요금 차익·피크 저감·출력제어 완화(산식 기반, 고정 비율 아님) |
-| GET | `/vpp/settlement/preview` | 관리자 이상(관리자·최고관리자) | 정산 미리보기(원장에 쓰지 않음) + 인센티브 유형별(포인트·충전요금 할인·수익배분) 비교 |
-| POST | `/vpp/settlement/run` | 관리자 이상(관리자·최고관리자) | 가상 전력 거래 정산 실행 — 차량·일별 피크 방전·흡수 실적을 포인트로 적립(중복 정산 없음) |
-| GET | `/vpp/settlement/summary` | 관리자 이상(관리자·최고관리자) | 모의 정산 집계 — 관용/민간별 참여·kWh·포인트, 정산 가능범위 |
+| POST | `/vpp/settlement/adjust` | 관리자 이상(관리자·최고관리자) | 포인트 조정(가산·차감) — 사유 필수, 원장에 남는다 |
+| GET | `/vpp/settlement/inquiries` | 관리자 이상(관리자·최고관리자) | 참여자 정산 문의 목록 |
+| POST | `/vpp/settlement/inquiries/{inquiry_id}/resolve` | 관리자 이상(관리자·최고관리자) | 정산 문의 답변(필요 시 포인트 조정) |
+| GET | `/vpp/settlement/preview` | 관리자 이상(관리자·최고관리자) | 정산 미리보기(원장에 쓰지 않음) — 재원 배분·경제성 검증·인센티브 유형 비교(포인트·할인·수익배분·마일리지) |
+| POST | `/vpp/settlement/run` | 관리자 이상(관리자·최고관리자) | 정산 한 번에 실행(전체 기간 산정 + 즉시 확정) — 간편 실행용, 중복 정산 없음 |
+| GET | `/vpp/settlement/runs` | 관리자 이상(관리자·최고관리자) | 정산 회차 목록(산정·확정·취소) |
+| POST | `/vpp/settlement/runs` | 관리자 이상(관리자·최고관리자) | 정산 회차 산정 — 기간 실적을 재원별로 배분해 포인트 계산(확정 전, 원장 미적립) |
+| GET | `/vpp/settlement/runs/{run_id}` | 관리자 이상(관리자·최고관리자) | 정산 회차 상세 — 차량·일별 재원 배분·포인트 |
+| POST | `/vpp/settlement/runs/{run_id}/cancel` | 관리자 이상(관리자·최고관리자) | 정산 회차 취소(산정 상태만) — 사유 필수, 같은 기간을 다시 산정할 수 있다 |
+| POST | `/vpp/settlement/runs/{run_id}/confirm` | 관리자 이상(관리자·최고관리자) | 정산 회차 확정 — 포인트를 원장에 적립(참여자 잔액 반영) |
+| GET | `/vpp/settlement/summary` | 관리자 이상(관리자·최고관리자) | 모의 정산 집계 — 관용/민간별 참여·포인트(확정 기준), 정산 가능범위, 경제성 검증 |

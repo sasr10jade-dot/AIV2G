@@ -21,6 +21,8 @@ OWNER_ALLOWED = {
     ("GET", "/owner/consent/v2g"), ("PUT", "/owner/consent/v2g"),   # 방전 참여 켜기·즉시 중지(본인 차량만)
     ("GET", "/owner/consent/location"), ("PUT", "/owner/consent/location"),   # 위치정보 별도 동의(본인 차량만)
     ("GET", "/owner/points"),   # 내 모의 포인트(본인 차량만)
+    ("GET", "/owner/surveys"), ("POST", "/owner/surveys/{survey_id}/responses"),   # VoC 설문(본인 차량, 1회)
+    ("GET", "/owner/missions"), ("POST", "/owner/missions/{mission_id}/claim"), ("POST", "/owner/points/inquiries"),   # 미션·정산 문의(본인 차량)
     ("GET", "/owner/notices"), ("GET", "/owner/app-content"),       # 공지·문구(공통)
     ("GET", "/owner/notifications"), ("POST", "/owner/notifications/{notif_id}/read"), ("POST", "/owner/notifications/read-all"), # 알림함
 }
