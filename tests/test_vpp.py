@@ -189,6 +189,8 @@ def test_run_lifecycle_draft_confirm_cancel(small_bundle):
         ledger.cancel_run(again["run_id"], "admin", "취소")                              # 확정은 취소 불가
     overlap = ledger.create_run(t, d0, d1, small_bundle["params"], "admin")
     assert overlap["totals"]["skipped_already_settled"] == again["totals"]["trades"]     # 이미 정산한 날은 건너뜀
+    with pytest.raises(ledger.SettlementError, match="새로 정산할 실적이 없습니다"):
+        ledger.create_run(t, d0, d1, small_bundle["params"], "admin")                  # 빈 회차는 만들지 않는다
 
 
 def test_inquiry_and_adjustment(small_bundle):

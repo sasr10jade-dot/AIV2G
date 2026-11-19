@@ -192,6 +192,8 @@ def create_run(trades: pd.DataFrame, period_from: str, period_to: str, params: d
                 inserted += 1
             else:
                 skipped += 1
+        if inserted == 0:
+            raise SettlementError(f"새로 정산할 실적이 없습니다(기간 내 {skipped}건은 이미 다른 회차에서 정산됨)")
         stored = pd.read_sql_query("SELECT * FROM virtual_trades WHERE run_id=?", con, params=(run_id,))
         totals = {"trades": inserted, "skipped_already_settled": skipped,
                   "points": int(stored["points"].sum()) if not stored.empty else 0,
@@ -216,6 +218,8 @@ def confirm_run(run_id: int, actor: str, note: str | None = None) -> dict:
             raise SettlementError("정산 회차를 찾을 수 없습니다")
         if r[0] != "draft":
             raise SettlementError(f"산정 상태의 회차만 확정할 수 있습니다(현재 {RUN_STATUS_LABELS[r[0]]})")
+        if not con.execute("SELECT 1 FROM virtual_trades WHERE run_id=? LIMIT 1", (run_id,)).fetchone():
+            raise SettlementError("거래가 없는 회차는 확정할 수 없습니다 — 취소하세요")
         now = _now()
         rows = con.execute("SELECT trade_id, ev_id, trade_date, points FROM virtual_trades WHERE run_id=?", (run_id,)).fetchall()
         con.executemany(
@@ -296,7 +300,10 @@ def settle(trades: pd.DataFrame, generation: str, data_source: str, params: dict
     if trades.empty:
         return {"inserted": 0, "skipped_already_settled": 0, "points_issued": 0, "run_id": None}
     params = params or {"points": {"krw_per_point": 1, "min_expected_reward_krw_per_month": 0}}
-    run = create_run(trades, trades["trade_date"].min(), trades["trade_date"].max(), params, actor, generation, data_source)
+    try:
+        run = create_run(trades, trades["trade_date"].min(), trades["trade_date"].max(), params, actor, generation, data_source)
+    except SettlementError:   # 기간 전체가 이미 정산됨 — 새로 적립할 것이 없다
+        return {"inserted": 0, "skipped_already_settled": len(trades), "points_issued": 0, "run_id": None}
     confirmed = confirm_run(run["run_id"], actor)
     t = confirmed["totals"]
     return {"inserted": t["trades"], "skipped_already_settled": t["skipped_already_settled"], "points_issued": t["points"],
