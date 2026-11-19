@@ -33,3 +33,5 @@ android/local.properties
 
 # 배포용 앱 파일(APK) — 저장소에 올리지 않고 서버의 downloads/ 에만 둔다
 downloads/
+# 사내 와이파이 HTTPS 내부 인증서(개인키 포함) — scripts/make_lan_cert.sh 로 서버에서 만든다
+certs/

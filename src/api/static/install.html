@@ -48,6 +48,20 @@ ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
     <p>앱 마켓 없이 바로 설치돼요. 설치하면 홈 화면 아이콘으로 열리고, 새 버전은 다음에 열 때 자동으로 바뀌어요.</p>
   </div>
 
+  <!-- 사내 와이파이 http 주소로 열었을 때: 보안 연결(HTTPS)이어야 앱 설치가 된다 -->
+  <div class="card" id="lanHttps" hidden>
+    <h2>먼저 보안 연결(HTTPS)로 바꿔 주세요</h2>
+    <div class="muted">지금 주소(http)에서는 휴대폰이 앱 설치를 막아요. 사내 와이파이 전용 인증서를 <b>처음 한 번만</b> 설치하면 돼요.</div>
+    <ol>
+      <li><a class="btn line" id="caLink" href="/pwa/lan-ca.crt" download>인증서 받기 (AIV2G-LAN-CA)</a></li>
+      <li id="caAndroid">안드로이드: <b>설정 → 보안(및 개인정보) → 기타 보안 설정 → 인증서 설치 → CA 인증서</b>에서 받은 파일을 골라요. (메뉴 이름은 기종마다 조금 달라요 — 설정에서 '인증서'로 검색)</li>
+      <li id="caIos">아이폰(사파리): 받은 뒤 <b>설정 → 프로파일이 다운로드됨 → 설치</b>, 그다음 <b>설정 → 일반 → 정보 → 인증서 신뢰 설정</b>에서 'AIV2G LAN Dev CA'를 켜요.</li>
+      <li>아래 버튼으로 보안 주소를 열고, 이 화면의 설치 방법을 따라 해요.</li>
+    </ol>
+    <a class="btn" id="httpsLink" href="#">보안 주소로 열기</a>
+    <div class="muted">이 인증서는 사내 개발 서버 확인용이에요. 실증이 끝나거나 정식 서버로 옮기면 설정에서 지워도 돼요.</div>
+  </div>
+
   <!-- 안드로이드·PC 크롬/엣지: 버튼 한 번으로 설치 -->
   <div class="card" id="oneTap" hidden>
     <h2>버튼을 누르면 설치돼요</h2>
@@ -91,7 +105,6 @@ ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
   </div>
 
   <a class="btn line" href="/app">설치하지 않고 웹으로 쓰기</a>
-  <p class="muted">브라우저로 처음 열면 영어 안내 화면(You are about to visit…)이 한 번 나올 수 있어요. 실증용 무료 접속 주소라서 그래요. <b>'Visit Site'</b>를 누르면 넘어가요.</p>
   <p class="muted">설치해도 개인정보는 휴대폰에 따로 저장되지 않아요. 로그인 정보와 차량 데이터는 서버에서만 불러와요.</p>
 </main>
 <script>
@@ -133,6 +146,18 @@ ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
     if (choice && choice.outcome === 'accepted') show('installed');
   });
   window.addEventListener('appinstalled', function () { show('installed'); });
+
+  // http(보안 아님)로 열렸으면 HTTPS 전환 안내를 맨 위에 보여 준다 — 서비스 워커·설치는 보안 연결에서만 된다
+  if (!window.isSecureContext) {
+    fetch('/pwa/lan-https.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
+      if (!info || !info.ca_available) return;
+      $('lanHttps').hidden = false;
+      $('oneTap').hidden = true; $('manual').hidden = true; $('ios').hidden = true;
+      $('httpsLink').href = 'https://' + location.hostname + ':' + info.https_port + '/install';
+      $('caAndroid').hidden = isIos;
+      $('caIos').hidden = !isIos && /android/i.test(ua);
+    }).catch(function () { /* 안내 없이 진행 */ });
+  }
 
   // 이 화면에서도 서비스 워커를 등록해야 브라우저가 '설치 가능'으로 판단한다(범위 '/' — /app과 같은 워커)
   if ('serviceWorker' in navigator) {

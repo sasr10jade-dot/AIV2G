@@ -6,6 +6,8 @@ sw.js와 /app은 항상 최신본을 받도록 no-cache로 보낸다(껍데기 �
 """
 from pathlib import Path
 
+import os
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -48,6 +50,26 @@ def download_apk() -> FileResponse:
 def install_page() -> FileResponse:
     """서포터즈 앱 설치 안내 — 안드로이드·PC는 버튼 한 번, 아이폰은 '홈 화면에 추가' 안내. 서포터즈에게 이 주소를 보낸다."""
     return FileResponse(STATIC_DIR / "install.html", headers=NO_CACHE)
+
+
+CERT_DIR = STATIC_DIR.parents[2] / "certs"
+
+
+@router.get("/pwa/lan-https.json")
+def lan_https_info() -> dict:
+    """사내 와이파이 HTTPS 안내용 — HTTPS 포트와 내부 루트 인증서 제공 여부(설치 안내 화면이 http로 열렸을 때 씀)."""
+    return {"https_port": int(os.environ.get("LAN_HTTPS_PORT") or 5443),
+            "ca_available": (CERT_DIR / "lan-ca.crt").is_file()}
+
+
+@router.get("/pwa/lan-ca.crt")
+def lan_ca_cert() -> FileResponse:
+    """내부망 HTTPS용 루트 인증서(공개 인증서만 — 개인키는 내보내지 않는다). 휴대폰에 설치·신뢰하면
+    https://서버IP:5443 이 '안전한 연결'이 되어 앱 설치(PWA)가 된다. 만들기: scripts/make_lan_cert.sh"""
+    path = CERT_DIR / "lan-ca.crt"
+    if not path.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(path, media_type="application/x-x509-ca-cert", filename="AIV2G-LAN-CA.crt", headers=NO_CACHE)
 
 
 @router.get("/privacy-policy")

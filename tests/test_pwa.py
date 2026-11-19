@@ -233,3 +233,20 @@ def test_android_app_links_and_apk_download(tmp_path, monkeypatch):
     r = client.get("/download/AIV2G-supporter.apk")
     assert r.status_code == 200 and r.content == b"PK-test" and r.headers["content-type"] == "application/vnd.android.package-archive"
     assert 'href="/download/AIV2G-supporter.apk"' in client.get("/install").text
+
+
+def test_lan_https_info_and_ca_cert(tmp_path, monkeypatch):
+    """사내 와이파이 HTTPS 안내 — 포트 정보, 루트 인증서는 있을 때만(공개 인증서만) 내려준다."""
+    from src.api.routers import pwa
+    monkeypatch.setattr(pwa, "CERT_DIR", tmp_path)
+    monkeypatch.delenv("LAN_HTTPS_PORT", raising=False)
+    r = client.get("/pwa/lan-https.json")
+    assert r.status_code == 200 and r.json() == {"https_port": 5443, "ca_available": False}
+    assert client.get("/pwa/lan-ca.crt").status_code == 404
+    (tmp_path / "lan-ca.crt").write_text("-----BEGIN CERTIFICATE-----\nX\n-----END CERTIFICATE-----\n")
+    (tmp_path / "lan-ca.key").write_text("SECRET")
+    assert client.get("/pwa/lan-https.json").json()["ca_available"] is True
+    r = client.get("/pwa/lan-ca.crt")
+    assert r.status_code == 200 and "BEGIN CERTIFICATE" in r.text and "SECRET" not in r.text
+    assert r.headers["content-type"].startswith("application/x-x509-ca-cert")
+    assert client.get("/pwa/lan-ca.key").status_code == 404
