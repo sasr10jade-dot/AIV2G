@@ -100,14 +100,19 @@
 * **Git 원격 저장소**: `https://github.com/sasr10jade-dot/AIV2G.git` (main 브랜치)
 * **GitHub Pages 진입점 저장소**: `..\aiv2g-entry`
 
-### 4.2 서버 구동 및 외부 터널링
+### 4.2 서버 구동 (내부 와이파이 개발 서버)
+개발 서버는 서버 PC(`192.168.35.92`)에서 포트 3000으로 띄우고, 같은 와이파이의 PC·휴대폰에서 접속한다.
 ```powershell
-# 1. 로컬 FastAPI Uvicorn 서버 구동 (포트 8000)
-python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
+# 서버 PC에서: 최신 소스 받기 → 개발 서버 구동 (0.0.0.0:3000, --reload)
+git pull origin main
+scripts\run_dev_lan.cmd
 
-# 2. Cloudflare 외부 접속 Quick Tunnel 구동
-cloudflared.exe tunnel --url http://127.0.0.1:8000
+# 최초 1회(관리자 PowerShell): 방화벽 인바운드 3000 허용(개인 네트워크 한정)
+New-NetFirewallRule -DisplayName "AIV2G dev 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Profile Private -Action Allow
 ```
+* 접속 주소: `http://192.168.35.92:3000/` (개발 진입 `/dev`, 대시보드 `/dashboard`, 모바일 `/app`, API 문서 `/docs`)
+* 앱 객체는 `src.api:app` 이다(`src.api.main:app` 아님).
+* `/dev` 간편 로그인은 같은 망의 누구나 쓸 수 있으므로 3000 포트를 공유기 포트포워딩·터널로 외부에 열지 않는다. 외부 공개가 필요하면 `scripts/run_public_demo.py` 를 쓴다.
 
 ### 4.3 단위 테스트 및 무결성 검증
 ```powershell
