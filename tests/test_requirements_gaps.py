@@ -301,6 +301,8 @@ def test_dashboard_payload_has_real_lists_not_fixed_mock(medium_cfg):
     data = build_dashboard_payload(medium_cfg)
     assert 0 < len(data["charger_list"]) <= medium_cfg.n_chargers
     assert {"plate", "odometer_km", "registered_model"} <= set(data["vehicle_status"][0])
+    cards = data["site_cards"]
+    assert len(cards) == 3 and all(c["total_count"] == 50 and c["est_load_kw"] is not None for c in cards)
     html = client.get("/dashboard").text
-    assert "CPO_STATIONS" not in html and "토레스 EVX (차종B SUV)" not in html          # 고정 시연 목록 제거
+    assert "CPO_STATIONS" not in html and "토레스 EVX (차종B SUV)" not in html and "341.0 kW" not in html   # 고정 시연 값 제거
     assert "initChargersList(data)" in html and "initVehiclesList(data)" in html

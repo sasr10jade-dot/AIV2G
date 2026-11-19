@@ -684,76 +684,10 @@
     <div style="margin:16px 0 20px 0;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
         <h3 class="sub-h" style="margin:0;" data-i18n>📍 실증 참여 거점 충전소 및 CPO 150기 인프라 목록</h3>
-        <span class="tag navy" data-i18n>실증 참여 장소 3곳 · CPO 150기 연계</span>
+        <span class="tag navy" id="site-cards-tag">-</span>
       </div>
-      <div class="tiles" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">
-        <div class="tile" style="border-left:4px solid #2f5bff; background:var(--bg); text-align:left;">
-          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🔵 거점 1: 공공기관 청사 부설 충전소</span>
-          <div style="font-size:12px; color:var(--muted); margin:4px 0;">광주광역시 서구 내방로 (광주광역시청 인근)</div>
-          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
-            <div>• 계약전력: <b>500 kW</b> (수전용량 750 kVA)</div>
-            <div>• 충전기: <b>급속 4기 (50~100kW) · 완속 16기 (7kW)</b></div>
-            <div>• 감축목표: <b>피크 45.0 kW 저감</b></div>
-          </div>
-          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
-              <span style="color:var(--muted);">현재 부하율</span>
-              <span style="font-weight:700; color:#2f5bff;">341.0 kW / 500 kW (68.2%)</span>
-            </div>
-            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
-              <div style="height:100%; width:68.2%; background:#2f5bff; border-radius:3px;"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
-              <span>피크 여유: 159.0 kW</span>
-              <span>감축 여력: 45.0 kW</span>
-            </div>
-          </div>
-        </div>
-        <div class="tile" style="border-left:4px solid #10b981; background:var(--bg); text-align:left;">
-          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🟢 거점 2: 기업 빌딩 부설 충전소</span>
-          <div style="font-size:12px; color:var(--muted); margin:4px 0;">전남 나주시 빛가람동 (빛가람혁신도시 기업거리)</div>
-          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
-            <div>• 계약전력: <b>800 kW</b> (수전용량 1,000 kVA)</div>
-            <div>• 충전기: <b>급속 6기 (100kW) · 완속 24기 (7kW)</b></div>
-            <div>• 감축목표: <b>피크 75.0 kW 저감</b></div>
-          </div>
-          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
-              <span style="color:var(--muted);">현재 부하율</span>
-              <span style="font-weight:700; color:#10b981;">512.0 kW / 800 kW (64.0%)</span>
-            </div>
-            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
-              <div style="height:100%; width:64.0%; background:#10b981; border-radius:3px;"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
-              <span>피크 여유: 288.0 kW</span>
-              <span>감축 여력: 75.0 kW</span>
-            </div>
-          </div>
-        </div>
-        <div class="tile" style="border-left:4px solid #f59e0b; background:var(--bg); text-align:left;">
-          <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">🟠 거점 3: 도시 공용 거점 충전소</span>
-          <div style="font-size:12px; color:var(--muted); margin:4px 0;">광주광역시 북구 첨단과기로 (첨단국가산단 공영)</div>
-          <div style="font-size:12px; line-height:1.6; margin-top:6px;">
-            <div>• 계약전력: <b>1,200 kW</b> (수전용량 1,500 kVA)</div>
-            <div>• 충전기: <b>초급속 12기 (200kW) · 완속 28기 (7kW)</b></div>
-            <div>• 감축목표: <b>피크 110.0 kW 저감</b></div>
-          </div>
-          <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
-            <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
-              <span style="color:var(--muted);">현재 부하율</span>
-              <span style="font-weight:700; color:#f59e0b;">780.0 kW / 1,200 kW (65.0%)</span>
-            </div>
-            <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
-              <div style="height:100%; width:65.0%; background:#f59e0b; border-radius:3px;"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
-              <span>피크 여유: 420.0 kW</span>
-              <span>감축 여력: 110.0 kW</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="tiles" id="site-cards" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;"></div>
+      <p style="font-size:11.5px; color:var(--muted); margin:0 0 4px;" id="site-cards-note"></p>
     </div>
 
     <div class="grid-2" style="gap:16px">
@@ -2448,6 +2382,7 @@ async function loadDashboard() {
     renderCollection(data);
     renderInfra(data);
     renderVehicleStatus(data);
+    renderSiteCards(data);
     initChargersList(data);
     initVehiclesList(data);
     loadChargingEfficiency();
@@ -2794,6 +2729,47 @@ async function boot() {
   loadHorizonForecast('hourly');
 }
 
+
+
+// 거점 카드 — 서버의 site_cards(설정 + 현재 시각 기본 부하 추정) 기준
+function renderSiteCards(data) {
+  const box = document.getElementById('site-cards');
+  if (!box) return;
+  const cards = data.site_cards || [];
+  const colors = ['#2f5bff', '#10b981', '#f59e0b', '#8b5cf6'];
+  const icons = ['🔵', '🟢', '🟠', '🟣'];
+  box.innerHTML = cards.map((c, i) => {
+    const col = colors[i % colors.length];
+    const pct = c.est_load_pct == null ? 0 : Math.min(100, c.est_load_pct);
+    return `<div class="tile" style="border-left:4px solid ${col}; background:var(--bg); text-align:left;">
+      <span class="label" style="font-size:13.5px; font-weight:700; color:var(--text);">${icons[i % icons.length]} ${t('거점')} ${i + 1}: ${escH(c.name)}</span>
+      <div style="font-size:12px; color:var(--muted); margin:4px 0;">${escH(c.address || '')}</div>
+      <div style="font-size:12px; line-height:1.6; margin-top:6px;">
+        <div>• ${t('계약전력')}: <b>${fmtInt(c.contract_power_kw)} kW</b>${c.transformer_capacity_kva ? ` (${t('수전용량')} ${fmtInt(c.transformer_capacity_kva)} kVA)` : ''}</div>
+        <div>• ${t('충전기')}: <b>${t('급속')} ${c.rapid_count ?? '-'}${t('기')} · ${t('완속')} ${c.slow_count ?? '-'}${t('기')} (${t('계')} ${c.total_count ?? '-'}${t('기')})</b></div>
+        <div>• ${t('감축목표')}: <b>${t('피크')} ${c.peak_reduction_target_kw ?? '-'} kW ${t('저감')}</b></div>
+      </div>
+      <div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+        <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:3px;">
+          <span style="color:var(--muted);">${t('현재 부하율(추정)')}</span>
+          <span style="font-weight:700; color:${col};">${c.est_load_kw == null ? '-' : `${c.est_load_kw} kW / ${fmtInt(c.contract_power_kw)} kW (${c.est_load_pct}%)`}</span>
+        </div>
+        <div style="height:6px; background:rgba(0,0,0,0.06); border-radius:3px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:${col}; border-radius:3px;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:3px;">
+          <span>${t('피크 여유')}: ${c.headroom_kw ?? '-'} kW</span>
+          <span>${c.confirmed ? t('확정') : t('협의 전 예시')}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const total = cards.reduce((a, c) => a + (c.total_count || 0), 0);
+  const tag = document.getElementById('site-cards-tag');
+  if (tag) tag.textContent = `${t('실증 참여 장소')} ${cards.length}${t('곳')} · ${t('충전기')} ${total}${t('기')}`;
+  const note = document.getElementById('site-cards-note');
+  if (note) note.textContent = t('현재 부하율은 거점 기본 부하 프로파일(config/sites.json)로 지금 시각을 추정한 값입니다(주말·공휴일 0.6배). 실측 수전 데이터 연계 전.');
+}
 
 // ------------------------------------------------------------- 충전기 관제 리스트 — 서버의 충전 세션 데이터 기준(고정 목록 아님) --
 let allChargersData = [];

@@ -322,6 +322,7 @@ def build_dashboard_payload(
         "vehicle_status": _vehicle_status_with_registry(ev_df),
         # 충전기 관제 리스트 — 세션 데이터로 계산한 충전기별 상태(고정 시연 목록 아님)
         "charger_list": charger_status_list(charger_df, load_site_registry(), _cpo_operator_names()),
+        "site_cards": _site_cards(),   # 거점 카드 — config/sites.json + 현재 시각 기본 부하(추정)
         "renewable": build_renewable_summary(grid_df, window_days=CHART_WINDOW_DAYS),
     }
 
@@ -334,6 +335,30 @@ def _cpo_operator_names() -> dict:
         return {s.get("operator_id"): s.get("operator_name") for s in load_cpo_config().get("sources", [])}
     except Exception:   # 설정이 없어도 대시보드는 열린다
         return {}
+
+
+def _site_cards() -> list[dict]:
+    """거점 카드 표시값 — 설정(계약전력·충전기 수·감축목표)과 지금 시각의 기본 부하 프로파일(주말·공휴일 0.6배)로 추정한 부하율.
+    실측 수전 데이터가 연계되기 전이라 부하는 '추정'이다."""
+    now = kst_now()
+    weekend = now.weekday() >= 5
+    out = []
+    for s in load_site_registry().values():
+        prof = s.get("estimated_base_load_profile") or []
+        load = float(prof[now.hour]) * (0.6 if weekend else 1.0) if len(prof) == 24 else None
+        contract = float(s.get("contract_power_kw") or 0)
+        ch = s.get("chargers") or {}
+        out.append({
+            "site_id": s["site_id"], "name": s.get("name"), "type": s.get("type"), "address": s.get("address"),
+            "contract_power_kw": contract, "transformer_capacity_kva": s.get("transformer_capacity_kva"),
+            "rapid_count": ch.get("rapid_count"), "slow_count": ch.get("slow_count"), "total_count": ch.get("total_count"),
+            "peak_reduction_target_kw": s.get("peak_reduction_target_kw"),
+            "est_load_kw": round(load, 1) if load is not None else None,
+            "est_load_pct": round(load / contract * 100, 1) if load is not None and contract else None,
+            "headroom_kw": round(contract - load, 1) if load is not None else None,
+            "confirmed": bool(s.get("confirmed")),
+        })
+    return out
 
 
 def _vehicle_status_with_registry(ev_df) -> list[dict]:
