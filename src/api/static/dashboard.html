@@ -394,18 +394,6 @@
   .modal-body th, .modal-body td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--gridline); font-size: 12px; }
   .modal-body th { color: var(--text-muted); font-weight: 500; }
 
-  .load-progress { margin: -8px 0 20px; }
-  .load-progress-track {
-    width: 100%; height: 6px; border-radius: 3px; overflow: hidden;
-    background: var(--gridline); border: 1px solid var(--border);
-  }
-  .load-progress-bar {
-    height: 100%; width: 0%; background: var(--teal);
-    transition: width 0.15s linear;
-  }
-  .load-progress-label {
-    display: block; margin-top: 4px; font-size: 12px; color: var(--text-secondary);
-  }
     /* 핵심 LNB 레이아웃 인라인 보장 (프리미엄 슬라이딩 트랜지션) */
   .ax-layout { display: flex; min-height: 100vh; background: var(--bg); }
   .ax-sidebar {
@@ -493,10 +481,6 @@
     </header>
 
     <div class="ax-main-body"><div class="ax-notice" style="display:none"></div>
-  <div id="load-progress" class="load-progress" hidden>
-    <div class="load-progress-track"><div class="load-progress-bar"></div></div>
-    <span class="load-progress-label"></span>
-  </div>
   <div class="card" id="exec-summary-card" style="padding:10px 16px; margin-bottom:8px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -2440,46 +2424,11 @@ document.getElementById('ps-apply').addEventListener('click', () => {
 
 
 
-// 실제 서버 진행 단계를 알 수 없어(한 번의 요청으로 LP 최적화·예측모델 학습이 끝까지
-// 진행된 뒤에야 응답이 옴) 진짜 %는 낼 수 없다. 대신 실측된 소요시간(캐시 히트
-// 2.5~3.5초, 캐시미스 9~11초)에 맞춰 점근적으로 차오르다가 응답이 오면 100%로
-// 스냅하는 방식(깃허브 pjax 진행바와 동일한 패턴)으로 "진행 중"이라는 체감을 준다.
-const LOAD_PROGRESS_TAU_SEC = 4;
-let loadProgressTimer = null;
-
-function startLoadProgress() {
-  const wrap = document.getElementById('load-progress');
-  const bar = wrap.querySelector('.load-progress-bar');
-  const label = wrap.querySelector('.load-progress-label');
-  wrap.hidden = false;
-  bar.style.width = '0%';
-  label.textContent = `${t('데이터 불러오는 중…')} 0%`;
-  const start = performance.now();
-  loadProgressTimer = setInterval(() => {
-    const elapsedSec = (performance.now() - start) / 1000;
-    const pct = Math.round(100 * (1 - Math.exp(-elapsedSec / LOAD_PROGRESS_TAU_SEC)));
-    bar.style.width = pct + '%';
-    label.textContent = `${t('데이터 불러오는 중…')} ${pct}%`;
-  }, 100);
-}
-
-function finishLoadProgress(success) {
-  clearInterval(loadProgressTimer);
-  const wrap = document.getElementById('load-progress');
-  const bar = wrap.querySelector('.load-progress-bar');
-  const label = wrap.querySelector('.load-progress-label');
-  if (!success) { wrap.hidden = true; return; }
-  bar.style.width = '100%';
-  label.textContent = t('완료');
-  setTimeout(() => { wrap.hidden = true; }, 250);
-}
-
 async function loadDashboard() {
   const refreshBtn = document.getElementById('refresh');
   const errBox = document.getElementById('error');
   if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = t('불러오는 중…'); }
   errBox.style.display = 'none';
-  startLoadProgress();
   let ok = false;
   try {
     const res = await fetch('/dashboard/data');
@@ -2511,7 +2460,6 @@ async function loadDashboard() {
     errBox.style.display = 'block';
   } finally {
     if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = t('새로고침'); }
-    finishLoadProgress(ok);
   }
 }
 

@@ -417,8 +417,14 @@
     var title = el('input', { type: 'text', maxlength: '80', placeholder: '설문 제목(예: 1차 실증 참여 만족도)' });
     var desc = el('textarea', { maxlength: '500', placeholder: '안내 문구(선택)' });
     var qbox = el('div', {});
-    [{ type: 'scale', text: '서비스에 전반적으로 만족하시나요?' }, { type: 'choice', text: '가장 도움이 된 기능은 무엇인가요?', options: ['충전 시간 추천', '충전 리포트', '모의 포인트'] },
-     { type: 'text', text: '개선이 필요한 점을 자유롭게 적어 주세요.' }].forEach(function (q) { qbox.appendChild(questionRow(q)); });
+    // 기본 문항 = 계획서 레퍼런스 3(p.34) '방전 수용도·보상 기대 수준' — 인센티브 설계와 정산 참여 유인 기준(min_expected_reward)의 근거
+    if (!title.value) title.value = '1차 실증 방전 수용도·보상 기대 수준 조사';
+    [{ type: 'scale', text: '주차 중 내 차 배터리를 저녁 피크 시간에 방전(V2G)하는 데 얼마나 동의하시나요?' },
+     { type: 'choice', text: '방전해도 괜찮은 최저 배터리 수준은 어느 정도인가요?', options: ['30% 이상 남기면 됨', '50% 이상', '70% 이상', '방전 원하지 않음'] },
+     { type: 'choice', text: '방전 참여 대가로 한 달에 어느 정도 보상을 기대하시나요?', options: ['5천원 미만', '5천~1만원', '1만~2만원', '2만~5만원', '5만원 이상'] },
+     { type: 'choice', text: '가장 원하는 보상 방식은 무엇인가요?', options: ['포인트 적립', '충전요금 할인', '수익 배분(현금성)', '충전 마일리지'] },
+     { type: 'scale', text: '앱의 충전 시간 추천이 도움이 되었나요?' },
+     { type: 'text', text: '방전 참여를 망설이게 하는 점이나 바라는 점을 적어 주세요.' }].forEach(function (q) { qbox.appendChild(questionRow(q)); });
     var addQ = el('button', { type: 'button', text: '+ 문항 추가' });
     addQ.addEventListener('click', function () { qbox.appendChild(questionRow({ type: 'scale' })); });
     var save = el('button', { type: 'button', class: 'ok', text: '설문 공개' });
