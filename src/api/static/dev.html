@@ -14,8 +14,18 @@
 <link rel="stylesheet" href="/theme.css" />
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+  [hidden] { display: none !important; }
+  body.dev-entry { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+  .dev-wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 64px; }
+  .topbar { background: var(--navy); color: #fff; }
+  .topbar-inner { max-width: 1080px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; font-size: 15px; }
+  .brand .badge { background: var(--accent); color: #fff; font-weight: 800; font-size: 12px; border-radius: 7px; padding: 3px 7px; }
+  .brand .env-tag { font-size: 11px; font-weight: 700; border: 1px solid rgba(255,255,255,.4); border-radius: 6px; padding: 1px 6px; }
+  .topnav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+  .topnav a { color: #DCE6FA; text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 8px; }
+  .topnav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+  .theme-btn { border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 13px; }
 
   /* 상단 요약 */
   .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 22px; }
@@ -84,10 +94,10 @@
   @media (max-width: 860px) { .hero, .roles, .grid, .links { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body class="ax-page">
-<header class="ax-header"><div class="ax-header-inner"><a class="ax-logo" href="/dashboard"><span class="ax-logo-badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="ax-tag">V1.0</span></a><span class="ax-tag">DEV</span><nav class="ax-nav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/approvals">가입 승인</a><a href="/admin">웹앱 관리</a><a href="/docs">API 문서</a></nav></div></header>
+<body class="dev-entry">
+<header class="topbar"><div class="topbar-inner"><a class="brand" href="/dev"><span class="badge">AX</span><span><b>AX·V2G</b> 허브 실증</span><span class="env-tag">DEV</span></a><nav class="topnav" aria-label="화면"><a href="/dashboard">운영 대시보드</a><a href="/app">모바일 앱</a><a href="/approvals">가입 승인</a><a href="/admin">웹앱 관리</a><a href="/docs">API 문서</a></nav><button class="theme-btn" type="button" id="themeBtn" aria-label="화면 밝기 전환">☾</button></div></header>
 
-<main class="wrap">
+<main class="dev-wrap">
   <section class="hero">
     <div class="hero-main">
       <div class="eyebrow">AI-V2G 실증 · 개발용 진입</div>
@@ -246,6 +256,16 @@
       setTimeout(function () { b.textContent = '복사'; }, 1500);
     });
   });
+
+  var themeBtn = document.getElementById('themeBtn');
+  function syncTheme() { themeBtn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾'; }
+  themeBtn.addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('ai-v2g-theme', next); } catch (e) { /* 저장 못 해도 이번 화면에는 적용 */ }
+    syncTheme();
+  });
+  syncTheme();
 
   function isPrivateHost(h) {
     return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
