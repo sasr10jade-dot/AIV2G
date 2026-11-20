@@ -304,6 +304,31 @@ def region_sync_temperature(region_id: str, start: str, end: str) -> dict:
         raise HTTPException(status_code=502, detail=f"공개 데이터 호출 실패: {exc}") from exc
 
 
+@router.post("/regions/{region_id}/public-csv/{kind}", summary="대조 지역 공개 데이터 CSV 저장 — 시간별 전력수요(power-demand)·재생에너지(renewable)")
+async def region_public_csv(region_id: str, kind: str, file: UploadFile = File(..., description="공공데이터포털 지역별 시간별 CSV"),
+                            region: str | None = Form(None, description="CSV에서 거를 지역 이름(비우면 설정의 public_csv_region)")) -> dict:
+    """평가의견 9 — 제주·수도권(경기) 대조군의 전력수요·재생에너지 발전을 지역 이름으로 걸러 data/raw/regions/<id>_grid.csv에 저장한다.
+    실증 데이터(grid_signal)는 바꾸지 않는다."""
+    from src.pipeline import region_compare as rc
+    column = public_csv.KINDS.get(kind)
+    if column is None:
+        raise HTTPException(status_code=404, detail="kind는 power-demand 또는 renewable 입니다")
+    try:
+        reg = rc._region(region_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"설정에 없는 지역입니다: {region_id}") from exc
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="20MB 이하 파일만 올릴 수 있습니다")
+    name = (region or "").strip() or reg.get("public_csv_region")
+    try:
+        series = public_csv.parse_hourly(content, region=name)
+    except public_csv.CsvFormatError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    stored = rc.save_region_series(region_id, column, series)
+    return {"status": "ok", "region": region_id, "filter": name, "column": column, "rows_in_file": len(series), "stored_hours": stored}
+
+
 @router.post("/public-csv/{kind}", summary="공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable)")
 async def upload_public_csv(kind: str, file: UploadFile = File(..., description="공공데이터포털에서 받은 시간별 CSV(가로형 1~24시 또는 세로형)"),
                             region: str | None = Form(None, description="세로형에 지역 열이 있으면 거를 지역(예: 전남)")) -> dict:

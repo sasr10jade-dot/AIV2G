@@ -223,9 +223,9 @@ def test_region_compare_marks_uncollected_and_compares_collected(tmp_path, monke
     assert out["regions"][0]["role"] == "실증" and out["regions"][0]["mean_c"] == 5.0
     assert all(r["status"] == "수집 전" for r in out["regions"][1:])            # 값을 지어내지 않는다
     fake = lambda start, end, station: pd.DataFrame({"timestamp": ts, "temperature_c": [-2.0] * 24 + [1.0] * 24})
-    res = rc.sync_region_temperature("daejeon", ts[0], ts[-1], fetch=fake)
-    assert res["station"] == "133" and res["stored_hours"] == 48
-    dj = next(r for r in rc.compare(grid, "합성(모의)")["regions"] if r["id"] == "daejeon")
+    res = rc.sync_region_temperature("jeju", ts[0], ts[-1], fetch=fake)
+    assert res["station"] == "184" and res["stored_hours"] == 48
+    dj = next(r for r in rc.compare(grid, "합성(모의)")["regions"] if r["id"] == "jeju")
     assert dj["status"] == "수집됨" and dj["below_zero_pct"] == 50.0 and dj["mean_diff_c"] == round(-0.5 - 5.0, 1)
     _admin()
     assert client.post("/ingest/regions/nowhere/sync-temperature?start=2026-12-01&end=2026-12-02").status_code == 404
@@ -306,3 +306,22 @@ def test_dashboard_payload_has_real_lists_not_fixed_mock(medium_cfg):
     html = client.get("/dashboard").text
     assert "CPO_STATIONS" not in html and "토레스 EVX (차종B SUV)" not in html and "341.0 kW" not in html   # 고정 시연 값 제거
     assert "initChargersList(data)" in html and "initVehiclesList(data)" in html
+
+
+def test_region_controls_are_jeju_and_gyeonggi_with_grid_series_and_transfer(tmp_path, monkeypatch):
+    import numpy as np
+    """평가의견 9: 대조군 제주·수도권(경기), 전력수요·재생에너지·기상 비교표와 실증 모델의 타 지역 예측 적용."""
+    from src.pipeline import region_compare as rc
+    monkeypatch.setattr(rc, "REGION_DIR", tmp_path / "regions")
+    assert [r["id"] for r in rc.load_regions()["controls"]] == ["jeju", "gyeonggi"]
+    ts = pd.date_range("2026-12-01", periods=24 * 21, freq="h")
+    shape = 1 + 0.3 * np.sin((ts.hour - 6) / 24 * 2 * np.pi)
+    grid = pd.DataFrame({"timestamp": ts, "temperature_c": 5.0, "power_demand_mw": 100 * shape, "renewable_gen_mw": 20.0})
+    rc.save_region_series("jeju", "power_demand_mw", pd.DataFrame({"timestamp": ts, "value": 40 * shape}))
+    rc.save_region_series("jeju", "renewable_gen_mw", pd.DataFrame({"timestamp": ts, "value": 15.0}))
+    out = rc.compare(grid, "합성(모의)")
+    jeju = next(r for r in out["regions"] if r["id"] == "jeju")
+    assert jeju["demand_mean_mw"] > 0 and jeju["renewable_share_pct"] > out["regions"][0]["renewable_share_pct"]
+    tr = {t["id"]: t for t in out["transfer"]}
+    assert tr["jeju"]["status"] == "적용" and tr["jeju"]["accuracy_pct"] > 80      # 같은 모양이면 정규화 수요가 잘 맞는다
+    assert tr["gyeonggi"]["status"] == "수집 전"

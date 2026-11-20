@@ -831,6 +831,12 @@
     <div id="renewable-insight" class="insight-box"></div>
   </div>
 
+  <div class="card" id="region-card">
+    <h2 data-sec="01" data-kind="actual" data-i18n>타 지역 비교 (대조군: 제주·수도권 경기)</h2>
+    <p class="card-what" data-i18n>전남 실증 지역의 특성을 보려고 제주·경기의 시간 단위 공개 데이터(전력수요·재생에너지·기온)를 대조군으로 모으고, 실증 지역 데이터로 학습한 수요 패턴 모델을 타 지역에 적용해 봅니다(2차년도 확산 모델 보정 근거).</p>
+    <div id="region-body" style="overflow-x:auto; font-size:12px;"><span class="muted" data-i18n>불러오는 중…</span></div>
+  </div>
+
   <div class="card">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
       <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>차량별 배터리·충전 현황</h2>
@@ -2410,7 +2416,31 @@ document.getElementById('ess-save').addEventListener('click', async () => {
 
 function loadVppSection() {
   // 대시보드 본 데이터와 따로, 순서대로 불러온다(서버의 무거운 계산은 한 번에 하나만 돈다)
-  loadRevenueSources().then(loadCurtailment).then(loadSettlement).then(loadEss).then(() => loadManagement(false));
+  loadRevenueSources().then(loadCurtailment).then(loadSettlement).then(loadEss).then(() => loadManagement(false)).then(loadRegions);
+}
+
+// 타 지역 비교(평가의견 9)
+async function loadRegions() {
+  const box = document.getElementById('region-body');
+  if (!box) return;
+  try {
+    const r = await fetch('/ingest/regions/compare', { axQuiet: true });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const v = (x, u = '') => x == null ? '-' : x + u;
+    const rows = d.regions.map(g => `<tr><td><b>${escH(t(g.label))}</b><div class="muted">${t(g.role)} · ASOS ${escH(g.station)}</div></td>
+      <td>${escH(t(g.status || ''))}<div class="muted">${escH(t(g.source || ''))}</div></td>
+      <td class="num">${v(g.mean_c, '℃')}</td><td class="num">${v(g.below_zero_pct, '%')}</td><td class="num">${v(g.above_30_pct, '%')}</td>
+      <td class="num">${g.demand_mean_mw == null ? '-' : fmtInt(g.demand_mean_mw)}</td><td class="num">${v(g.demand_peak_hour, t('시'))}</td><td class="num">${v(g.demand_load_factor_pct, '%')}</td>
+      <td class="num">${v(g.renewable_share_pct, '%')}</td><td class="num">${v(g.high_renewable_hours_pct, '%')}</td></tr>`).join('');
+    const tr = (d.transfer || []).map(x => `<span class="tag ${x.status === '적용' ? 'navy' : 'gray'}" style="margin:2px;">${escH(t(x.label || ''))}: ${x.status === '적용' ? `${t('예측 정확도')} ${x.accuracy_pct}% (${fmtInt(x.hours)}${t('시간')})` : escH(t(x.status))}</span>`).join('');
+    box.innerHTML = `<table><thead><tr><th>${t('지역')}</th><th>${t('수집')}</th><th class="num">${t('평균 기온')}</th><th class="num">${t('영하 시간')}</th><th class="num">${t('30℃ 이상')}</th>
+      <th class="num">${t('평균 수요 MW')}</th><th class="num">${t('수요 피크 시각')}</th><th class="num">${t('부하율')}</th><th class="num">${t('재생에너지 비중')}</th><th class="num">${t('재생 30%+ 시간')}</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:6px;"><b>${t('실증 지역 모델의 타 지역 적용')}</b> ${tr || '-'}</div>
+      <p class="muted" style="font-size:11.5px; margin:4px 0 0;">${escH(t(d.note))} ${t('대조 지역 데이터는 관리 API: POST /ingest/regions/{id}/sync-temperature(기온), POST /ingest/regions/{id}/public-csv/{power-demand|renewable}(CSV)로 수집합니다.')}</p>`;
+  } catch (e) {
+    box.innerHTML = `<span class="muted">${t('타 지역 비교를 불러오지 못했습니다')} (${escH(e.message)})</span>`;
+  }
 }
 
 // 성과·관리 지표판(평가의견 5·6·8·10·11)
