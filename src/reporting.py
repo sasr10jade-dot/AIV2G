@@ -65,7 +65,8 @@ def build_results_workbook(payload: dict) -> bytes:
 
     # 1. 성과지표(데이터 확보 보고서)
     ws = _sheet(wb, "성과지표", "데이터 확보 현황 — 사업수행계획서 성과지표", common + [
-        "1건 = 연계 충전기의 유효 충전 세션 1건 또는 주행·충전·연결이 관측된 (차량, 날짜) 1건. 연차별 미중복.",
+        "1건 = 필수 필드를 갖추고 품질검증을 통과한 충전 세션 단위 레코드(차량 OBD 세션 1회 또는 CPO 거점 유효 충전 세션 1건). "
+        "서포터즈 차량의 CPO 세션은 OBD와 겹치므로 제외. 연차별 미중복(평가의견 14).",
         "공백기(2027-04-16~04-30)·사업기간 밖·합성 데이터·방전(추론)은 실적에 넣지 않는다. 공개 데이터는 참고 건수."])
     official = {y["year"]: y for y in kpi.get("data_official_by_year", [])}
     _table(ws, ["연차", "기간", "목표(건)", "실적(건, 실측만)", "달성률(%)", "전체 집계(건, 모의 포함)", "충전 세션", "차량 세션"],
@@ -85,6 +86,26 @@ def build_results_workbook(payload: dict) -> bytes:
         ["공개 데이터 참고 건수", kpi.get("public_reference_records"), "-"],
         ["사업기간 밖·공백기 건수(제외)", kpi.get("data_out_of_period"), "-"],
     ], "실증 인프라")
+    col0 = kpi.get("collection") or {}
+    plan = col0.get("data_plan") or {}
+    if plan:
+        _table(ws, ["원천", "산출식", "계획(건)"], [
+            ["차량 OBD 세션", f"{plan['obd']['vehicles']}대 × 주 {plan['obd']['per_vehicle_week']}회 × {plan['obd']['weeks']}주", plan["obd"]["count"]],
+            ["CPO 거점 충전 세션(서포터즈 차량 세션 제외)", f"주 {plan['cpo']['per_week']}건 × {plan['cpo']['weeks']}주", plan["cpo"]["count"]],
+            ["합계", "", plan["total"]],
+            [f"서포터즈 이탈 {plan['attrition_pct']}% 반영 시", "", plan["total_with_attrition"]],
+            ["목표", "", plan["target"]],
+        ], "1차년도 데이터 확보 계획(평가의견 4·14)")
+    f = col0.get("funnel")
+    if f:
+        _table(ws, ["단계", "건수"], [["원천 행", f["raw"]], ["유효(필수 필드·충전량>0)", f["valid"]], ["중복 제거 후", f["deduplicated"]],
+                                     ["서포터즈 차량 세션 제외", -f["supporter_excluded"]], ["성과 산입", f["counted"]]],
+               "충전 세션 집계 단계 — 중복 제거 전·후(평가의견 14)")
+    srcs = payload.get("data_sources")
+    if srcs:
+        _table(ws, ["데이터 원천", "건수", "성과 산입", "구분"],
+               [[r["source"], r.get("count"), "-" if r.get("counted") is None else ("산입" if r["counted"] else "제외·보조"), r.get("kind")] for r in srcs],
+               "원천별 건수와 성과 산입 여부(평가의견 8)")
 
     # 2. 일자별 수집·전망
     col = kpi.get("collection") or {}

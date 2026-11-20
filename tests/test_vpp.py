@@ -308,3 +308,8 @@ def test_management_board_review_opinions(admin, small_bundle):
     assert len(d["references"]) == 4 and [c["stage"] for c in d["compensation"]] == [1, 2, 3]
     assert {"counted", "count", "source"} <= set(d["data_sources"][0])
     assert d["data_plan"]["total"] == 4615
+
+
+def test_s3_discharge_respects_min_soc(small_bundle):
+    s3 = small_bundle["curtailment"]["scenarios"]["rows"][2]
+    assert s3["min_soc_violations"] == 0 and s3["violations_without_guard"] >= 0 and s3["safety_capped_kwh"] >= 0

@@ -48,7 +48,8 @@ def test_price_model_separates_buy_and_sell():
     assert set(zero.sell_by_time.values()) == {0.0}
     flat = pr.build_price_model(TIMES, grid, "kepco_ev_example", "contract_example")
     assert set(flat.sell_by_time.values()) == {300.0}
-    assert flat.buy_by_time[TIMES[3]] == 100 and flat.buy_by_time[TIMES[12]] == 180
+    tf = pr.get_tariff("kepco_ev_example")
+    assert flat.buy_by_time[TIMES[3]] == tf.price_at(TIMES[3]) and flat.buy_by_time[TIMES[12]] == tf.price_at(TIMES[12])   # 계절·시간대 단가
 
 
 def test_breakeven_matches_prd_examples():

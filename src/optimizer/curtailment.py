@@ -264,21 +264,32 @@ def emulate(
     }
 
 
+def _available_above_floor(ev: pd.DataFrame, min_soc_pct: float) -> pd.Series:
+    """시각별 연결 차량의 최소 보장 SOC 위 여유 에너지 합(kWh) — 방전 안전 한도."""
+    conn = ev[ev["connected"].astype(bool)]
+    floor = conn["min_soc_pct"] if "min_soc_pct" in conn.columns else min_soc_pct
+    avail = ((conn["soc_pct"] - floor).clip(lower=0) / 100 * conn["battery_capacity_kwh"])
+    return avail.groupby(conn["timestamp"]).sum()
+
+
 def _soc_violations(ev: pd.DataFrame, discharge_kw: pd.Series, timestamps: pd.Series, min_soc_pct: float) -> int:
-    """방전으로 최소 보장 SOC 아래로 내려가는 차량-시간 건수. 그 시각 방전량을 연결 차량에 똑같이 나눠
-    관측 SOC에서 뺀다(같은 날 흡수 충전분은 더하지 않는 보수적 계산 — 실제 미달은 이보다 적거나 같다)."""
+    """방전으로 최소 보장 SOC 아래로 내려가는 차량-시간 건수. 그 시각 방전량을 연결 차량의 'SOC 하한 위 여유'에
+    비례해 나눠 관측 SOC에서 뺀다(같은 날 흡수 충전분은 더하지 않는 보수적 계산)."""
     dis = pd.Series(discharge_kw.to_numpy(), index=pd.to_datetime(timestamps.to_numpy()))
     dis = dis[dis > 0]
     if dis.empty:
         return 0
-    conn = ev[ev["connected"].astype(bool) & ev["timestamp"].isin(dis.index)]
+    conn = ev[ev["connected"].astype(bool) & ev["timestamp"].isin(dis.index)].copy()
     if conn.empty:
         return 0
-    n = conn.groupby("timestamp")["ev_id"].transform("count")
-    share_kwh = conn["timestamp"].map(dis) / n
-    soc_after = conn["soc_pct"] - share_kwh / conn["battery_capacity_kwh"] * 100
     floor = conn["min_soc_pct"] if "min_soc_pct" in conn.columns else min_soc_pct
-    return int((soc_after < floor).sum())
+    conn["_avail"] = (conn["soc_pct"] - floor).clip(lower=0) / 100 * conn["battery_capacity_kwh"]
+    tot = conn.groupby("timestamp")["_avail"].transform("sum")
+    n = conn.groupby("timestamp")["ev_id"].transform("count")
+    weight = (conn["_avail"] / tot).where(tot > 0, 1 / n)
+    share_kwh = conn["timestamp"].map(dis) * weight
+    soc_after = conn["soc_pct"] - share_kwh / conn["battery_capacity_kwh"] * 100
+    return int(((share_kwh > 1e-9) & (soc_after < floor - 1e-6)).sum())   # 방전을 맡은 차량만 센다(원래 하한 아래인 차량 제외)
 
 
 def _three_scenarios(df: pd.DataFrame, ev: pd.DataFrame, export_limit_kw: float, eff: float,
@@ -310,6 +321,13 @@ def _three_scenarios(df: pd.DataFrame, ev: pd.DataFrame, export_limit_kw: float,
         c = (df.loc[peak_idx, "connected"] * max_discharge_kw).to_numpy(dtype=float)
         if c.sum() > 0:
             discharge[peak_idx] = np.minimum(c, c / c.sum() * energy)
+    # 안전 한도: 연결 차량의 최소 보장 SOC 위 여유보다 많이 방전하지 않는다(운영의 안전 검증과 같은 원칙)
+    unsafe_violations = _soc_violations(ev, discharge, df["timestamp"], min_soc)
+    avail = df["timestamp"].map(_available_above_floor(ev, min_soc)).fillna(0.0).to_numpy()
+    capped = np.minimum(discharge.to_numpy(), avail)
+    safety_capped_hours = int((capped < discharge.to_numpy() - 1e-9).sum())
+    safety_capped_kwh = round(float(discharge.sum() - capped.sum()), 1)
+    discharge = pd.Series(capped, index=df.index)
 
     base = df["site_load_kw"] + df["ev_baseline_kw"]
     grid = {
@@ -339,10 +357,13 @@ def _three_scenarios(df: pd.DataFrame, ev: pd.DataFrame, export_limit_kw: float,
         r["peak_grid_reduction_kw"] = round(s1["peak_grid_kw"] - r["peak_grid_kw"], 1)
         r["peak_window_reduction_kw"] = (round(s1["peak_window_avg_kw"] - r["peak_window_avg_kw"], 1)
                                          if r["peak_window_avg_kw"] is not None and s1["peak_window_avg_kw"] is not None else None)
+    rows[2].update({"safety_capped_hours": safety_capped_hours, "safety_capped_kwh": safety_capped_kwh,
+                    "violations_without_guard": unsafe_violations})
     return {"rows": rows, "min_soc_pct": min_soc,
             "metrics": ["흡수 충전량(kWh)", "출력제어 완화량(kWh)", "피크 수전 감소량(kW)", "최소 보장 SOC 미달 건수"],
             "note": "같은 데이터에 시나리오만 바꿔 적용. 방전·흡수는 추론(모의)값, 부하·발전 패턴은 입력 데이터 출처를 따른다. "
-                    "SOC 미달은 같은 날 흡수 충전분을 더하지 않은 보수적 계산."}
+                    "S3 방전은 연결 차량의 최소 보장 SOC 위 여유만큼으로 제한(안전 한도) — 한도가 없을 때의 미달 건수와 줄인 방전량을 함께 표시. "
+                    "SOC는 같은 날 흡수 충전분을 더하지 않은 보수적 계산."}
 
 
 def public_view(result: dict) -> dict:

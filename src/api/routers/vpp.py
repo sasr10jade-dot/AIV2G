@@ -168,8 +168,15 @@ def management_board(evaluate: bool = Query(False, description="true면 예측 �
     agg = ess_group.aggregate_capacity(b["ev_df"], members or [c["ev_id"] for c in ess_group.recommend(cands)])
     trades = _trades(b)
     incentives = ledger.simulate_incentives(trades, b["params"]) if not trades.empty else None
+    from src.automation.model_registry import ModelRegistry
+    try:
+        model_ready = ModelRegistry("ev_charging_demand_kw").active_version() is not None
+    except Exception:
+        model_ready = None
+    aff = _affiliation_of(b["ev_df"])
+    public_vehicles = sum(1 for e in b["ev_df"]["ev_id"].unique() if aff(e)[0] == "public")
     return management.build_board(b, accuracy=accuracy, settlement=ledger.summary(b["params"]), surveys=survey.list_all(),
-                                  ess_aggregate=agg, incentives=incentives)
+                                  ess_aggregate=agg, incentives=incentives, model_ready=model_ready, public_vehicles=public_vehicles)
 
 
 @router.get("/vpp/settlement/months", summary="월별 정산 상태 — 월 1회 모의 정산(미정산·산정·확정)", dependencies=[Depends(require_admin)])

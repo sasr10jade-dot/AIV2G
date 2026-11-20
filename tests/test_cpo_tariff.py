@@ -78,10 +78,18 @@ def test_default_tariffs_load_and_are_flagged_unverified():
 
 def test_price_lookup_by_hour_and_series():
     tf = t.get_tariff("kepco_ev_example")
-    assert tf.price_at("2026-09-01 03:30") == tf.rates["light"]
-    assert tf.price_at("2026-09-01 12:00") == tf.rates["mid"]
+    hours, rates, name = tf._season(9)                       # 9월 = 봄가을(평가의견 3·11: 계절·시간대 단가)
+    assert name == "spring_fall"
+    assert tf.price_at("2026-09-01 03:30") == rates["light"]
+    assert tf.price_at("2026-09-01 12:00") == rates[hours[12]]
     s = tf.price_series(pd.date_range("2026-09-01", periods=24, freq="h"))
-    assert len(s) == 24 and set(s) <= set(tf.rates.values())
+    assert len(s) == 24 and set(s) <= set(rates.values())
+
+
+def test_tariff_seasons_change_price_for_same_hour():
+    tf = t.get_tariff("kepco_ev_example")
+    assert {tf.season_at("2026-07-15"), tf.season_at("2026-04-15"), tf.season_at("2026-12-15")} == {"summer", "spring_fall", "winter"}
+    assert tf.price_at("2026-07-15 14:00") != tf.price_at("2026-04-15 14:00")    # 같은 시각이라도 계절별 단가가 다르다
 
 
 def test_invalid_tariff_rejected(tmp_path):

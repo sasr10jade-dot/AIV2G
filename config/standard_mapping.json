@@ -34,6 +34,15 @@
       {"field": "ev_id", "ocpi": "Session.auth_id(가명)", "note": "가명 ID(PE-…)로 대체해 출력"}
     ]
   },
+  "value_maps": {
+    "ocpi": {
+      "connector_type": {"AC_TYPE1": "IEC_62196_T1", "DC_COMBO1": "IEC_62196_T1_COMBO", "AC_TYPE2": "IEC_62196_T2", "DC_COMBO2": "IEC_62196_T2_COMBO", "CHADEMO": "CHADEMO"},
+      "charger_type": {"AC_SLOW": "AC_1_PHASE", "DC_FAST": "DC"}
+    },
+    "ocpp": {
+      "energy_kwh": {"_scale": 1000, "_unit": "Wh"}
+    }
+  },
   "pipeline": [
     {"step": 1, "name": "원천 보관", "what": "받은 파일·응답을 그대로 보관(재처리 근거)", "module": "data/raw/, src/pipeline/ingest.py"},
     {"step": 2, "name": "형식 해석", "what": "사업자·단말별 형식(CSV·REST·OBD 파일)을 공통 스키마로 읽기", "module": "src/cpo/adapters.py, src/pipeline/obd_ingest.py"},

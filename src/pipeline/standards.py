@@ -43,6 +43,14 @@ def to_standard(df: pd.DataFrame, table: str, standard: str, mapping: dict | Non
             continue
         cols[f["field"]] = name
     out = df[list(cols)].copy()
+    # 코드값·단위 변환(value_maps) — 표에 없는 코드는 그대로 두고 표준에 맞지 않을 수 있음을 호출 측이 확인
+    for field, rule in (m.get("value_maps", {}).get(standard, {}) or {}).items():
+        if field not in out.columns:
+            continue
+        if "_scale" in rule:
+            out[field] = pd.to_numeric(out[field], errors="coerce") * float(rule["_scale"])
+        else:
+            out[field] = out[field].map(lambda v, r=rule: r.get(str(v), v) if pd.notna(v) else v)
     if "ev_id" in out.columns:
         out["ev_id"] = out["ev_id"].map(lambda v: pseudo_id("ev", str(v)) if pd.notna(v) and str(v) else None)
     for c in out.columns:

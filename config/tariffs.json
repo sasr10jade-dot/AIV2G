@@ -4,28 +4,261 @@
     "kepco_ev_example": {
       "label": "한전 EV 요금제(예시 구조)",
       "verified": false,
-      "hours": ["light","light","light","light","light","light","light","light","light","mid","mid","mid","mid","mid","mid","mid","mid","mid","mid","mid","mid","mid","mid","light"],
-      "rates": {"light": 100, "mid": 180, "peak": 250}
+      "hours": [
+        "light",
+        "light",
+        "light",
+        "light",
+        "light",
+        "light",
+        "light",
+        "light",
+        "light",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "mid",
+        "light"
+      ],
+      "rates": {
+        "light": 100,
+        "mid": 180,
+        "peak": 250
+      },
+      "seasons_comment": "평가의견 3·11: 한전 전기차 충전전력요금 계절·시간대 구조(여름 6~8월·봄가을 3~5·9~10월·겨울 11~2월, 경부하·중간·최대). 시간대 구분과 단가는 구조 검증용 예시(verified=false) — 한전 약관(전기차 충전전력 요금표)으로 확인 후 교체.",
+      "seasons": [
+        {
+          "name": "summer",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "hours": [
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "mid",
+            "mid",
+            "mid",
+            "peak",
+            "mid",
+            "peak",
+            "peak",
+            "peak",
+            "peak",
+            "peak",
+            "mid",
+            "mid",
+            "mid",
+            "mid",
+            "light",
+            "light"
+          ],
+          "rates": {
+            "light": 110,
+            "mid": 200,
+            "peak": 270
+          }
+        },
+        {
+          "name": "spring_fall",
+          "months": [
+            3,
+            4,
+            5,
+            9,
+            10
+          ],
+          "hours": [
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "mid",
+            "mid",
+            "mid",
+            "peak",
+            "mid",
+            "peak",
+            "peak",
+            "peak",
+            "peak",
+            "peak",
+            "mid",
+            "mid",
+            "mid",
+            "mid",
+            "light",
+            "light"
+          ],
+          "rates": {
+            "light": 100,
+            "mid": 160,
+            "peak": 200
+          }
+        },
+        {
+          "name": "winter",
+          "months": [
+            11,
+            12,
+            1,
+            2
+          ],
+          "hours": [
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "light",
+            "mid",
+            "peak",
+            "peak",
+            "peak",
+            "mid",
+            "mid",
+            "mid",
+            "mid",
+            "peak",
+            "peak",
+            "peak",
+            "mid",
+            "mid",
+            "mid",
+            "light",
+            "light"
+          ],
+          "rates": {
+            "light": 115,
+            "mid": 180,
+            "peak": 250
+          }
+        }
+      ]
     },
     "cpo_flat_example": {
       "label": "충전사업자 정액 단가(예시)",
       "verified": false,
-      "hours": ["flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat"],
-      "rates": {"flat": 300}
+      "hours": [
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat"
+      ],
+      "rates": {
+        "flat": 300
+      }
     },
     "public_slow_2026_08": {
       "label": "공공 완속 기준단가(2026-08 개편)",
       "verified": false,
       "source": "2차 자료(블로그 정리) — ev.or.kr 충전요금 안내에서 원문 확인 후 verified 전환",
-      "hours": ["flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat"],
-      "rates": {"flat": 295.0}
+      "hours": [
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat"
+      ],
+      "rates": {
+        "flat": 295.0
+      }
     },
     "public_ultra_2026_08": {
       "label": "공공 초급속 기준단가(2026-08 개편)",
       "verified": false,
       "source": "2차 자료(블로그 정리) — ev.or.kr 충전요금 안내에서 원문 확인 후 verified 전환",
-      "hours": ["flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat","flat"],
-      "rates": {"flat": 393.1}
+      "hours": [
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat",
+        "flat"
+      ],
+      "rates": {
+        "flat": 393.1
+      }
     }
   },
   "_charger_type_comment": "충전기 유형별 적용 요금표(FR-P04). 공공 충전기는 출력 구간별 단일 단가, 자가·아파트 충전기는 한전 계시별 요금을 쓴다. 공공 중간 구간(중속·급속) 단가는 원문 확인 전이라 등록하지 않았다.",

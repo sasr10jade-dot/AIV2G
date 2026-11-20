@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from src import kpi
 
+DISCOUNT_RATE_PCT = 10.0   # 1단계 CPO 충전요금 할인율(가정 — 합의 전)
+
 
 def _status(value, target, higher_is_better: bool = True):
     if value is None or target is None:
@@ -20,8 +22,26 @@ def _status(value, target, higher_is_better: bool = True):
     return value >= target if higher_is_better else value <= target
 
 
+def obd_compatibility(ev_df) -> list[dict]:
+    """차종별 필수 항목 수신 현황(평가의견 12: 차종별 사전 실차 호환 시험) — SOC(OBD)·주행·충전 신호가 들어온 비율.
+    SOC OBD 수신률이 80% 미만인 차종은 '확인 필요'(선정 전 실차 1대 시험으로 필수 항목 수신 확인)."""
+    import pandas as pd
+    if ev_df is None or ev_df.empty or "vehicle_model" not in ev_df.columns:
+        return []
+    out = []
+    for model, g in ev_df.groupby("vehicle_model"):
+        src = g["soc_source"] if "soc_source" in g.columns else pd.Series("obd", index=g.index).where(g["soc_pct"].notna(), "missing")
+        obd = float((src == "obd").mean() * 100)
+        out.append({"vehicle_model": str(model), "vehicles": int(g["ev_id"].nunique()), "hours": int(len(g)),
+                    "soc_obd_pct": round(obd, 1), "soc_backcalc_pct": round(float((src == "charge_backcalc").mean() * 100), 1),
+                    "charging_signal_pct": round(float((pd.to_numeric(g["charging_kw"], errors="coerce") > 0).mean() * 100), 1),
+                    "status": "정상" if obd >= 80 else "확인 필요"})
+    return out
+
+
 def build_board(b: dict, accuracy: dict | None = None, settlement: dict | None = None, surveys: list | None = None,
-                ess_aggregate: dict | None = None, incentives: dict | None = None) -> dict:
+                ess_aggregate: dict | None = None, incentives: dict | None = None, model_ready: bool | None = None,
+                public_vehicles: int | None = None) -> dict:
     """b = vpp.bundle() 결과. accuracy = 모델 평가(있으면), settlement = ledger.summary(), surveys = 설문 목록."""
     from src.optimizer.effect_metrics import peak_metrics
 
@@ -42,7 +62,9 @@ def build_board(b: dict, accuracy: dict | None = None, settlement: dict | None =
          "target": kpi.DATA_PLAN["target"], "unit": "건",
          "met": _status(y1.records if measured and y1 else None, kpi.DATA_PLAN["target"]),
          "basis": "실측 실적" if measured else "모의 미리보기(실적 아님)"},
-        {"id": "model", "label": "AI 예측모델", "value": 1, "target": 1, "unit": "건", "met": True, "basis": "LightGBM 기준 모델(모델 카드)"},
+        {"id": "model", "label": "AI 예측모델", "value": 1 if model_ready else 0, "target": 1, "unit": "건",
+         "met": None if model_ready is None else bool(model_ready),
+         "basis": "LightGBM 기준 모델 — 활성 버전 등록됨" if model_ready else "활성 모델 버전 없음(재학습 후 등록)" if model_ready is False else "확인 전"},
         {"id": "accuracy", "label": "예측 정확도 (1−WAPE)×100", "value": acc, "target": 70.0, "unit": "%",
          "met": _status(acc, 70.0), "basis": (accuracy or {}).get("basis") or "모델 카드 평가 후 표시"},
     ]
@@ -98,7 +120,8 @@ def build_board(b: dict, accuracy: dict | None = None, settlement: dict | None =
         {"source": "CPO 3사 거점 유효 충전 세션(서포터즈 차량 세션 제외)", "count": f["counted"], "counted": True, "kind": prov.get("charger_sessions", "-")},
         {"source": "서포터즈 차량의 CPO 세션(OBD와 중복)", "count": f["supporter_excluded"], "counted": False, "kind": "중복 제외"},
         {"source": "CPO 150기 전체 이용 패턴(충전기 상태·이용률)", "count": summ.charger_count, "counted": False, "kind": "보조(충전기 수)"},
-        {"source": "관용차량(관리기관 협조, 서포터즈에 포함 시 OBD로 산입)", "count": None, "counted": None, "kind": "협조 요청 중"},
+        {"source": "관용차량(관리기관 협조, 서포터즈 30대에 포함 — OBD 세션으로 산입)", "count": public_vehicles, "counted": True if public_vehicles else None,
+         "kind": "소속=관용 차량 수" if public_vehicles is not None else "협조 요청 중"},
         {"source": "공공데이터(전력수요·재생에너지·SMP·기상)·타 지역 비교", "count": public_ref, "counted": False, "kind": "보조(참고 건수)"},
     ]
 
@@ -109,14 +132,21 @@ def build_board(b: dict, accuracy: dict | None = None, settlement: dict | None =
         {"id": "benchmark", "label": "국내외 V2G 사업 사례 벤치마크", "status": "문서 산출물(시스템 외)", "where": "레퍼런스 보고서"},
     ]
 
-    disc = next((o for o in (incentives or {}).get("options", []) if o.get("type") == "charge_discount"), None)
+    # 1단계 할인: AI 추천 시간에 충전한 전력의 요금(=AI 적용 충전비용) × 할인율 — 현행 계시별 요금으로 가능한 절감 위에 CPO 할인을 얹는 방식
+    rate = DISCOUNT_RATE_PCT
+    ai_cost = rev.get("optimized_cost_krw")
+    n_ev = summ.ev_count or 1
+    disc_est = None if ai_cost is None else {
+        "label": f"AI 추천 시간 충전분 요금 × {rate:.0f}% 할인", "participant_krw": round(ai_cost * rate / 100),
+        "per_vehicle_krw": round(ai_cost * rate / 100 / n_ev), "base_krw": round(ai_cost),
+        "time_shift_saving_krw": rev.get("savings_krw")}
     compensation = [
-        {"stage": 1, "label": "사업 종료 후 즉시 — AI 추천 시간 충전분 실제 충전요금 할인(CPO 합의)", "status": "모의 산정",
-         "estimate": disc and {"participant_krw": disc.get("participant_krw"), "per_vehicle_krw": disc.get("per_vehicle_krw"), "label": disc.get("label")}},
+        {"stage": 1, "label": "사업 종료 후 즉시 — 현행 계시별 요금의 충전 시간 이동 절감 + AI 추천 시간 충전분 요금 할인(CPO 합의)", "status": "모의 산정",
+         "estimate": disc_est},
         {"stage": 2, "label": "수요자원(DR) 시장 참여 후 — DR 보상 배분", "status": "제도 확인 후", "estimate": None},
         {"stage": 3, "label": "방전 계량·정산 기준 마련 후 — V2G 방전 수익 배분", "status": "제도 마련 후", "estimate": None},
     ]
-    return {"data_label": data_label, "mandatory": mandatory, "management": management, "benefits": benefits,
+    return {"data_label": data_label, "mandatory": mandatory, "obd_compatibility": obd_compatibility(ev_df), "management": management, "benefits": benefits,
             "benefit_basis": "한전 전기차 충전전력요금 계절·시간대 단가(config/tariffs.json)와 SMP 적용 — verified=false면 가정값",
             "data_sources": sources, "references": references, "compensation": compensation,
             "data_plan": kpi.DATA_PLAN}

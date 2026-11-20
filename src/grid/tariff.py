@@ -28,16 +28,30 @@ class Tariff:
     verified: bool
     hours: tuple[str, ...]
     rates: dict[str, float]
+    # 계절별 시간대·단가(한전 EV 충전전력요금처럼 여름·봄가을·겨울로 다른 경우). 없으면 hours·rates를 연중 쓴다.
+    seasons: tuple = ()   # ((months, hours, rates, name), ...)
+
+    def _season(self, month: int):
+        for months, hours, rates, name in self.seasons:
+            if month in months:
+                return hours, rates, name
+        return self.hours, self.rates, None
 
     def band_at(self, ts) -> str:
-        return self.hours[pd.Timestamp(ts).hour]
+        t = pd.Timestamp(ts)
+        return self._season(t.month)[0][t.hour]
+
+    def season_at(self, ts) -> str | None:
+        return self._season(pd.Timestamp(ts).month)[2]
 
     def price_at(self, ts) -> float:
-        return float(self.rates[self.band_at(ts)])
+        t = pd.Timestamp(ts)
+        hours, rates, _ = self._season(t.month)
+        return float(rates[hours[t.hour]])
 
     def price_series(self, timestamps) -> pd.Series:
         idx = pd.DatetimeIndex(timestamps)
-        return pd.Series([self.rates[self.hours[h]] for h in idx.hour], index=idx, dtype=float)
+        return pd.Series([self.price_at(t) for t in idx], index=idx, dtype=float)
 
 
 def _validate(tid: str, item: dict) -> Tariff:
@@ -49,8 +63,18 @@ def _validate(tid: str, item: dict) -> Tariff:
         raise TariffError(f"{tid}: rates에 없는 구간명 {sorted(unknown)}")
     if any(float(v) < 0 for v in rates.values()):
         raise TariffError(f"{tid}: 음수 단가")
+    seasons = []
+    for s in item.get("seasons", []) or []:
+        s_hours, s_rates = s.get("hours"), s.get("rates", rates)
+        if not isinstance(s_hours, list) or len(s_hours) != 24:
+            raise TariffError(f"{tid}/{s.get('name')}: 계절 hours는 24칸이어야 합니다")
+        if set(s_hours) - set(s_rates):
+            raise TariffError(f"{tid}/{s.get('name')}: rates에 없는 구간명")
+        if any(float(v) < 0 for v in s_rates.values()):
+            raise TariffError(f"{tid}/{s.get('name')}: 음수 단가")
+        seasons.append((tuple(int(m) for m in s["months"]), tuple(s_hours), {k: float(v) for k, v in s_rates.items()}, s.get("name")))
     return Tariff(tid, item.get("label", tid), bool(item.get("verified", False)), tuple(hours),
-                  {k: float(v) for k, v in rates.items()})
+                  {k: float(v) for k, v in rates.items()}, tuple(seasons))
 
 
 def load_tariffs(path: Path | None = None) -> dict[str, Tariff]:

@@ -184,6 +184,12 @@ def build_dataset(ev_df: pd.DataFrame, members: list[str], soc_floor_pct: float 
     ev["is_night"] = ev["hour"].isin(NIGHT_HOURS)
     ev["is_daytime"] = ev["hour"].isin(DAY_HOURS)
     ev["generation"] = "inferred"   # 방전 가능량은 SOC·연결 상태로 추론한 값
+    # 연결~해제 체류: 연속 연결(주행 없음) 구간 번호와 그 구간 길이(시간) — 평가의견 13 추가 수집 항목
+    newrun = ev["parked_connected"] & ~ev.groupby("ev_id")["parked_connected"].shift(1, fill_value=False)
+    ev["plug_session"] = newrun.groupby(ev["ev_id"]).cumsum().where(ev["parked_connected"])
+    ev["plug_session_h"] = ev.groupby(["ev_id", "plug_session"])["parked_connected"].transform("size").where(ev["parked_connected"])
+    ev["soc_resolution"] = "1h"   # OBD 실측 연계 시 5분 단위 SOC로 대체(평가의견 13)
     cols = ["timestamp", "ev_id", "ev_type", "soc_pct", "connected", "driving", "charging_kw", "battery_capacity_kwh",
-            "parked_connected", "discharge_allowed", "dischargeable_kwh", "is_night", "is_daytime", "generation"]
+            "parked_connected", "plug_session", "plug_session_h", "discharge_allowed", "dischargeable_kwh", "is_night", "is_daytime",
+            "soc_resolution", "generation"]
     return ev[[c for c in cols if c in ev.columns]].reset_index(drop=True)

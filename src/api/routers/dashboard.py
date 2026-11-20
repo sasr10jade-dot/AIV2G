@@ -454,6 +454,16 @@ def dashboard_report() -> Response:
     payload["profit_sharing"] = compute_profit_sharing(payload["revenue_comparison"]["savings_krw"], 50.0, 30.0, 20.0)
     from src.automation import issues
     payload["modeling_issues"] = {"summary": issues.summary(), "items": issues.list_issues("all", limit=1000)}
+    k = payload["kpi"]
+    f = (k.get("collection") or {}).get("funnel") or {}
+    prov = k.get("data_provenance") or {}
+    payload["data_sources"] = [   # 원천별 건수·성과 산입(평가의견 8) — 대시보드 지표판과 같은 구분
+        {"source": "서포터즈 EV 차량 OBD 세션", "count": k["data_scenario_records"] - f.get("counted", 0), "counted": True, "kind": prov.get("ev_telemetry")},
+        {"source": "CPO 거점 유효 충전 세션(서포터즈 차량 세션 제외)", "count": f.get("counted"), "counted": True, "kind": prov.get("charger_sessions")},
+        {"source": "서포터즈 차량의 CPO 세션(OBD와 중복)", "count": f.get("supporter_excluded"), "counted": False, "kind": "중복 제외"},
+        {"source": "CPO 150기 전체 이용 패턴", "count": k.get("charger_count"), "counted": False, "kind": "보조(충전기 수)"},
+        {"source": "공공데이터·타 지역 비교", "count": k.get("public_reference_records"), "counted": False, "kind": "보조(참고 건수)"},
+    ]
     name = f"AIV2G_results_{kst_now():%Y%m%d}.xlsx"
     return Response(build_results_workbook(payload),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

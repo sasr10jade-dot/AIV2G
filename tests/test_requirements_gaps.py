@@ -355,3 +355,19 @@ def test_soc_gap_backcalc_with_source_label_review_opinion_12():
     out = fill_soc_gaps(df)
     assert list(out["soc_source"]) == ["obd", "charge_backcalc", "charge_backcalc", "missing"]
     assert out["soc_pct"].iloc[1] == 60.0 and out["soc_pct"].iloc[2] == 70.0 and pd.isna(out["soc_pct"].iloc[3])
+
+
+def test_review_gap_fixes_value_maps_safety_cap_and_compat():
+    """점검 보완: 표준 출력 코드값·단위 변환, S3 방전 SOC 안전 한도, 차종별 필수 항목 수신 현황."""
+    from src.pipeline import standards
+    from src import management
+    ch = pd.DataFrame({"session_id": ["s1"], "charger_id": ["c1"], "start_ts": pd.to_datetime(["2026-12-01 08:00"]),
+                       "energy_kwh": [5.0], "connector_type": ["DC_COMBO1"], "charger_type": ["DC_FAST"]})
+    o = standards.to_standard(ch, "charger_sessions", "ocpi")
+    assert o["Connector.standard"].iloc[0] == "IEC_62196_T1_COMBO" and o["Connector.power_type"].iloc[0] == "DC"
+    w = standards.to_standard(ch, "charger_sessions", "ocpp")
+    assert w.filter(like="meterStop").iloc[0, 0] == 5000.0                         # kWh → Wh
+    ev = pd.DataFrame({"ev_id": ["A", "A", "B"], "vehicle_model": ["m1", "m1", "m2"], "soc_pct": [50.0, None, 60.0],
+                       "charging_kw": [0.0, 7.0, 0.0]})
+    comp = {r["vehicle_model"]: r for r in management.obd_compatibility(ev)}
+    assert comp["m1"]["status"] == "확인 필요" and comp["m2"]["status"] == "정상"

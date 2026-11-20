@@ -117,7 +117,9 @@ def session_funnel(charger_df: pd.DataFrame, exclude_ev_ids: set | None = None) 
     df = charger_df.assign(_start=pd.to_datetime(charger_df["start_ts"], errors="coerce")).dropna(subset=["_start"])
     raw = int(len(charger_df))
     energy = pd.to_numeric(df["energy_kwh"], errors="coerce").fillna(0) if "energy_kwh" in df.columns else pd.Series(1, index=df.index)
-    valid = df[energy > 0]
+    # 필수 필드: 충전기 ID·시작 시각·충전량(>0) — 하나라도 없으면 1건으로 세지 않는다
+    has_id = df["charger_id"].notna() & (df["charger_id"].astype(str).str.strip() != "") if "charger_id" in df.columns else True
+    valid = df[(energy > 0) & has_id]
     key = ["session_id"] if "session_id" in valid.columns and valid["session_id"].notna().all() else \
         [c for c in ("charger_id", "_start") if c in valid.columns]
     dedup = valid.drop_duplicates(subset=key)

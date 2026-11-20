@@ -2220,7 +2220,8 @@ async function loadCurtailment() {
       sc.rows.map(r => `<tr><td><b>${r.id}</b> ${t(r.label)}</td><td class="num">${fmtInt(r.absorbed_kwh)}</td><td class="num">${fmtInt(r.curtail_relief_kwh)}</td>
         <td class="num">${fmtInt(r.peak_discharge_kwh)}</td><td class="num">${fmtInt(r.peak_grid_kw)}</td><td class="num">${r.peak_grid_reduction_kw}</td>
         <td class="num">${r.peak_window_reduction_kw ?? '-'}</td><td class="num" style="color:${r.min_soc_violations ? 'var(--danger, #d92d20)' : 'inherit'}">${fmtInt(r.min_soc_violations)}</td></tr>`).join('') +
-      `</tbody></table><p class="muted" style="font-size:11.5px; margin:4px 0 0;">${t('최소 보장 SOC')} ${sc.min_soc_pct}% · ${t(sc.note)}</p>` : '';
+      `</tbody></table>` + (sc.rows[2].safety_capped_hours != null ? `<div style="font-size:12px; margin-top:4px;">${t('S3 안전 한도')}: ${t('최소 보장 SOC 위 여유만큼만 방전')} — ${t('한도로 줄인 방전')} ${fmtInt(sc.rows[2].safety_capped_kwh)} kWh (${sc.rows[2].safety_capped_hours}${t('시간')}), ${t('한도가 없었다면 미달')} ${fmtInt(sc.rows[2].violations_without_guard)}${t('건')}</div>` : '') +
+      `<p class="muted" style="font-size:11.5px; margin:4px 0 0;">${t('최소 보장 SOC')} ${sc.min_soc_pct}% · ${t(sc.note)}</p>` : '';
     if (window.Chart) {
       const ctx = document.getElementById('curtailChart');
       if (curtailChart) curtailChart.destroy();
@@ -2464,9 +2465,14 @@ async function loadManagement(evaluate) {
       d.data_sources.map(x => `<tr><td>${t(x.source)}</td><td class="num">${x.count == null ? '-' : fmtInt(x.count)}</td><td>${x.counted == null ? '-' : x.counted ? t('산입') : t('제외·보조')}</td><td>${escH(t(x.kind || ''))}</td></tr>`).join('') + '</tbody></table>';
     const refs = `<div style="margin-top:8px;"><b>${t('V2G 비즈니스 레퍼런스 4종')}</b> ` + d.references.map(x => `<span class="tag ${x.status.startsWith('문서') ? 'gray' : 'navy'}" style="margin:2px;" title="${escH(x.where)}">${t(x.label)} · ${t(x.status)}</span>`).join('') + '</div>';
     const comp = `<div style="margin-top:6px;"><b>${t('실질 보상 단계')}</b><ol style="margin:4px 0 0 18px; padding:0;">` + d.compensation.map(x =>
-      `<li>${t(x.label)} <span class="tag gray">${t(x.status)}</span>${x.estimate ? ` — ${t(x.estimate.label)}: ${t('참여자 합계')} ${fmtInt(x.estimate.participant_krw)}${t('원')}, ${t('차량당')} ${fmtInt(x.estimate.per_vehicle_krw)}${t('원')} (${t('모의')})` : ''}</li>`).join('') + '</ol></div>';
+      `<li>${t(x.label)} <span class="tag gray">${t(x.status)}</span>${x.estimate ? ` — ${t(x.estimate.label)}: ${t('참여자 합계')} ${fmtInt(x.estimate.participant_krw)}${t('원')}, ${t('차량당')} ${fmtInt(x.estimate.per_vehicle_krw)}${t('원')}${x.estimate.time_shift_saving_krw != null ? ` + ${t('시간 이동 절감')} ${fmtInt(x.estimate.time_shift_saving_krw)}${t('원')}` : ''} (${t('모의')})` : ''}</li>`).join('') + '</ol></div>';
+    const oc = d.obd_compatibility || [];
+    const compat = oc.length ? `<table style="margin-top:8px;"><thead><tr><th>${t('차종')}</th><th class="num">${t('차량')}</th><th class="num">${t('관측 시간')}</th><th class="num">${t('SOC OBD 수신')}</th><th class="num">${t('SOC 역산 대체')}</th><th class="num">${t('충전 신호')}</th><th>${t('판정')}</th></tr></thead><tbody>` +
+      oc.map(x => `<tr><td>${escH(t(x.vehicle_model))}</td><td class="num">${x.vehicles}</td><td class="num">${fmtInt(x.hours)}</td><td class="num">${x.soc_obd_pct}%</td><td class="num">${x.soc_backcalc_pct}%</td><td class="num">${x.charging_signal_pct}%</td>
+        <td><span class="tag ${x.status === '정상' ? 'navy' : ''}" ${x.status === '정상' ? '' : 'style="background:rgba(235,94,85,.15)"'}>${t(x.status)}</span></td></tr>`).join('') +
+      `</tbody></table><p class="muted" style="font-size:11.5px; margin:2px 0 0;">${t('차종별 필수 항목 수신 현황(실차 호환) — SOC OBD 수신 80% 미만이면 선정 전 실차 1대 시험으로 확인')}</p>` : '';
     body.innerHTML = mand + `<details style="margin-top:6px;" open><summary style="cursor:pointer; font-weight:600;">${t('관리 지표 7 · 경제적 편익 4')}</summary>${mg}${bf}</details>` +
-      `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600;">${t('원천별 데이터 · 레퍼런스 · 보상 단계')}</summary>${ds}${refs}${comp}</details>`;
+      `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600;">${t('원천별 데이터 · 차종별 수신 · 레퍼런스 · 보상 단계')}</summary>${ds}${compat}${refs}${comp}</details>`;
   } catch (e) {
     body.innerHTML = `<span class="muted">${t('지표판을 불러오지 못했습니다')} (${escH(e.message)})</span>`;
   }
