@@ -20,7 +20,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 - config/        : CPO 3사 연계, 공공 API, 요금표, 거점, 차종(제외 차종 포함), VPP·정산 가정값(vpp_settlement.json)
 - data/          : SQLite DB(curated.db·privacy.db), 계정(users.json), CPO 수신 실적(cpo_status.json) — 실행 중 생성
 - scripts/       : 서버 구동(run_dev_lan.cmd), CPO 동기화, 실차 OBD 배치, API 문서 생성 등
-- tests/         : pytest 테스트 스위트(563개)
+- tests/         : pytest 테스트 스위트(579개)
 - android/       : 서포터즈 모바일 TWA 안드로이드 앱 빌드 프로젝트
 
 --------------------------------------------------------------------------------
@@ -125,6 +125,30 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 [DB] 마이그레이션 v11(정산 회차·문의·거래 재원 내역), v12(미션 설정·완료 이력) — 서버 기동 시 자동 적용.
 
 --------------------------------------------------------------------------------
+3-3. 2026-11-20 평가의견 보완 반영 (AI-V2G_보완의견_반영문안_대조표_261120-v0.01, 평가의견 14개)
+--------------------------------------------------------------------------------
+  의견1 표준화 파이프라인: config/standard_mapping.json(공통 필드별 VSS·OCPP 1.6J·OCPI 2.2.1 명칭, 7단계 절차),
+        src/pipeline/standards.py, GET /ingest/standards, GET /ingest/export/standard(식별자 가명). 표준 명칭은 초안(verified=false).
+  의견2 출력제어 3개 시나리오: src/optimizer/curtailment.py scenarios — S1 즉시 충전/S2 흡수/S3 흡수+저녁 피크 방전,
+        흡수량·출력제어 완화량·피크 수전 감소·최소 보장 SOC 미달 건수. 대시보드 05 출력제어 카드.
+  의견3 정산: 월 1회 산정(POST /vpp/settlement/runs {month}), GET /vpp/settlement/months,
+        관용차 기관 단위 리포트 GET /vpp/settlement/institution-report(?fmt=csv&month=).
+  의견4·14 데이터 확보 계획: src/kpi.py DATA_PLAN(OBD 1,365 + CPO 거점 3,250 = 4,615, 이탈 16% 시 4,397),
+        1건 정의(유효·중복 제거·서포터즈 차량 세션 제외, session_funnel), 주간 점검표·90%/80% 2주 연속 경고(weekly_monitor),
+        마일스톤 config/data_plan.json — 문안에 날짜가 있는 2개만 입력, 나머지 4개는 보완상세 일정표 확인 후 추가.
+  의견5·6·8·10·11 성과·관리 지표판: src/management.py, GET /kpi/management(대시보드 01 카드) —
+        필수성과 5, 관리지표 7, 경제적 편익 4개 산출식, 원천별 데이터·성과 산입, 레퍼런스 4종, 실질 보상 3단계.
+  의견9 타 지역 비교: 대조군 제주(ASOS 184)·경기(수원 119), POST /ingest/regions/{id}/public-csv/{power-demand|renewable},
+        비교표(기온·수요·재생에너지 비중) + 실증 모델의 타 지역 예측 적용(정확도=(1−WAPE)×100). 대시보드 01 카드.
+  의견11 예측 정확도: src/model/demand_forecast.py — (1−WAPE)×100 ≥ 70%가 주 판정, MAPE·R²는 보조.
+  의견12 대체 데이터원: 일일 배치에서 충전 중 SOC 결측은 충전량 역산으로 채우고 soc_source(obd·charge_backcalc) 표기,
+        OBD 80% 미만 2주 연속 경고(거점 세션 샘플링 확대).
+  의견13 ESS 그룹: 주차 8시간 이상 주 3회 이상 차량 우선·기본 8대, 체류 시간·플러그인 비중,
+        합산 가상 ESS 용량·출력·시간대별 동시 가용 대수(ess_group.aggregate_capacity).
+  의견7(리스 사업자): 문서 사항 — 시스템 변경 없음. 의견6 벤치마크는 문서 산출물.
+  [화면 캐시] /dashboard·/login HTML no-cache(배포 후 이전 화면이 남던 문제).
+
+--------------------------------------------------------------------------------
 4. 핵심 인수인계 문서 위치
 --------------------------------------------------------------------------------
 - docs/developer_handover_prd_v1.0.md          : [PRD] 아키텍처 및 런북(서버 구동 절차 포함)
@@ -138,7 +162,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 5. 테스트
 --------------------------------------------------------------------------------
   python -m pytest -q
-  * 563개 테스트 통과(외부 연결이 필요한 3개는 건너뜀). 테스트는 data/·config/ 파일을 바꾸지 않는다.
+  * 576개 테스트 통과(외부 연결이 필요한 3개는 건너뜀). 테스트는 data/·config/ 파일을 바꾸지 않는다.
   * API를 바꾸면 python scripts/build_api_docs.py 로 docs/api_reference.md를 다시 생성해야 테스트가 통과한다.
 
 ================================================================================

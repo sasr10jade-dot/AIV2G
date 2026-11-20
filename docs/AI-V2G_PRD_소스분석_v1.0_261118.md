@@ -281,3 +281,24 @@ CPO 3사 REST/CSV ───────┼─▶ 표준 스키마·품질검증 
 - 로딩 링: 연속 요청 사이 0.4초 유예, 새로고침 시 다음 화면이 이어받아 한 번만 표시.
 - 모의 포인트 정산 차량별 표(상위 5대)·ESS 집중 실증 그룹 표(상위 10대+지정 차량) 접기/펼치기.
 - 숫자 열 머리글 오른쪽 정렬(조건별 반복 분석 '세션 수' 열이 비어 보이던 문제), 모바일 head 중복 스크립트 예외, 정산 규칙 문구 undefined, 관리자 탭↔주소 연동, 다크 모드 로고 배지.
+
+## 12. 2026-11-20 평가의견 보완 반영 (보완의견 반영문안 대조표 v0.01, 평가의견 14개)
+
+| 의견 | 반영 문안 요지 | 구현 | 소스·API |
+|---|---|---|---|
+| 1 | 공통 스키마·매핑 레지스트리, VSS·OCPP 1.6J·OCPI 2.2.1 병기, 7단계, 규칙표 행 추가로 편입 | 매핑 레지스트리·7단계·표준 형식 출력(가명) | `config/standard_mapping.json`, `src/pipeline/standards.py`, `GET /ingest/standards`, `GET /ingest/export/standard` |
+| 2 | 거점 3곳 가상 마이크로그리드, 3개 시나리오, 흡수량·완화량·피크 감소·SOC 미달 | S1/S2/S3 비교표 | `src/optimizer/curtailment.py` `scenarios`, 대시보드 05 |
+| 3 | 계량→원장→재원별 정산→배분→포인트, 월 1회, 민간 개인 포인트·관용 기관 리포트 | 월별 상태·월 단위 산정, 기관 리포트(CSV) | `ledger.month_status`, `ledger.institution_report`, `/vpp/settlement/months`, `/vpp/settlement/institution-report` |
+| 4 | 4,615건(1,365+3,250), 이탈 16%→4,397, 6개 마일스톤, 주간 점검, 90% 2주 연속 대응 | 계획 수치·주간 점검표·경고·마일스톤(2개 입력) | `src/kpi.py` `DATA_PLAN`, `weekly_monitor`, `config/data_plan.json` |
+| 5 | 필수성과 5 + 관리지표 7 | 성과·관리 지표판 | `src/management.py`, `GET /kpi/management` |
+| 6 | 레퍼런스 4종 | 지표판에 상태 표시(벤치마크는 문서) | 〃 |
+| 7 | 리스 사업자 → 개인 참여단·업무용 Fleet | 문서 사항(시스템 변경 없음) | - |
+| 8 | 원천별 건수·성과 산입 여부 구분 | 지표판 원천별 표 | 〃 |
+| 9 | 제주·수도권(경기) 시간 단위 전력수요·재생에너지·기상, 비교표, 타 지역 예측 적용 | 대조군 교체·지역 CSV 저장·비교표·예측 적용 | `src/pipeline/region_compare.py`, `config/comparison_regions.json`, `/ingest/regions/*` |
+| 10 | 충전 시간 이동 절감 → CPO 할인 → DR → V2G 수익 배분 | 보상 3단계(1단계 할인 모의 산정) | `src/management.py` |
+| 11 | 정확도 = (1−WAPE)×100 ≥ 70%, 경제적 편익 4개 산출식(한전 EV 요금·SMP) | 주 판정 교체(MAPE·R² 보조), 편익 4종 산출식 표시 | `src/model/demand_forecast.py`, `src/management.py` |
+| 12 | 실차 호환 시험, 대체 데이터원(출처 표기), OBD 80% 미만 2주 시 샘플링 확대, 단말 이원화 | SOC 충전량 역산(soc_source), 80% 경고 | `src/pipeline/batch_ingest.py`, `obd_ingest.fill_soc_gaps`, `kpi.weekly_monitor` |
+| 13 | 주차 8h 이상·주 3회 이상 8대, 체류·5분 SOC·방전 허용·플러그인 비중, 합산 용량·출력·동시 가용 | 기준·추가 지표·합산 가상 ESS(5분 SOC는 OBD 실측 해상도) | `src/optimizer/ess_group.py`, `/vpp/ess-group` |
+| 14 | 1건 정의, CPO 3,250(서포터즈 세션 제외), 중복 제거 전·후 건수 | 집계 단계(session_funnel)·서포터즈 세션 제외 | `src/kpi.py` |
+
+남은 확인 사항: 마일스톤 4개 날짜(보완상세 일정표), 표준 명칭 검증(standard_mapping verified=false), 대조 지역 공공데이터 수집, 관용차 포인트를 개인 잔액에서 뺄지(현재는 리포트에서 기관 귀속 환산값으로만 구분).
