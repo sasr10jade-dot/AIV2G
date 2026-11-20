@@ -37,4 +37,4 @@ python -m uvicorn src.api:app --host 127.0.0.1 --port 5050 --reload   # http://1
 python -m pytest -q
 ```
 
-사내 와이파이 개발 서버: http://192.168.35.92:5050/dev (서버 PC `~/AIV2G-dev`, launchd `kr.aiv2g.dev`).
+사내 와이파이 개발 서버: http://192.168.27.171:5050/dev (서버 PC `~/AIV2G-dev`, launchd `kr.aiv2g.dev`).
