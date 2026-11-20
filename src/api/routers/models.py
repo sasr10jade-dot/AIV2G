@@ -46,7 +46,7 @@ def get_model_card() -> dict:
     return build_model_card(evaluations, prov)
 
 
-@router.get("/evaluation", summary="계획서 성능 목표(MAPE ≤20%, R² ≥0.70) 평가 결과 — 폴드별 상세", dependencies=[Depends(require_admin)])
+@router.get("/evaluation", summary="성능 목표(예측 정확도 ≥70%, 보조 MAPE ≤20%·R² ≥0.70) 평가 결과 — 폴드별 상세", dependencies=[Depends(require_admin)])
 def get_plan_evaluation() -> dict:
     evaluations, prov = plan_target_evaluations()
     return {"provenance": prov, "evaluations": evaluations}

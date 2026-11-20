@@ -3,7 +3,7 @@
 시간순 홀드아웃(마지막 2주)으로 평가하여 재학습 루프(WS5 Closed-loop)에서
 동일한 절차로 반복 평가할 수 있게 한다.
 
-계획서 성능 목표(p.27: MAPE ≤20%, R² ≥0.70, Train/Test 80:20 분할 교차검증)는
+성능 목표(평가의견 11: 예측 정확도 = (1−WAPE)×100 ≥ 70%, 보조 지표로 계획서 p.27 MAPE ≤20%·R² ≥0.70, Train/Test 80:20 분할 교차검증)는
 `evaluate_plan_targets()`가 실제로 학습·평가해 산출한다(모델 카드 수치의 원천).
 """
 from dataclasses import dataclass
@@ -112,7 +112,7 @@ def evaluate_plan_targets(city_hourly: pd.DataFrame, target_col: str,
     - test: 마지막 20%를 학습에 한 번도 쓰지 않은 시험 구간으로 두고 MAPE·R² 등을 계산한다.
     - cv: 앞 80% 안에서 확장창(expanding window) 방식으로 cv_folds번 학습·검증해 평균·편차를 낸다
       (시계열은 무작위로 섞으면 미래 정보가 새므로 시간순으로만 나눈다).
-    - 목표 판정: 시험 구간 MAPE ≤ 20%, R² ≥ 0.70.
+    - 목표 판정: 시험 구간 예측 정확도 ≥ 70%(주), MAPE ≤ 20%·R² ≥ 0.70(보조).
     """
     feat_df, feature_cols = build_features(city_hourly, target_col)
     n = len(feat_df)

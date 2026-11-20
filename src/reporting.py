@@ -202,5 +202,5 @@ def limitation_rows(payload: dict) -> list[list]:
                  "충족" if cov and not empty else "한계", "계절·시간대·SOC·운행유형 전 조건에서 세션 확보(하계·동계 포함)"])
     v2g_rate = eff.get("v2g_prediction_rate_pct")
     rows.append(["V2G 예측률", f"{v2g_rate}% (출처: {eff.get('v2g_prediction_source', '-')})",
-                 "충족" if (v2g_rate or 0) >= 80 else "한계", "누적 실측 데이터 재학습, 계획서 성능 목표(MAPE ≤20%, R² ≥0.70) 유지"])
+                 "충족" if (v2g_rate or 0) >= 80 else "한계", "누적 실측 데이터 재학습, 성능 목표(예측 정확도 ≥70%, 보조 MAPE ≤20%·R² ≥0.70) 유지"])
     return rows
