@@ -7,9 +7,12 @@
 - 실증 데이터 : 1차년도 4,000건 이상, 2차년도 4,500건 이상 — 연차별 확보 데이터 미중복
 - AI 기반 최적 V2G 예측모델 1건(1차) / 고도화 1건(2차), BM 모델 제안 1건·MOU 1건(2차)은 문서 성과라 여기서 세지 않는다.
 
-데이터 1건의 정의(계획서 p.16 산출식: [차량 OBD] EV 30대 x 주당 충전/운행 세션 3.5회 x 13주 = 1,365건
-+ [충전기 관제] 거점 유효 충전 세션 주당 약 210건 x 13주 = 2,730건 → 합계 4,095건)
-- 충전기 세션 : 연계 충전기의 유효 충전 세션 1건(충전량 > 0, 시작 시각 기준 연차 배정)
+데이터 1건의 정의(평가의견 14 반영 문안, 2026-11-20): '필수 필드를 갖추고 품질검증을 통과한 충전 세션 단위 레코드' 1건.
+[차량 OBD] EV 30대 x 주 3.5회 x 13주 = 1,365건 + [CPO 거점] 유효 충전 세션 주 250건 x 13주 = 3,250건
+(서포터즈 차량 세션 제외) → 합계 4,615건. 서포터즈 이탈 16%를 반영해도 4,397건으로 목표 4,000건 충족(DATA_PLAN).
+- 충전기 세션 : 연계 충전기의 유효 충전 세션 1건(충전량 > 0, 시작 시각 기준 연차 배정). 같은 세션이 두 번 들어오면
+  1건으로 센다(session_id, 없으면 충전기+시작 시각 기준 중복 제거). 서포터즈 차량(OBD로 이미 세는 차량)의 세션은
+  차량 OBD 세션과 겹치므로 CPO 거점 건수에서 뺀다.
 - 차량 세션 : 차량 OBD에서 관측된 운행 1회 또는 충전 1회(연속된 시간 구간, 시작 시각 기준 연차 배정)
   — 결과 필드 이름(vehicle_days)은 화면·보고서 호환을 위해 유지하지만 값은 차량 세션 수다(요구사항 K01).
   예전 단위였던 차량-일(활동한 차량·날짜 수)은 `count_vehicle_days`로 참고용으로만 남긴다.
@@ -22,8 +25,10 @@
 """
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 
@@ -42,6 +47,21 @@ PROJECT_YEARS = {
     "Y2": {"label": "2차년도", "start": date(2027, 5, 1), "end": date(2027, 11, 30), "target": 4500},
 }
 TARGET_TOTAL_RECORDS = sum(y["target"] for y in PROJECT_YEARS.values())   # 8,500
+
+# 1차년도 데이터 확보 계획(평가의견 4·14 반영 문안) — 원천별 산출식
+DATA_PLAN = {
+    "obd": {"label": "차량 OBD 세션", "vehicles": 30, "per_vehicle_week": 3.5, "weeks": 13, "count": 1365},
+    "cpo": {"label": "CPO 거점 충전 세션(서포터즈 차량 세션 제외)", "per_week": 250, "weeks": 13, "count": 3250},
+    "total": 4615,
+    "attrition_pct": 16,
+    "total_with_attrition": 4397,   # OBD 1,365 x (1-0.16) + CPO 3,250
+    "target": 4000,
+}
+WEEKLY_PLAN = {"obd": DATA_PLAN["obd"]["count"] / DATA_PLAN["obd"]["weeks"],   # 105건/주
+               "cpo": DATA_PLAN["cpo"]["per_week"]}                              # 250건/주
+WEEKLY_ALERT_RATIO = 0.90   # 주간 유효 세션이 계획의 90% 미만인 주가 2주 연속이면 대응 조치(평가의견 4)
+OBD_ALERT_RATIO = 0.80      # OBD 확보가 계획의 80% 미만인 주가 2주 연속이면 거점 세션 샘플링 확대(평가의견 12)
+ALERT_STREAK_WEEKS = 2
 
 
 def project_year_of(d) -> str | None:
@@ -86,12 +106,35 @@ class KpiSummary:
         return asdict(self)
 
 
-def _session_dates(charger_df: pd.DataFrame) -> pd.Series:
+def _supporter_ids(ev_df: pd.DataFrame | None) -> set:
+    return set(ev_df["ev_id"].dropna().astype(str)) if ev_df is not None and not ev_df.empty and "ev_id" in ev_df.columns else set()
+
+
+def session_funnel(charger_df: pd.DataFrame, exclude_ev_ids: set | None = None) -> dict:
+    """충전 세션 건수 단계(중복 제거 전·후) — 원천 행 → 유효(충전량>0) → 중복 제거 → 서포터즈 차량 세션 제외(=성과 산입)."""
     if charger_df is None or charger_df.empty or "start_ts" not in charger_df.columns:
+        return {"raw": 0, "valid": 0, "deduplicated": 0, "supporter_excluded": 0, "counted": 0, "_rows": pd.DataFrame()}
+    df = charger_df.assign(_start=pd.to_datetime(charger_df["start_ts"], errors="coerce")).dropna(subset=["_start"])
+    raw = int(len(charger_df))
+    energy = pd.to_numeric(df["energy_kwh"], errors="coerce").fillna(0) if "energy_kwh" in df.columns else pd.Series(1, index=df.index)
+    valid = df[energy > 0]
+    key = ["session_id"] if "session_id" in valid.columns and valid["session_id"].notna().all() else \
+        [c for c in ("charger_id", "_start") if c in valid.columns]
+    dedup = valid.drop_duplicates(subset=key)
+    excl = 0
+    if exclude_ev_ids and "ev_id" in dedup.columns:
+        mask = dedup["ev_id"].astype(str).isin(exclude_ev_ids) & dedup["ev_id"].notna()
+        excl = int(mask.sum())
+        dedup = dedup[~mask]
+    return {"raw": raw, "valid": int(len(valid)), "deduplicated": int(len(dedup)) + excl,
+            "supporter_excluded": excl, "counted": int(len(dedup)), "_rows": dedup}
+
+
+def _session_dates(charger_df: pd.DataFrame, exclude_ev_ids: set | None = None) -> pd.Series:
+    rows = session_funnel(charger_df, exclude_ev_ids)["_rows"]
+    if rows.empty:
         return pd.Series([], dtype="object")
-    energy = pd.to_numeric(charger_df["energy_kwh"], errors="coerce").fillna(0) if "energy_kwh" in charger_df.columns else 1
-    valid = charger_df[energy > 0]
-    return pd.to_datetime(valid["start_ts"], errors="coerce").dropna().dt.date.reset_index(drop=True)
+    return rows["_start"].dt.date.reset_index(drop=True)
 
 
 def _vehicle_days(ev_df: pd.DataFrame) -> pd.DataFrame:
@@ -132,9 +175,9 @@ def count_vehicle_sessions(ev_df: pd.DataFrame) -> int:
     return int(len(_vehicle_sessions(ev_df)))
 
 
-def count_charger_sessions(charger_df: pd.DataFrame) -> int:
-    """유효 충전 세션 수(충전량 0 이하 제외)."""
-    return int(len(_session_dates(charger_df)))
+def count_charger_sessions(charger_df: pd.DataFrame, exclude_ev_ids: set | None = None) -> int:
+    """유효 충전 세션 수(충전량 0 이하 제외, 중복 제거, exclude_ev_ids 차량의 세션 제외)."""
+    return int(len(_session_dates(charger_df, exclude_ev_ids)))
 
 
 def count_vehicle_days(ev_df: pd.DataFrame) -> int:
@@ -145,7 +188,7 @@ def count_vehicle_days(ev_df: pd.DataFrame) -> int:
 def count_by_year(ev_df: pd.DataFrame, charger_df: pd.DataFrame,
                   count_sessions: bool = True, count_vehicle_days: bool = True) -> tuple[list[YearCount], int]:
     """연차별 건수와 어느 연차에도 속하지 않는 건수. count_*=False인 표는 0으로 센다(합성 표 제외용)."""
-    sess_years = _session_dates(charger_df).map(project_year_of)
+    sess_years = _session_dates(charger_df, _supporter_ids(ev_df)).map(project_year_of)
     vd = _vehicle_sessions(ev_df)
     vd_years = vd["_day"].map(project_year_of) if not vd.empty else pd.Series([], dtype="object")
     rows = []
@@ -165,6 +208,7 @@ def plan_targets() -> dict:
         "sites": TARGET_SITES,
         "records_by_year": {k: y["target"] for k, y in PROJECT_YEARS.items()},
         "records_total": TARGET_TOTAL_RECORDS,
+        "data_plan": DATA_PLAN,
     }
 
 
@@ -200,7 +244,7 @@ def summarize_kpi(
         by_year=by_year,
         official_by_year=official,
         out_of_period_records=out,
-        scenario_records=count_charger_sessions(charger_df) + count_vehicle_sessions(ev_df),
+        scenario_records=count_charger_sessions(charger_df, _supporter_ids(ev_df)) + count_vehicle_sessions(ev_df),
         public_reference_records=public_ref,
         is_real=provenance.get("ev_telemetry") == "measured",
         provenance=provenance,
@@ -332,7 +376,7 @@ def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessi
     """데이터 현황판(계획서 리스크 대응: '데이터 현황판으로 목표 대비 수집 속도 관리') — 일자별 유효 건수,
     현재 속도로 연차 종료일까지 수집했을 때의 예상 건수, 경고, 차량별 최근 4주 현황.
     count_*=False인 표(합성)는 0으로 세어 성과 실적과 같은 기준을 쓴다."""
-    sess = _session_dates(charger_df) if count_sessions else pd.Series([], dtype="object")
+    sess = _session_dates(charger_df, _supporter_ids(ev_df)) if count_sessions else pd.Series([], dtype="object")
     vd = _vehicle_sessions(ev_df) if count_vehicle_days else pd.DataFrame(columns=["ev_id", "_day"])
     s_daily = sess.value_counts() if len(sess) else pd.Series(dtype=int)
     v_daily = vd["_day"].value_counts() if not vd.empty else pd.Series(dtype=int)
@@ -385,4 +429,80 @@ def collection_status(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessi
         n_active = sum(r["active"] for r in out["roster"])
         if n_active < TARGET_EV:
             out["warnings"].append({"code": "few_active", "active": n_active, "target": TARGET_EV})
+    out["weekly"] = weekly_monitor(ev_df, charger_df, count_sessions, count_vehicle_days)
+    out["warnings"].extend(out["weekly"]["alerts"])
+    f = session_funnel(charger_df, _supporter_ids(ev_df)) if count_sessions else None
+    out["funnel"] = {k: v for k, v in f.items() if not k.startswith("_")} if f else None
+    out["data_plan"] = DATA_PLAN
+    out["milestones"] = load_milestones()
     return out
+
+
+MILESTONES_FILE = Path(__file__).resolve().parents[1] / "config" / "data_plan.json"
+
+
+def load_milestones(path: Path | None = None) -> dict:
+    """일정 마일스톤(평가의견 4) — config/data_plan.json. 날짜가 지났는지(done)를 오늘 기준으로 붙인다."""
+    path = path or MILESTONES_FILE
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"items": [], "verified": False}
+    today = date.today()
+    items = [{**m, "done": date.fromisoformat(m["date"]) <= today} for m in cfg.get("milestones", [])]
+    return {"items": items, "verified": bool(cfg.get("verified")), "note": cfg.get("note")}
+
+
+def weekly_monitor(ev_df: pd.DataFrame, charger_df: pd.DataFrame, count_sessions: bool = True,
+                   count_vehicles: bool = True, weeks: int = 13) -> dict:
+    """주간 점검 지표(평가의견 4) — 주별 활동 차량 수, 주간 유효 세션(OBD·CPO), 누적 대 계획.
+    경고: 주간 유효 세션이 계획의 90% 미만인 주가 2주 연속(대응 조치), OBD가 계획의 80% 미만 2주 연속(거점 세션 샘플링 확대)."""
+    vs = _vehicle_sessions(ev_df) if count_vehicles else pd.DataFrame(columns=["ev_id", "_day"])
+    cs = _session_dates(charger_df, _supporter_ids(ev_df)) if count_sessions else pd.Series([], dtype="object")
+    act = _vehicle_days(ev_df)
+
+    def week_of(days) -> pd.Series:
+        d = pd.to_datetime(pd.Series(list(days)))
+        return (d - pd.to_timedelta(d.dt.dayofweek, unit="D")).dt.date
+
+    obd_w = week_of(vs["_day"]).value_counts() if not vs.empty else pd.Series(dtype=int)
+    cpo_w = week_of(cs).value_counts() if len(cs) else pd.Series(dtype=int)
+    act_w = act.assign(_w=week_of(act["_day"]).to_numpy()).groupby("_w")["ev_id"].nunique() if not act.empty else pd.Series(dtype=int)
+    all_w = sorted(set(obd_w.index) | set(cpo_w.index))
+    plan_obd, plan_cpo = WEEKLY_PLAN["obd"], WEEKLY_PLAN["cpo"]
+    plan_total = plan_obd + plan_cpo
+    rows = []
+    if all_w:
+        last = all_w[-1]
+        span = [last - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
+        span = [w for w in span if w >= all_w[0]]
+        cum = cum_plan = 0
+        for w in span:
+            o, c = int(obd_w.get(w, 0)), int(cpo_w.get(w, 0))
+            cum += o + c
+            cum_plan += plan_total
+            rows.append({"week_start": w.isoformat(), "active_vehicles": int(act_w.get(w, 0)), "obd": o, "cpo": c, "total": o + c,
+                         "plan": round(plan_total), "ratio_pct": round((o + c) / plan_total * 100, 1),
+                         "obd_ratio_pct": round(o / plan_obd * 100, 1),
+                         "cumulative": cum, "cumulative_plan": round(cum_plan), "cumulative_pct": round(cum / cum_plan * 100, 1)})
+
+    def streak(cond) -> int:
+        n = 0
+        for r in reversed(rows):
+            if not cond(r):
+                break
+            n += 1
+        return n
+
+    alerts = []
+    s90 = streak(lambda r: r["ratio_pct"] < WEEKLY_ALERT_RATIO * 100)
+    if s90 >= ALERT_STREAK_WEEKS:
+        alerts.append({"code": "weekly_below_90", "weeks": s90,
+                       "text": f"주간 유효 세션이 계획(주 {round(plan_total)}건)의 90% 미만 {s90}주 연속 — 대응 조치 필요(모집 독려·예비 서포터즈 투입·거점 세션 확대)"})
+    s80 = streak(lambda r: r["obd_ratio_pct"] < OBD_ALERT_RATIO * 100) if count_vehicles else 0
+    if s80 >= ALERT_STREAK_WEEKS:
+        alerts.append({"code": "obd_below_80", "weeks": s80,
+                       "text": f"차량 OBD 세션이 계획(주 {round(plan_obd)}건)의 80% 미만 {s80}주 연속 — 거점 충전 세션 샘플링을 확대해 4,000건 유지"})
+    return {"rows": rows, "plan": {"obd": round(plan_obd), "cpo": plan_cpo, "total": round(plan_total)},
+            "thresholds": {"weekly_pct": WEEKLY_ALERT_RATIO * 100, "obd_pct": OBD_ALERT_RATIO * 100, "streak_weeks": ALERT_STREAK_WEEKS},
+            "alerts": alerts}

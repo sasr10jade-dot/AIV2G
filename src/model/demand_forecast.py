@@ -22,6 +22,9 @@ PLAN_MAPE_MAX_PCT = 20.0
 PLAN_R2_MIN = 0.70
 PLAN_TEST_RATIO = 0.20   # Train/Test 80:20
 PLAN_CV_FOLDS = 5        # 학습 구간(80%) 안에서 시간순 확장창 교차검증
+# 공고 필수성과(평가의견 11 반영 문안): 예측 정확도 = (1 − WAPE) × 100 ≥ 70% — 검증용(시험) 데이터 기준.
+# MAPE·R²(계획서 p.27)는 보조 지표로 함께 보고한다.
+PLAN_ACCURACY_MIN_PCT = 70.0
 # 실제값이 0 근처인 시간(심야 무충전 등)은 MAPE가 무한대로 커지므로, 실제값이 평균의 10% 미만인 시간은 제외한다
 MAPE_MIN_ACTUAL_RATIO = 0.10
 
@@ -96,6 +99,7 @@ def _metrics(y_true, y_pred) -> dict:
         "mae": round(mean_absolute_error(y_true, y_pred), 3),
         "rmse": round(mean_squared_error(y_true, y_pred) ** 0.5, 3),
         "wape_pct": round(wape(y_true, y_pred), 2),
+        "accuracy_pct": round(max(0.0, 100.0 - wape(y_true, y_pred)), 2),   # 예측 정확도 = (1 − WAPE) × 100
         "mape_pct": _round(mape(y_true, y_pred), 2),
         "r2": _round(_r2(y_true, y_pred), 3),
     }
@@ -136,6 +140,7 @@ def evaluate_plan_targets(city_hourly: pd.DataFrame, target_col: str,
 
     mape_ok = test_metrics["mape_pct"] is not None and test_metrics["mape_pct"] <= PLAN_MAPE_MAX_PCT
     r2_ok = test_metrics["r2"] is not None and test_metrics["r2"] >= PLAN_R2_MIN
+    acc_ok = test_metrics["accuracy_pct"] >= PLAN_ACCURACY_MIN_PCT
     params = {k: v for k, v in LGBM_PARAMS.items() if k != "verbosity"}
     params["best_iteration"] = int(model.best_iteration_) if getattr(model, "best_iteration_", None) else None
     return {
@@ -153,10 +158,14 @@ def evaluate_plan_targets(city_hourly: pd.DataFrame, target_col: str,
             "test_end": pd.Timestamp(test_df["timestamp"].max()).isoformat(),
         },
         "test": test_metrics,
-        "cv": {"folds": folds, "mape_pct": _agg("mape_pct"), "r2": _agg("r2"), "wape_pct": _agg("wape_pct")},
+        "cv": {"folds": folds, "mape_pct": _agg("mape_pct"), "r2": _agg("r2"), "wape_pct": _agg("wape_pct"),
+               "accuracy_pct": _agg("accuracy_pct")},
         "targets": {
             "mape_max_pct": PLAN_MAPE_MAX_PCT, "r2_min": PLAN_R2_MIN,
             "mape_met": mape_ok, "r2_met": r2_ok, "all_met": mape_ok and r2_ok,
+            # 공고 필수성과 판정(주 지표): 예측 정확도 ≥ 70%
+            "accuracy_min_pct": PLAN_ACCURACY_MIN_PCT, "accuracy_met": acc_ok,
+            "accuracy_formula": "예측 정확도 = (1 − WAPE) × 100, WAPE = Σ|예측−실제| ÷ Σ|실제|",
         },
         "mape_note": f"실제값이 평균의 {int(MAPE_MIN_ACTUAL_RATIO * 100)}% 미만인 시간은 MAPE 계산에서 제외(분모 0 근처 왜곡 방지)",
     }

@@ -81,3 +81,12 @@ def test_get_model_card_api(admin_env, monkeypatch, evaluation):
     assert data["model_details"]["version"] == "1.0.0"
     assert len(data["training_data"]["dataset_sources"]) >= 5
     assert data["evaluation_metrics"]["target_evaluations"][0]["target_col"] == "ev_available_v2g_kwh"
+
+
+def test_accuracy_is_one_minus_wape():
+    import numpy as np
+    """평가의견 11: 예측 정확도 = (1 − WAPE) × 100, 목표 70% 이상."""
+    from src.model.demand_forecast import _metrics, PLAN_ACCURACY_MIN_PCT
+    m = _metrics(np.array([10.0, 20.0, 30.0]), np.array([12.0, 18.0, 33.0]))
+    assert m["wape_pct"] == round(7 / 60 * 100, 2) and m["accuracy_pct"] == round(100 - 7 / 60 * 100, 2)
+    assert PLAN_ACCURACY_MIN_PCT == 70.0

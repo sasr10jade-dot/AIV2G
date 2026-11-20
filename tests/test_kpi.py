@@ -149,3 +149,35 @@ def test_collection_status_excludes_synthetic_tables():
     ch = pd.DataFrame({"start_ts": pd.to_datetime(["2026-12-01"]), "energy_kwh": [5.0], "charger_id": ["C1"]})
     out = collection_status(pd.DataFrame(), ch, count_sessions=False)
     assert out["daily"] == [] and out["pace"] is None
+
+
+def test_data_plan_matches_review_opinion_4_and_14():
+    """평가의견 4·14: OBD 1,365 + CPO 3,250 = 4,615건, 이탈 16% 반영 시 4,397건 ≥ 목표 4,000건."""
+    p = kpi.DATA_PLAN
+    assert p["obd"]["count"] == round(30 * 3.5 * 13) == 1365
+    assert p["cpo"]["count"] == 250 * 13 == 3250
+    assert p["total"] == 1365 + 3250 == 4615
+    assert p["total_with_attrition"] == round(1365 * (1 - 0.16) + 3250) == 4397 and p["total_with_attrition"] >= p["target"]
+
+
+def test_session_funnel_dedups_and_excludes_supporter_sessions():
+    ch = pd.DataFrame({
+        "session_id": ["s1", "s1", "s2", "s3", "s4"],
+        "charger_id": ["c1", "c1", "c2", "c3", "c4"],
+        "start_ts": pd.to_datetime(["2026-12-01 08:00"] * 2 + ["2026-12-01 09:00", "2026-12-02 10:00", "2026-12-03 10:00"]),
+        "energy_kwh": [5.0, 5.0, 3.0, 0.0, 4.0],
+        "ev_id": ["EV-001", "EV-001", None, None, "X-9"],
+    })
+    f = kpi.session_funnel(ch, {"EV-001"})
+    assert (f["raw"], f["valid"], f["deduplicated"], f["supporter_excluded"], f["counted"]) == (5, 4, 3, 1, 2)
+    ev = _ev([("2026-12-01 08:00", "EV-001", True, False, 0.0, "m1")])
+    assert kpi.summarize_kpi(ev, ch).by_year[0].charger_sessions == 2     # 서포터즈 차량 세션은 OBD로만 센다
+
+
+def test_weekly_monitor_alerts_after_two_weeks_below_plan():
+    starts = pd.date_range("2026-12-07", periods=21, freq="D")   # 3주, 하루 1건 → 주 7건(계획 355건 대비 크게 미달)
+    w = kpi.weekly_monitor(_ev([]), _sessions(list(starts)))
+    assert len(w["rows"]) == 3 and w["rows"][-1]["cumulative"] == 21
+    codes = {a["code"] for a in w["alerts"]}
+    assert "weekly_below_90" in codes and "obd_below_80" in codes
+    assert w["plan"] == {"obd": 105, "cpo": 250, "total": 355}

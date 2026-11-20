@@ -674,6 +674,7 @@
     <div style="width:100%; height:188px; position:relative;">
       <canvas id="collectionChart"></canvas>
     </div>
+    <div id="collection-plan" style="margin-top:10px;"></div>
   </div>
 
   <div class="card" id="infra-card">
@@ -1592,6 +1593,31 @@ function renderCollection(data) {
   };
   if (collectionChart) { collectionChart.data = config.data; collectionChart.update(); }
   else { collectionChart = new Chart(document.getElementById('collectionChart'), config); }
+  renderCollectionPlan(c);
+}
+
+// 데이터 확보 계획·주간 점검·마일스톤(평가의견 4·12·14 반영 문안)
+let collectionPlanOpen = false;
+function renderCollectionPlan(c) {
+  const box = document.getElementById('collection-plan');
+  if (!box) return;
+  const p = c.data_plan, w = c.weekly || {}, f = c.funnel, ms = c.milestones || {};
+  if (!p) { box.innerHTML = ''; return; }
+  const plan = `<div style="font-size:12.5px; line-height:1.7;">
+      <b>${t('1차년도 확보 계획')}</b> — ${t('차량 OBD')} ${p.obd.vehicles}${t('대')} × ${t('주')} ${p.obd.per_vehicle_week}${t('회')} × ${p.obd.weeks}${t('주')} = <b>${fmtInt(p.obd.count)}</b>
+      + ${t('CPO 거점 세션')} ${t('주')} ${p.cpo.per_week}${t('건')} × ${p.cpo.weeks}${t('주')} = <b>${fmtInt(p.cpo.count)}</b>
+      → <b>${fmtInt(p.total)}${t('건')}</b> · ${t('이탈')} ${p.attrition_pct}% ${t('반영 시')} <b>${fmtInt(p.total_with_attrition)}${t('건')}</b> (${t('목표')} ${fmtInt(p.target)}${t('건')})
+      <span class="muted"> · ${t('서포터즈 차량의 충전 세션은 OBD로 세므로 CPO 건수에서 제외')}</span></div>`;
+  const funnel = f ? `<div style="font-size:12px; color:var(--muted); margin-top:2px;">${t('충전 세션 건수')}: ${t('원천')} ${fmtInt(f.raw)} → ${t('유효')} ${fmtInt(f.valid)} → ${t('중복 제거 후')} ${fmtInt(f.deduplicated)} → ${t('서포터즈 세션 제외')} −${fmtInt(f.supporter_excluded)} → <b>${t('성과 산입')} ${fmtInt(f.counted)}</b></div>` : '';
+  const rows = w.rows || [];
+  const th = w.thresholds || {};
+  const table = rows.length ? `<table style="margin-top:6px;"><thead><tr><th>${t('주 시작일')}</th><th class="num">${t('활동 차량')}</th><th class="num">${t('OBD 세션')}</th><th class="num">${t('CPO 세션')}</th><th class="num">${t('주간 계')}</th><th class="num">${t('계획 대비')}</th><th class="num">${t('누적')}</th><th class="num">${t('누적 계획 대비')}</th></tr></thead><tbody>` +
+      rows.slice().reverse().map(r => `<tr><td>${r.week_start}</td><td class="num">${r.active_vehicles}</td><td class="num">${fmtInt(r.obd)}</td><td class="num">${fmtInt(r.cpo)}</td><td class="num">${fmtInt(r.total)}</td>
+        <td class="num" style="color:${r.ratio_pct < (th.weekly_pct || 90) ? 'var(--danger, #d92d20)' : 'inherit'}">${r.ratio_pct}%</td><td class="num">${fmtInt(r.cumulative)}</td><td class="num">${r.cumulative_pct}%</td></tr>`).join('') + '</tbody></table>' : '';
+  const msHtml = (ms.items || []).length ? `<div style="font-size:12px; margin-top:6px;"><b>${t('마일스톤')}</b> ${(ms.items || []).map(m => `<span class="tag ${m.done ? 'navy' : 'gray'}" style="margin-left:4px;">${m.date} ${escH(m.title)}</span>`).join('')}${ms.verified ? '' : ` <span class="muted">(${escH(ms.note || t('일정 확정 전'))})</span>`}</div>` : '';
+  box.innerHTML = plan + funnel + msHtml + (rows.length ? `<details id="collection-weekly" ${collectionPlanOpen ? 'open' : ''} style="margin-top:6px;"><summary style="cursor:pointer; font-size:12.5px; font-weight:600;">${t('주간 점검표')} (${t('계획')} ${t('주')} ${fmtInt((w.plan || {}).total)}${t('건')} · ${t('90% 미만 2주 연속 시 대응 조치, OBD 80% 미만 2주 연속 시 거점 세션 샘플링 확대')})</summary>${table}</details>` : '');
+  const d = document.getElementById('collection-weekly');
+  if (d) d.addEventListener('toggle', () => { collectionPlanOpen = d.open; });
 }
 
 // ---- 실증 인프라 현황 — 참여 장소·충전사업자·서포터즈 차량(AIV2GAPP '충전소·충전기', '서포터즈·차량')
@@ -2548,20 +2574,23 @@ document.getElementById('cpo-specs-btn').addEventListener('click', async () => {
           </div>
         </div>
 
-        <h4 class="sub-h" style="margin-top:14px;">1. 계획서 성능 목표 검증 (MAPE ≤ ${ev.plan_targets.mape_max_pct}% · R² ≥ ${ev.plan_targets.r2_min})</h4>
+        <h4 class="sub-h" style="margin-top:14px;">1. 성능 목표 검증 — 공고 필수성과: 예측 정확도 ≥ ${ev.plan_targets.accuracy_min_pct ?? 70}% (예측 정확도 = (1 − WAPE) × 100) · 보조: MAPE ≤ ${ev.plan_targets.mape_max_pct}% · R² ≥ ${ev.plan_targets.r2_min}</h4>
         <p style="font-size:12px; color:var(--muted); margin:0 0 8px 0;">평가 방법: ${esc(ev.evaluation_strategy)} · 시험 구간 ${esc((ev.data_range||{}).test_start||'-').slice(0,10)} ~ ${esc((ev.data_range||{}).test_end||'-').slice(0,10)} · <b>${esc(ev.measured_or_inferred)}</b> <span class="tag ${card.training_data.actual_source==='실측'?'navy':''}">${esc(card.training_data.actual_source)}</span></p>
         <div style="overflow-x:auto; margin-bottom:6px;">
           <table>
-            <thead><tr><th>예측 대상</th><th>MAPE (시험)</th><th>R² (시험)</th><th>교차검증 MAPE 평균±편차</th><th>교차검증 R²</th><th>WAPE</th><th>판정</th></tr></thead>
+            <thead><tr><th>예측 대상</th><th>예측 정확도 (시험)</th><th>교차검증 정확도</th><th>MAPE (시험)</th><th>R² (시험)</th><th>교차검증 MAPE 평균±편차</th><th>교차검증 R²</th><th>WAPE</th><th>판정</th></tr></thead>
             <tbody>
               ${ev.target_evaluations.map(t => `
                 <tr><td><b>${esc(t.target)}</b></td>
+                  <td><b>${t.accuracy_pct ?? '-'}%</b></td>
+                  <td>${t.cv_accuracy_pct ? t.cv_accuracy_pct.mean.toFixed(1) + ' ± ' + t.cv_accuracy_pct.std.toFixed(1) + '%' : '-'}</td>
                   <td>${t.mape_pct ?? '-'}% <span class="sub">${esc(t.mape_status)}</span></td>
                   <td>${t.r2 ?? '-'} <span class="sub">${esc(t.r2_status)}</span></td>
                   <td>${t.cv_mape_pct ? t.cv_mape_pct.mean.toFixed(1) + ' ± ' + t.cv_mape_pct.std.toFixed(1) + '%' : '-'}</td>
                   <td>${t.cv_r2 ? t.cv_r2.mean.toFixed(3) : '-'}</td>
                   <td>${t.wape_pct}%</td>
-                  <td><span class="tag" style="background:${t.all_met ? 'rgba(46,160,67,.15)' : 'rgba(235,94,85,.15)'}">${t.all_met ? '목표 달성' : '목표 미달'}</span></td></tr>
+                  <td><span class="tag" style="background:${t.accuracy_met ? 'rgba(46,160,67,.15)' : 'rgba(235,94,85,.15)'}">${t.accuracy_met ? '정확도 목표 달성' : '정확도 목표 미달'}</span>
+                    <div class="sub">${t.all_met ? '보조(MAPE·R²) 충족' : '보조(MAPE·R²) 미충족'}</div></td></tr>
               `).join('')}
             </tbody>
           </table>
