@@ -251,7 +251,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       pt_title: '내 실증 참여', pt_dep: '평소 출발 시각', pt_target: '목표 배터리', pt_min: '최소 보장 배터리', pt_odo: '누적 주행거리', pt_v2g: '방전(V2G) 추론 안내',
       pt_edit: '내 정보에서 바꿀 수 있어요.', pt_unset: '미입력(기본값 사용)',
       data_note: '수집한 데이터는 가명처리해 AI 예측·분석에만 쓰여요. 방전 안내는 실제 방전이 아닌 AI 추론 결과예요.',
-      su_req_note: '* 표시는 필수 항목입니다.', su_opt: '(선택)', su_dong: '동·읍·면', su_dong_pick: '동·읍·면 선택', su_dong_none: '선택 가능한 동 없음',
+      install_https: '앱으로 설치하려면 보안 주소(HTTPS)에서 열어야 해요.', su_req_note: '* 표시는 필수 항목입니다.', su_opt: '(선택)', su_dong: '동·읍·면', su_dong_pick: '동·읍·면 선택', su_dong_none: '선택 가능한 동 없음',
       su_tg_ph: '비워 두면 80', su_mn_ph: '비워 두면 20', su_od_ph: '예: 35000',
       su_err_target: '출발 시 목표 배터리는 20~100% 사이로 입력해 주세요.', su_err_min: '최소 보장 배터리는 10~90% 사이로 입력해 주세요.',
       su_err_order: '최소 보장 배터리는 목표 배터리보다 낮아야 합니다.', su_err_odo: '누적 주행거리는 0 이상 숫자로 입력해 주세요.',
@@ -329,7 +329,7 @@ label.check input { width: 22px; height: 22px; flex: none; }
       pt_title: 'My pilot participation', pt_dep: 'Usual departure', pt_target: 'Target battery', pt_min: 'Minimum battery', pt_odo: 'Odometer', pt_v2g: 'Discharge (V2G) inference guidance',
       pt_edit: 'You can change these in My info.', pt_unset: 'Not set (defaults used)',
       data_note: 'Collected data is pseudonymized and used only for AI forecasting and analysis. Discharge guidance is an AI inference, not an actual discharge.',
-      su_req_note: 'Fields marked * are required.', su_opt: '(optional)', su_dong: 'Neighborhood', su_dong_pick: 'Choose a neighborhood', su_dong_none: 'No neighborhoods to choose',
+      install_https: 'To install the app, open it on the secure (HTTPS) address.', su_req_note: 'Fields marked * are required.', su_opt: '(optional)', su_dong: 'Neighborhood', su_dong_pick: 'Choose a neighborhood', su_dong_none: 'No neighborhoods to choose',
       su_tg_ph: 'Blank = 80', su_mn_ph: 'Blank = 20', su_od_ph: 'e.g. 35000',
       su_err_target: 'Enter a target battery between 20 and 100%.', su_err_min: 'Enter a minimum battery between 10 and 90%.',
       su_err_order: 'Minimum battery must be lower than the target battery.', su_err_odo: 'Enter the odometer as a number of 0 or more.',
@@ -775,9 +775,9 @@ label.check input { width: 22px; height: 22px; flex: none; }
       if (plate) kids.push(el('label', { text: t('su_plate') }), plate);
       kids.push(el('label', { text: t('su_occ') }), occ, el('label', { text: t('su_sido') }), prov.sido, el('label', { text: t('su_sigungu') }), prov.sigungu);
       var opDep = el('input', { type: 'time', value: reg.departure_time || '' });
-      var opTarget = el('input', { type: 'number', min: '20', max: '100', inputmode: 'numeric', value: reg.target_soc_pct == null ? '' : String(reg.target_soc_pct) });
-      var opMin = el('input', { type: 'number', min: '10', max: '90', inputmode: 'numeric', value: reg.min_soc_pct == null ? '' : String(reg.min_soc_pct) });
-      var opOdo = el('input', { type: 'number', min: '0', inputmode: 'numeric', value: reg.odometer_km == null ? '' : String(reg.odometer_km) });
+      var opTarget = el('input', { type: 'number', min: '20', max: '100', inputmode: 'numeric', placeholder: t('su_tg_ph'), value: reg.target_soc_pct == null ? '' : String(reg.target_soc_pct) });
+      var opMin = el('input', { type: 'number', min: '10', max: '90', inputmode: 'numeric', placeholder: t('su_mn_ph'), value: reg.min_soc_pct == null ? '' : String(reg.min_soc_pct) });
+      var opOdo = el('input', { type: 'number', min: '0', inputmode: 'numeric', placeholder: t('su_od_ph'), value: reg.odometer_km == null ? '' : String(reg.odometer_km) });
       kids.push(el('h2', { class: 'gap', text: t('su_op_title') }), el('label', { text: t('su_dep') }), opDep, el('label', { text: t('su_target') }), opTarget,
         el('label', { text: t('su_min') }), opMin, el('label', { text: t('su_odo') }), opOdo);
       if (rejected) {
@@ -788,6 +788,8 @@ label.check input { width: 22px; height: 22px; flex: none; }
       var form = el('form', { novalidate: '' }, kids);
       form.addEventListener('submit', async function (ev) {
         ev.preventDefault(); fmsg.textContent = ''; okmsg.textContent = '';
+        var opErr = operatingError(opTarget.value, opMin.value, opOdo.value);
+        if (opErr) { fmsg.textContent = opErr; return; }
         submit.disabled = true;
         try {
           if (rejected) {
@@ -1860,6 +1862,15 @@ label.check input { width: 22px; height: 22px; flex: none; }
     document.getElementById('installHow').hidden = false;
   }
   window.addEventListener('appinstalled', function () { installBanner.hidden = true; });
+  if (!window.isSecureContext && !standalone && /android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
+    fetch('/pwa/lan-https.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
+      if (!info || !info.ca_available) return;
+      installText.textContent = t('install_https');
+      installBtn.hidden = true;
+      document.getElementById('installHow').hidden = false;   // /install 이 인증서 설치·보안 주소 이동을 안내한다
+      installBanner.hidden = false;
+    }).catch(function () { /* 안내 없이 진행 */ });
+  }
 
   // ---------------------------------------------------------------- 서비스 워커
   if ('serviceWorker' in navigator) {
