@@ -337,8 +337,8 @@ def test_standard_mapping_registry_and_export_review_opinion_1():
     ch = pd.DataFrame({"session_id": ["s1"], "charger_id": ["c1"], "start_ts": pd.to_datetime(["2026-12-01 08:00"]),
                        "energy_kwh": [5.0], "ev_id": ["EV-001"], "zone": [1]})
     out = standards.to_standard(ch, "charger_sessions", "ocpi")
-    assert {"Session.id", "EVSE.uid", "Session.start_date_time", "Session.kwh"} <= set(out.columns)
-    assert out["Session.auth_id(가명)"].iloc[0].startswith("PE-") and "EV-001" not in out.to_string()
+    assert {"Session.id", "Session.evse_uid", "Session.start_date_time", "Session.kwh"} <= set(out.columns)
+    assert out["Session.cdr_token.uid(가명)"].iloc[0].startswith("PE-") and "EV-001" not in out.to_string()
     _admin()
     r = client.get("/ingest/standards")
     assert r.status_code == 200 and len(r.json()["pipeline"]) == 7
