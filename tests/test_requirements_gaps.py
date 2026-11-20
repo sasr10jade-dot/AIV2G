@@ -325,3 +325,33 @@ def test_region_controls_are_jeju_and_gyeonggi_with_grid_series_and_transfer(tmp
     tr = {t["id"]: t for t in out["transfer"]}
     assert tr["jeju"]["status"] == "적용" and tr["jeju"]["accuracy_pct"] > 80      # 같은 모양이면 정규화 수요가 잘 맞는다
     assert tr["gyeonggi"]["status"] == "수집 전"
+
+
+def test_standard_mapping_registry_and_export_review_opinion_1():
+    """평가의견 1: 공통 필드별 VSS·OCPP·OCPI 명칭 병기, 7단계 절차, 표준 형식 출력(식별자 가명)."""
+    from src.pipeline import standards
+    m = standards.load_mapping()
+    assert [s["name"] for s in m["pipeline"]] == ["원천 보관", "형식 해석", "규칙 적용", "가명처리", "품질검증", "차량·충전 세션 결합", "제공"]
+    cov = standards.coverage(m)
+    assert cov["ev_telemetry"]["vss"] >= 6 and cov["charger_sessions"]["ocpi"] >= 6 and cov["charger_sessions"]["ocpp"] >= 6
+    ch = pd.DataFrame({"session_id": ["s1"], "charger_id": ["c1"], "start_ts": pd.to_datetime(["2026-12-01 08:00"]),
+                       "energy_kwh": [5.0], "ev_id": ["EV-001"], "zone": [1]})
+    out = standards.to_standard(ch, "charger_sessions", "ocpi")
+    assert {"Session.id", "EVSE.uid", "Session.start_date_time", "Session.kwh"} <= set(out.columns)
+    assert out["Session.auth_id(가명)"].iloc[0].startswith("PE-") and "EV-001" not in out.to_string()
+    _admin()
+    r = client.get("/ingest/standards")
+    assert r.status_code == 200 and len(r.json()["pipeline"]) == 7
+    r = client.get("/ingest/export/standard?table=ev_telemetry&standard=vss&limit=5")
+    assert r.status_code == 200 and r.json()["rows"] == 5 and "Vehicle.Powertrain.TractionBattery.StateOfCharge.Displayed" in r.json()["columns"]
+
+
+def test_soc_gap_backcalc_with_source_label_review_opinion_12():
+    """평가의견 12: OBD SOC 미수신 시 충전량 역산으로 대체하고 출처를 구분 표기(주행 시간은 역산하지 않음)."""
+    from src.pipeline.obd_ingest import fill_soc_gaps
+    ts = pd.date_range("2026-12-01 00:00", periods=4, freq="h")
+    df = pd.DataFrame({"timestamp": ts, "ev_id": "EV-1", "soc_pct": [50.0, None, None, None], "driving": [False, False, False, True],
+                       "charging_kw": [0.0, 7.0, 7.0, 0.0], "battery_capacity_kwh": 70.0})
+    out = fill_soc_gaps(df)
+    assert list(out["soc_source"]) == ["obd", "charge_backcalc", "charge_backcalc", "missing"]
+    assert out["soc_pct"].iloc[1] == 60.0 and out["soc_pct"].iloc[2] == 70.0 and pd.isna(out["soc_pct"].iloc[3])

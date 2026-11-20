@@ -47,6 +47,7 @@ from src.pipeline import source
 from src.pipeline.obd_ingest import (
     ObdColumnsMissingError,
     aggregate_obd_day_to_hourly,
+    fill_soc_gaps,
     resolve_obd_columns,
 )
 from src.pipeline.quality import summarize, validate
@@ -353,11 +354,15 @@ def process_file(
         # 실차 OBD는 차량이 슬립 상태이거나 CAN 신호가 비는 시간대에 SOC가 없다(실측 279일 분석에서
         # 확인). 그 시간대를 결측으로 보고 파일 전체를 격리하면 거의 모든 날이 격리되므로, SOC가 없는
         # 시간 행은 반영 대상에서 제외하고(건수·사유는 리포트에 기록) 남은 행에 게이트를 적용한다.
+        # 평가의견 12: 충전 중(주행 아님)인 SOC 결측 시간은 직전 SOC + 충전량 역산으로 채우고 soc_source로 구분 표기한다.
         hours_total = len(hourly)
+        hourly = fill_soc_gaps(hourly)
         valid = hourly.dropna(subset=["soc_pct"]).reset_index(drop=True)
         file_days = sorted({ts.date().isoformat() for ts in hourly["timestamp"]})
         result.update(hours_total=hours_total, hours_valid=len(valid),
-                      hours_dropped_no_soc=hours_total - len(valid), dates_in_file=file_days)
+                      hours_dropped_no_soc=hours_total - len(valid),
+                      hours_soc_backcalc=int((valid.get("soc_source") == "charge_backcalc").sum()) if "soc_source" in valid.columns else 0,
+                      dates_in_file=file_days)
         if valid.empty:
             _upsert_status(paths, sha, filename=path.name, size_bytes=size, data_date=result["date"],
                            plate=meta["plate"], ev_id=ev_id, received_ts=_now_iso(), status="quarantined",

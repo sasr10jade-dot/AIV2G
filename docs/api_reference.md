@@ -1,6 +1,6 @@
 # AI-V2G API 레퍼런스
 
-버전 1.0.0 · 엔드포인트 131개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
+버전 1.0.0 · 엔드포인트 137개 · 이 문서는 `scripts/build_api_docs.py`가 코드에서 생성한다(직접 고치지 않는다).
 대화형 문서는 서버의 `/docs`(Swagger)에서 볼 수 있다.
 
 ## 권한 단계
@@ -196,13 +196,16 @@
 | POST | `/ingest/batch/promote` | 최고관리자 | shadow로 검증한 staging 결과를 운영 데이터에 반영(최고관리자) |
 | POST | `/ingest/batch/run` | 관리자 이상(관리자·최고관리자) | OBD 일일 배치 즉시 실행(백그라운드) |
 | GET | `/ingest/batch/status` | 관리자 이상(관리자·최고관리자) | 최근 OBD 일일 배치 결과(도착 대조·격리·모드) |
+| GET | `/ingest/export/standard` | 관리자 이상(관리자·최고관리자) | 표준 형식 출력 — 공통 스키마 데이터를 VSS·OCPP·OCPI 명칭으로(식별자 가명) |
 | POST | `/ingest/generate` | 관리자 이상(관리자·최고관리자) | 합성 데모 데이터 생성 |
 | POST | `/ingest/obd-emulator/run` | 관리자 이상(관리자·최고관리자) | 가상 실증차량 OBD 배치를 합성해 실제 파이프라인으로 흘려보냄 |
 | GET | `/ingest/public-apis/status` | 관리자 이상(관리자·최고관리자) | 공개 데이터(기상·공휴일) 연동 준비 상태 — 키·명세 여부만, 값은 노출하지 않음 |
 | POST | `/ingest/public-csv/{kind}` | 관리자 이상(관리자·최고관리자) | 공개 데이터 CSV 반영 — 시간별 전력수요(power-demand)·재생에너지 발전량(renewable) |
 | GET | `/ingest/regions/compare` | 관리자 이상(관리자·최고관리자) | 타 지역 비교(대조군) — 실증 지역과 대조 지역의 기상 조건(기온·영하·고온 시간 비율) |
+| POST | `/ingest/regions/{region_id}/public-csv/{kind}` | 관리자 이상(관리자·최고관리자) | 대조 지역 공개 데이터 CSV 저장 — 시간별 전력수요(power-demand)·재생에너지(renewable) |
 | POST | `/ingest/regions/{region_id}/sync-temperature` | 관리자 이상(관리자·최고관리자) | 대조 지역 기온 수집(기상청 ASOS) — 최대 92일 |
 | POST | `/ingest/run` | 관리자 이상(관리자·최고관리자) | raw → curated 파이프라인 실행 |
+| GET | `/ingest/standards` | 관리자 이상(관리자·최고관리자) | 범용 데이터 표준화 — 매핑 레지스트리(VSS·OCPP 1.6J·OCPI 2.2.1 대응 명칭)와 7단계 처리 절차 |
 | GET | `/ingest/status` | 관리자 이상(관리자·최고관리자) | 현재 데이터 소스 모드 확인 (데모/실증) |
 | POST | `/ingest/sync-kpx-smp` | 관리자 이상(관리자·최고관리자) | 한국전력거래소(KPX) 실시간 SMP를 grid_signal.price_krw_per_kwh에 반영 |
 | POST | `/ingest/sync-weather-holiday` | 관리자 이상(관리자·최고관리자) | 기상청 시간별 기온·한국천문연구원 공휴일을 grid_signal에 반영 |
@@ -235,6 +238,7 @@
 
 | 메서드 | 경로 | 권한 | 설명 |
 |---|---|---|---|
+| GET | `/kpi/management` | 관리자 이상(관리자·최고관리자) | 성과·관리 지표판 — 필수성과 5·관리지표 7·경제적 편익 4·원천별 데이터·레퍼런스·보상 단계(평가의견 5·6·8·10·11) |
 | GET | `/owner/missions` | 이용자(차량이 연결된 차량 등록자) | 내 미션 — 진행도·완료·보상 수령 여부, 등급 |
 | POST | `/owner/missions/{mission_id}/claim` | 이용자(차량이 연결된 차량 등록자) | 완료한 미션 보상 받기 — 기간당 1회, 포인트 원장 적립 |
 | GET | `/owner/points` | 이용자(차량이 연결된 차량 등록자) | 내 모의 포인트 — 확정 잔액·확정 대기·재원별 내역·조정·문의·등급 |
@@ -249,6 +253,8 @@
 | POST | `/vpp/settlement/adjust` | 관리자 이상(관리자·최고관리자) | 포인트 조정(가산·차감) — 사유 필수, 원장에 남는다 |
 | GET | `/vpp/settlement/inquiries` | 관리자 이상(관리자·최고관리자) | 참여자 정산 문의 목록 |
 | POST | `/vpp/settlement/inquiries/{inquiry_id}/resolve` | 관리자 이상(관리자·최고관리자) | 정산 문의 답변(필요 시 포인트 조정) |
+| GET | `/vpp/settlement/institution-report` | 관리자 이상(관리자·최고관리자) | 관용차량 기관 단위 모의 정산 리포트(월·차량별, CSV 가능) |
+| GET | `/vpp/settlement/months` | 관리자 이상(관리자·최고관리자) | 월별 정산 상태 — 월 1회 모의 정산(미정산·산정·확정) |
 | GET | `/vpp/settlement/preview` | 관리자 이상(관리자·최고관리자) | 정산 미리보기(원장에 쓰지 않음) — 재원 배분·경제성 검증·인센티브 유형 비교(포인트·할인·수익배분·마일리지) |
 | POST | `/vpp/settlement/run` | 관리자 이상(관리자·최고관리자) | 정산 한 번에 실행(전체 기간 산정 + 즉시 확정) — 간편 실행용, 중복 정산 없음 |
 | GET | `/vpp/settlement/runs` | 관리자 이상(관리자·최고관리자) | 정산 회차 목록(산정·확정·취소) |

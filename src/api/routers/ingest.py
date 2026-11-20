@@ -275,6 +275,29 @@ def sync_weather_holiday(start: str, end: str, station: str = weather_holiday.DE
     return {"status": "ok", "station": station, "fetched_hours": len(temp), **stats, "note": note}
 
 
+@router.get("/standards", summary="범용 데이터 표준화 — 매핑 레지스트리(VSS·OCPP 1.6J·OCPI 2.2.1 대응 명칭)와 7단계 처리 절차")
+def standards_registry() -> dict:
+    """평가의견 1: 자체 공통 스키마 + 매핑 레지스트리, 공통 필드별 국제 표준 명칭 병기, 원천 보관→…→제공 7단계."""
+    from src.pipeline import standards
+    m = standards.load_mapping()
+    return {**{k: v for k, v in m.items() if not k.startswith("_")}, "coverage": standards.coverage(m)}
+
+
+@router.get("/export/standard", summary="표준 형식 출력 — 공통 스키마 데이터를 VSS·OCPP·OCPI 명칭으로(식별자 가명)")
+def export_standard(table: str = "charger_sessions", standard: str = "ocpi", limit: int = 100) -> dict:
+    from src.pipeline import standards
+    if table not in ("ev_telemetry", "charger_sessions"):
+        raise HTTPException(status_code=422, detail="table은 ev_telemetry 또는 charger_sessions 입니다")
+    if standard not in standards.STANDARDS:
+        raise HTTPException(status_code=422, detail="standard는 vss·ocpp·ocpi 중 하나입니다")
+    limit = max(1, min(int(limit), 1000))
+    ev_df, ch_df, _g, _real = source.load_scenario(SimConfig())
+    df = (ev_df if table == "ev_telemetry" else ch_df).head(limit)
+    out = standards.to_standard(df, table, standard)
+    return {"table": table, "standard": standard, "rows": len(out), "columns": list(out.columns),
+            "data_source": source.provenance().get(table, "-"), "records": out.astype(object).where(out.notna(), None).to_dict("records")}
+
+
 @router.get("/regions/compare", summary="타 지역 비교(대조군) — 실증 지역과 대조 지역의 기상 조건(기온·영하·고온 시간 비율)")
 def region_compare() -> dict:
     """config/comparison_regions.json의 대조 지역별로 수집해 둔 기온과 실증 지역 grid_signal 기온을 비교한다(요구사항 Y2E01)."""

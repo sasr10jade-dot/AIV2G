@@ -171,6 +171,36 @@ def aggregate_obd_day_to_hourly(
     )
 
 
+def fill_soc_gaps(df: pd.DataFrame) -> pd.DataFrame:
+    """OBD SOC 미수신 시간의 대체값(평가의견 12 반영 문안 — 필수 항목 대체 데이터원, 출처 구분 표기).
+
+    `soc_source`: obd(OBD 실측) / charge_backcalc(직전 SOC + 충전량 ÷ 배터리 용량으로 역산) / missing(대체 불가).
+    역산은 주행하지 않은 시간에만 한다(주행 소모량은 OBD 없이 알 수 없음). 서포터즈 계기판 입력·충전기 측 SoC가
+    들어오면 그 값이 우선이며 출처를 participant_input / charger_soc로 남긴다(같은 열 규약).
+    """
+    if df.empty or "soc_pct" not in df.columns:
+        return df
+    out = df.sort_values(["ev_id", "timestamp"]).copy()
+    out["soc_source"] = out["soc_pct"].notna().map({True: "obd", False: "missing"})
+    for _ev, idx in out.groupby("ev_id").groups.items():
+        prev = None
+        for i in idx:
+            soc = out.at[i, "soc_pct"]
+            if pd.notna(soc):
+                prev = float(soc)
+                continue
+            if prev is None or bool(out.at[i, "driving"]):
+                prev = None
+                continue
+            cap = float(out.at[i, "battery_capacity_kwh"] or 0)
+            if cap <= 0:
+                continue
+            prev = min(100.0, prev + float(out.at[i, "charging_kw"] or 0) / cap * 100)
+            out.at[i, "soc_pct"] = round(prev, 2)
+            out.at[i, "soc_source"] = "charge_backcalc"
+    return out.reset_index(drop=True)
+
+
 def merge_hourly_rows_into_source(new_rows: pd.DataFrame) -> dict:
     """집계된 시간당 EV 행(실제 배치 업로드든, OBD 에뮬레이터 합성이든)을 기존
     `source.EV_CSV`에 병합하고 품질검증 결과와 함께 반환한다. `/ingest/upload-obd`와

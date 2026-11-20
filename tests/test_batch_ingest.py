@@ -140,8 +140,10 @@ def test_hours_without_soc_are_dropped_and_reported_not_fatal(env):
     r = b.run_daily_batch(env, mode="live", registry=REGISTRY, target_date=date(2026, 9, 1))
     res = r["results"][0]
     assert res["status"] == "applied"
-    assert (res["hours_total"], res["hours_valid"], res["hours_dropped_no_soc"]) == (3, 2, 1)
-    assert len(pd.read_csv(source.EV_CSV)) == 2
+    # 평가의견 12: 충전 중인 SOC 결측 시간은 충전량 역산으로 채우고 출처를 남긴다(주행 중 결측만 제외)
+    assert (res["hours_total"], res["hours_valid"], res["hours_dropped_no_soc"], res["hours_soc_backcalc"]) == (3, 3, 0, 1)
+    saved = pd.read_csv(source.EV_CSV)
+    assert len(saved) == 3 and list(saved["soc_source"]) == ["obd", "charge_backcalc", "obd"]
 
 
 def test_arrival_table_reports_missing_vehicles(env):

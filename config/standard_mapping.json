@@ -1,0 +1,46 @@
+{
+  "_comment": "범용 데이터 표준화 매핑 레지스트리(평가의견 1 반영 문안). 공통 스키마 필드마다 국제 표준(COVESA VSS, OCPP 1.6J, OCPI 2.2.1) 대응 명칭을 병기한다. 2차년도 외부 연계 시 /ingest/export/standard 가 이 표로 표준 형식을 출력한다. 대응이 없거나 파생값인 경우 note에 적는다. 신규 차종은 config/obd_vehicles.json·vehicle_models.json, 신규 충전사업자는 config/cpo_sources.json의 column_map에 행을 추가해 편입한다(프로그램 수정 없음). 표준 명칭은 각 표준 문서 기준 확인 전 초안(verified=false).",
+  "verified": false,
+  "standards": {
+    "vss": {"name": "COVESA VSS", "version": "4.x", "scope": "차량 신호(OBD 텔레메트리)"},
+    "ocpp": {"name": "OCPP", "version": "1.6J", "scope": "충전기 ↔ 관제(CSMS) 메시지"},
+    "ocpi": {"name": "OCPI", "version": "2.2.1", "scope": "충전사업자 간 로밍·정산(Location·Session·CDR)"}
+  },
+  "tables": {
+    "ev_telemetry": [
+      {"field": "ev_id", "vss": "Vehicle.VehicleIdentification.VIN", "note": "가명 ID(PE-…)로 대체해 출력"},
+      {"field": "timestamp", "vss": "(신호 관측 시각 — 메타데이터)", "note": "ISO 8601, KST"},
+      {"field": "soc_pct", "vss": "Vehicle.Powertrain.TractionBattery.StateOfCharge.Displayed", "ocpp": "MeterValues.sampledValue[measurand=SoC]", "note": "충전기 측 SoC는 OCPP로도 수신 가능(대체 데이터원)"},
+      {"field": "connected", "vss": "Vehicle.Powertrain.TractionBattery.Charging.IsChargingCableConnected"},
+      {"field": "charging_kw", "vss": "Vehicle.Powertrain.TractionBattery.CurrentPower", "note": "부호 규약 확인 필요(충전 +/방전 −)"},
+      {"field": "driving", "vss": "Vehicle.Speed", "note": "파생값: 속도 > 0 이면 주행"},
+      {"field": "battery_capacity_kwh", "vss": "Vehicle.Powertrain.TractionBattery.GrossCapacity"},
+      {"field": "odometer_km", "vss": "Vehicle.TraveledDistance", "note": "OBD 미수신 시 서포터즈 계기판 입력(대체 데이터원)"},
+      {"field": "zone", "vss": "Vehicle.CurrentLocation", "note": "구역 단위로만 보관(좌표 미보관)"}
+    ],
+    "charger_sessions": [
+      {"field": "session_id", "ocpp": "StartTransaction.conf.transactionId", "ocpi": "Session.id"},
+      {"field": "charger_id", "ocpp": "BootNotification(chargeBoxIdentity)", "ocpi": "EVSE.uid"},
+      {"field": "site_id", "ocpi": "Location.id"},
+      {"field": "operator_id", "ocpi": "Location.operator / party_id"},
+      {"field": "start_ts", "ocpp": "StartTransaction.req.timestamp", "ocpi": "Session.start_date_time"},
+      {"field": "end_ts", "ocpp": "StopTransaction.req.timestamp", "ocpi": "Session.end_date_time"},
+      {"field": "energy_kwh", "ocpp": "StopTransaction.req.meterStop − StartTransaction.req.meterStart (Wh→kWh)", "ocpi": "Session.kwh"},
+      {"field": "avg_power_kw", "ocpp": "MeterValues.sampledValue[measurand=Power.Active.Import]", "ocpi": "Connector.max_electric_power", "note": "평균 출력은 파생값"},
+      {"field": "charger_type", "ocpi": "Connector.power_type", "note": "AC_SLOW→AC_1_PHASE/AC_3_PHASE, DC_FAST→DC"},
+      {"field": "connector_type", "ocpi": "Connector.standard", "note": "AC_TYPE1→IEC_62196_T1, DC_COMBO1→IEC_62196_T1_COMBO"},
+      {"field": "stop_reason", "ocpp": "StopTransaction.req.reason"},
+      {"field": "error_code", "ocpp": "StatusNotification.req.errorCode"},
+      {"field": "ev_id", "ocpi": "Session.auth_id(가명)", "note": "가명 ID(PE-…)로 대체해 출력"}
+    ]
+  },
+  "pipeline": [
+    {"step": 1, "name": "원천 보관", "what": "받은 파일·응답을 그대로 보관(재처리 근거)", "module": "data/raw/, src/pipeline/ingest.py"},
+    {"step": 2, "name": "형식 해석", "what": "사업자·단말별 형식(CSV·REST·OBD 파일)을 공통 스키마로 읽기", "module": "src/cpo/adapters.py, src/pipeline/obd_ingest.py"},
+    {"step": 3, "name": "규칙 적용", "what": "매핑 규칙표(필드명·단위·코드값) 적용 — 신규 차종·사업자는 규칙표 행 추가", "module": "config/cpo_sources.json, config/obd_vehicles.json, config/standard_mapping.json"},
+    {"step": 4, "name": "가명처리", "what": "식별자 HMAC-SHA256 가명화, 번호판 암호화·마스킹", "module": "src/privacy/pseudonym.py, src/privacy/vault.py"},
+    {"step": 5, "name": "품질검증", "what": "필수 필드·범위·중복 검사, 실측·추론 출처 표기", "module": "src/pipeline/quality.py, src/pipeline/source.py"},
+    {"step": 6, "name": "차량·충전 세션 결합", "what": "차량 OBD와 충전기 세션을 차량·시각으로 결합(충전 효율·중복 집계 제외)", "module": "src/model/charging_efficiency.py, src/kpi.py"},
+    {"step": 7, "name": "제공", "what": "표준 명칭으로 출력(외부 연계), 아크릴 가명 데이터 제공", "module": "/ingest/export/standard, src/acryl/link.py"}
+  ]
+}
