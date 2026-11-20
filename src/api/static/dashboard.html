@@ -970,7 +970,9 @@
   <div class="card" id="settle-card">
     <h2 data-sec="05" data-kind="inferred" data-i18n>가상 전력 거래 및 모의 포인트 정산 (PoC)</h2>
     <p class="card-what" data-i18n>참여 차량(관용·민간)의 피크 시간대 방전·과잉발전 흡수·요금 절감 실적을 차량·일 단위로 기록하고, 재원별 편익(요금 차익·피크 저감·출력제어 완화)을 기여도로 나눠 모의 포인트를 산정합니다. 산정 → 검토 → 확정 순서로 처리하며, 확정은 웹앱 관리 > 리워드·정산에서 합니다. 방전량은 추론값이며 실제 금전 지급이 아닙니다.</p>
-    <div class="ocpp-controls"><button id="settle-run" data-i18n>정산 산정</button><span id="settle-msg" style="font-size:12px; color:var(--text-muted);"></span></div>
+    <div class="ocpp-controls"><select id="settle-month" aria-label="정산 월"><option value="" data-i18n>전체 기간</option></select><button id="settle-run" data-i18n>정산 산정</button>
+      <a class="preset-btn" id="settle-inst" href="/vpp/settlement/institution-report?fmt=csv" data-i18n>관용차 기관 리포트(CSV)</a><span id="settle-msg" style="font-size:12px; color:var(--text-muted);"></span></div>
+    <div id="settle-months" style="font-size:12px; margin:4px 0;"></div>
     <div class="tiles" id="settle-tiles"></div>
     <div id="settle-detail" style="overflow-x:auto; font-size:12px;"></div>
   </div>
@@ -2273,15 +2275,36 @@ document.getElementById('settle-run').addEventListener('click', async () => {
   const msg = document.getElementById('settle-msg');
   msg.textContent = t('정산 중…');
   try {
-    const r = await fetch('/vpp/settlement/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const month = document.getElementById('settle-month').value;
+    const r = await fetch('/vpp/settlement/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(month ? { month } : {}) });
     const body = await r.json();
     if (!r.ok) throw new Error(body.detail || r.status);
     const tt = body.totals || {};
     msg.innerHTML = `${t('정산 회차')} ${body.run_id} ${t('산정 완료')} — ${fmtInt(tt.trades)}${t('건')} · ${fmtInt(tt.points)} P (${t('이미 정산됨')} ${fmtInt(tt.skipped_already_settled)}${t('건')}). ` +
       `<a href="/admin#reward">${t('웹앱 관리 > 리워드·정산')}</a>${t('에서 검토 후 확정하면 참여자 잔액에 반영됩니다.')}`;
-    loadSettlement();
+    loadSettlement(); loadSettleMonths();
   } catch (e) { msg.textContent = t('정산 실패') + ': ' + e.message; }
 });
+
+// 월 1회 모의 정산(평가의견 3) — 월별 상태, 산정할 달 선택, 관용차 기관 리포트 링크
+async function loadSettleMonths() {
+  try {
+    const r = await fetch('/vpp/settlement/months', { axQuiet: true });
+    if (!r.ok) return;
+    const months = (await r.json()).months || [];
+    const sel = document.getElementById('settle-month');
+    const keep = sel.value;
+    sel.innerHTML = `<option value="">${t('전체 기간')}</option>` + months.map(m => `<option value="${m.month}">${m.month} (${t(m.status_label)})</option>`).join('');
+    sel.value = months.some(m => m.month === keep) ? keep : '';
+    const inst = document.getElementById('settle-inst');
+    inst.href = '/vpp/settlement/institution-report?fmt=csv' + (sel.value ? '&month=' + sel.value : '');
+    sel.onchange = () => { inst.href = '/vpp/settlement/institution-report?fmt=csv' + (sel.value ? '&month=' + sel.value : ''); };
+    document.getElementById('settle-months').innerHTML = months.length ? `<b>${t('월별 정산')}</b> ` + months.map(m =>
+      `<span class="tag ${m.status === 'confirmed' ? 'navy' : m.status === 'open' ? 'gray' : ''}" style="margin-left:4px;">${m.month} ${t(m.status_label)}</span>`).join('') +
+      ` <span class="muted">· ${t('월 1회 산정 → 검토 → 확정. 민간은 개인 포인트, 관용차는 기관 단위 리포트')}</span>` : '';
+  } catch (e) { /* 표시만 생략 */ }
+}
+loadSettleMonths();
 
 let essData = null;
 // [0,1,2,5,6,23] → "0~2, 5~6, 23시" — 24개 숫자를 나열하지 않게 연속 구간으로 묶는다

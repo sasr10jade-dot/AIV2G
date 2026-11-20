@@ -270,3 +270,30 @@ def test_ess_group_criteria_and_aggregate_review_opinion_13():
     a = ess_group.aggregate_capacity(b["ev_df"], [x["ev_id"] for x in r])
     assert len(a["by_hour"]) == 24 and a["summary"]["max_concurrent"] <= 8
     assert all(abs(h["power_kw"] - h["concurrent_available"] * ess_group.MAX_DISCHARGE_KW) <= 0.4 for h in a["by_hour"])   # 출력 = 동시 가용 대수 x 방전 출력(반올림 오차)
+
+
+def test_monthly_settlement_and_institution_report_review_opinion_3(small_bundle):
+    """평가의견 3: 월 1회 모의 정산 상태, 관용차량은 기관 단위 리포트(확정분만)."""
+    trades = ledger.compute_trades(small_bundle["run"], small_bundle["ev_df"], small_bundle["curtailment"],
+                                   small_bundle["revenue_sources"], small_bundle["params"],
+                                   lambda e: ("public" if e.endswith("1") else "private", "테스트"))
+    months = ledger.month_status(trades)
+    assert months and all(m["status"] == "open" for m in months)
+    ledger.settle(trades, "inferred", "synthetic", small_bundle["params"])
+    assert all(m["status"] == "confirmed" for m in ledger.month_status(trades))
+    rep = ledger.institution_report()
+    pub = trades[trades["affiliation"] == "public"]
+    assert rep["totals"]["vehicles"] == pub["ev_id"].nunique() and rep["totals"]["points"] == int(pub["points"].sum())
+    m0 = months[0]["month"]
+    assert all(r["month"] == m0 for r in ledger.institution_report(m0)["by_month"])
+
+
+def test_monthly_settlement_endpoints(admin, small_bundle):
+    months = client.get("/vpp/settlement/months").json()["months"]
+    assert months
+    m = months[0]["month"]
+    r = client.post("/vpp/settlement/runs", json={"month": m})
+    assert r.status_code == 200 and r.json()["period_from"] == f"{m}-01"
+    csv = client.get(f"/vpp/settlement/institution-report?fmt=csv&month={m}")
+    assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
+    assert client.get("/vpp/settlement/institution-report").json()["scope"].startswith("관용차량")

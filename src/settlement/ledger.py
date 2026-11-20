@@ -431,6 +431,55 @@ def owner_statement(ev_id: str, limit: int = 30) -> dict:
     }
 
 
+def month_status(trades: pd.DataFrame) -> list[dict]:
+    """월 1회 모의 정산(평가의견 3) — 실적이 있는 달과 그 달의 정산 상태(미정산·산정·확정)."""
+    if trades is None or trades.empty:
+        return []
+    t = trades.assign(month=trades["trade_date"].str.slice(0, 7))
+    con = store.get_connection()
+    try:
+        done = pd.read_sql_query(
+            "SELECT substr(t.trade_date,1,7) AS month, COALESCE(r.status,'confirmed') AS status, COUNT(*) AS n "
+            "FROM virtual_trades t LEFT JOIN settlement_runs r ON r.run_id=t.run_id GROUP BY 1,2", con)
+    finally:
+        con.close()
+    out = []
+    for m, g in t.groupby("month"):
+        d = done[done["month"] == m]
+        confirmed = int(d.loc[d["status"] == "confirmed", "n"].sum())
+        draft = int(d.loc[d["status"] == "draft", "n"].sum())
+        status = "confirmed" if confirmed >= len(g) else "draft" if confirmed + draft >= len(g) else ("partial" if confirmed + draft else "open")
+        out.append({"month": m, "period_from": g["trade_date"].min(), "period_to": g["trade_date"].max(), "trades": int(len(g)),
+                    "confirmed": confirmed, "draft": draft, "status": status,
+                    "status_label": {"confirmed": "확정", "draft": "산정(검토 대기)", "partial": "일부 정산", "open": "미정산"}[status]})
+    return out
+
+
+def institution_report(month: str | None = None) -> dict:
+    """관용차량 기관 단위 모의 정산 리포트(평가의견 3) — 민간 참여단은 개인 포인트, 관용차량은 기관 단위로 본다.
+    확정된 거래만 월·차량별로 묶어 재원별 편익(원)과 포인트 환산값을 보여 준다."""
+    con = store.get_connection()
+    try:
+        df = pd.read_sql_query(
+            "SELECT t.* FROM virtual_trades t LEFT JOIN settlement_runs r ON r.run_id=t.run_id "
+            "WHERE t.affiliation='public' AND COALESCE(r.status,'confirmed')='confirmed'", con)
+    finally:
+        con.close()
+    if month:
+        df = df[df["trade_date"].str.startswith(month)]
+    cols = ["peak_discharge_kwh", "absorb_kwh", "tou_krw", "peak_krw", "curtail_krw", "value_krw", "points"]
+
+    def agg(g: pd.DataFrame) -> dict:
+        return {"vehicles": int(g["ev_id"].nunique()), "trade_days": int(len(g)),
+                **{c: (int(g[c].sum()) if c == "points" else round(float(g[c].sum()), 1)) for c in cols}}
+
+    by_month = [{"month": m, **agg(g)} for m, g in df.assign(month=df["trade_date"].str.slice(0, 7)).groupby("month")] if not df.empty else []
+    by_vehicle = [{"ev_id": e, **agg(g)} for e, g in df.groupby("ev_id")] if not df.empty else []
+    return {"scope": "관용차량(소속=관용) — 기관 단위", "month": month, "by_month": by_month, "by_vehicle": by_vehicle,
+            "totals": agg(df) if not df.empty else None,
+            "note": "모의 정산(실제 금전 지급 아님). 방전량은 추론값. 편익(원)은 재원별 배분 금액, 포인트는 개인 지급이 아닌 기관 귀속 환산값."}
+
+
 def summary(params: dict | None = None) -> dict:
     """관리자 집계 — 관용/민간별 참여·kWh·포인트(확정 기준), 정산 가능범위(Y2E04), 경제성 검증."""
     con = store.get_connection()

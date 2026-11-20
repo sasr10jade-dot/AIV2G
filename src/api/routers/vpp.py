@@ -12,6 +12,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -127,6 +128,7 @@ def _settle_err(fn, *args):
 class RunIn(BaseModel):
     period_from: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="정산 기간 시작(YYYY-MM-DD). 비우면 실적 첫날")
     period_to: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="정산 기간 끝. 비우면 실적 마지막 날")
+    month: str | None = Field(None, pattern=r"^\d{4}-\d{2}$", description="월 1회 정산(YYYY-MM) — 주면 그 달 1일~말일로 산정")
 
 
 @router.post("/vpp/settlement/runs", summary="정산 회차 산정 — 기간 실적을 재원별로 배분해 포인트 계산(확정 전, 원장 미적립)")
@@ -138,9 +140,34 @@ def create_settlement_run(body: RunIn, request: Request, user: dict = Depends(re
         raise HTTPException(status_code=409, detail="정산할 실적이 없습니다")
     pf = body.period_from or trades["trade_date"].min()
     pt = body.period_to or trades["trade_date"].max()
+    if body.month:
+        last_day = (pd.Period(body.month, "M").end_time).strftime("%Y-%m-%d")
+        pf, pt = f"{body.month}-01", last_day
     run = _settle_err(ledger.create_run, trades, pf, pt, b["params"], user["username"], "inferred", _data_source(b))
     audit.log(user["username"], "settlement_run_create", target=str(run["run_id"]), detail={"from": pf, "to": pt, "ip": client_ip(request)})
     return run
+
+
+@router.get("/vpp/settlement/months", summary="월별 정산 상태 — 월 1회 모의 정산(미정산·산정·확정)", dependencies=[Depends(require_admin)])
+def settlement_months() -> dict:
+    from src.settlement import ledger
+    return {"months": ledger.month_status(_trades(bundle()))}
+
+
+@router.get("/vpp/settlement/institution-report", summary="관용차량 기관 단위 모의 정산 리포트(월·차량별, CSV 가능)",
+            dependencies=[Depends(require_admin)])
+def institution_report(month: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"), fmt: str = Query("json", pattern="^(json|csv)$")):
+    from src.settlement import ledger
+    rep = ledger.institution_report(month)
+    if fmt == "json":
+        return rep
+    rows = pd.DataFrame(rep["by_month"]).assign(구분="월별") if rep["by_month"] else pd.DataFrame()
+    veh = pd.DataFrame(rep["by_vehicle"]).assign(구분="차량별") if rep["by_vehicle"] else pd.DataFrame()
+    buf = io.StringIO()
+    pd.concat([rows, veh], ignore_index=True).to_csv(buf, index=False)
+    buf.write("\n# " + rep["note"] + "\n")
+    return StreamingResponse(iter(["\ufeff" + buf.getvalue()]), media_type="text/csv; charset=utf-8",
+                             headers={"Content-Disposition": "attachment; filename=institution_settlement_report.csv"})
 
 
 @router.get("/vpp/settlement/runs", summary="정산 회차 목록(산정·확정·취소)", dependencies=[Depends(require_admin)])
