@@ -285,12 +285,18 @@ def get_ess_group() -> dict:
     b = bundle()
     cands = ess_group.analyze_candidates(b["ev_df"], b["charger_df"], _affiliation_of(b["ev_df"]))
     members = _members()
+    recommended = [c["ev_id"] for c in ess_group.recommend(cands)]
+    basis = [m["ev_id"] for m in members] or recommended
     return {
         "group_size_target": [ess_group.GROUP_MIN, ess_group.GROUP_MAX],
+        "group_size_default": ess_group.GROUP_DEFAULT,
         "members": members,
-        "recommended": [c["ev_id"] for c in ess_group.recommend(cands)],
+        "recommended": recommended,
         "candidates": cands,
         "criteria": "점수 = 규칙성 30 + 장기 주차 30 + 완속 체류 20 + 심야충전·주간대기 20 (0~100)",
+        "criteria_rule": f"거점 주차 {ess_group.CRITERIA_PARK_HOURS}시간 이상·주 {ess_group.CRITERIA_PER_WEEK}회 이상 연결 차량 우선, "
+                         f"기본 {ess_group.GROUP_DEFAULT}대 (평가의견 13)",
+        "aggregate": {**ess_group.aggregate_capacity(b["ev_df"], basis), "basis": "지정 그룹" if members else "추천 차량"},
         "label": "실측" if b["provenance"].get("ev_telemetry") == "measured" else "모의(합성 데이터)",
     }
 

@@ -240,3 +240,33 @@ def test_mission_and_reward_api(admin, small_bundle):
     pts = client.get("/owner/points").json()
     assert pts["balance_points"] > 0 and "by_source_krw" in pts["history"][0] and pts["level"]["name"]
     assert client.post("/owner/points/inquiries", json={"message": "포인트 문의"}).status_code == 200
+
+
+def test_curtailment_three_scenarios_review_opinion_2():
+    """평가의견 2: S1 즉시 충전 / S2 흡수 / S3 흡수+피크 방전 — 흡수량·완화량·피크 감소·SOC 미달 지표."""
+    from src.datagen.config import SimConfig
+    from src.api.routers import vpp
+    b = vpp.build_bundle(SimConfig(n_ev=10, weeks=3, n_chargers=30, charger_days=21, start_date="2026-07-01"))
+    sc = b["curtailment"]["scenarios"]
+    s1, s2, s3 = sc["rows"]
+    assert [r["id"] for r in sc["rows"]] == ["S1", "S2", "S3"]
+    assert s1["absorbed_kwh"] == 0 and s1["curtail_relief_kwh"] == 0
+    assert s2["absorbed_kwh"] == s3["absorbed_kwh"] >= 0 and s2["peak_discharge_kwh"] == 0
+    assert s3["peak_grid_kw"] <= s1["peak_grid_kw"] and s3["min_soc_violations"] >= 0
+
+
+def test_ess_group_criteria_and_aggregate_review_opinion_13():
+    """평가의견 13: 주차 8h 이상 주 3회 이상 우선·기본 8대, 플러그인 비중, 합산 용량·출력·시간대별 동시 가용 대수."""
+    from src.datagen.config import SimConfig
+    from src.api.routers import vpp
+    from src.optimizer import ess_group
+    b = vpp.build_bundle(SimConfig(n_ev=12, weeks=3, n_chargers=30, charger_days=21, start_date="2026-12-01"))
+    c = ess_group.analyze_candidates(b["ev_df"], b["charger_df"])
+    assert {"avg_dwell_h", "plugin_ratio", "long_parking_per_week", "meets_criteria"} <= set(c[0])
+    r = ess_group.recommend(c)
+    assert len(r) == ess_group.GROUP_DEFAULT == 8
+    if any(x["meets_criteria"] for x in c):
+        assert r[0]["meets_criteria"]
+    a = ess_group.aggregate_capacity(b["ev_df"], [x["ev_id"] for x in r])
+    assert len(a["by_hour"]) == 24 and a["summary"]["max_concurrent"] <= 8
+    assert all(abs(h["power_kw"] - h["concurrent_available"] * ess_group.MAX_DISCHARGE_KW) <= 0.4 for h in a["by_hour"])   # 출력 = 동시 가용 대수 x 방전 출력(반올림 오차)

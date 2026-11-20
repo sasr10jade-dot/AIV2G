@@ -12,6 +12,10 @@
            흡수한 전력은 같은 날 피크 시간대에 방전해 거점 피크를 낮춘다(효율 손실 반영).
 
 모든 가정값은 config/vpp_settlement.json(verified=false)에 있고, 결과에는 '모의(가정값)'를 표기한다.
+
+3개 시나리오 비교(평가의견 2 반영 문안) — 같은 실측 데이터에 시나리오만 바꿔 적용한다(`scenarios`).
+  S1 연결 즉시 충전(비교 기준) / S2 남는 재생에너지 흡수 충전 / S3 흡수 충전 + 저녁 피크 방전
+  평가지표: 흡수 충전량, 출력제어 완화량, 피크 수전 감소량, 최소 보장 SOC 미달 건수
 """
 from __future__ import annotations
 
@@ -24,6 +28,7 @@ import pandas as pd
 from src.paths import PROJECT_ROOT
 
 CONFIG_FILE = PROJECT_ROOT / "config" / "vpp_settlement.json"
+MIN_SOC_PCT = 20.0   # 최소 보장 SOC(서포터즈 입력이 없을 때 기본값 — 가입 화면 '최소 보장 배터리' 기본 20%)
 SITES_FILE = PROJECT_ROOT / "config" / "sites.json"
 
 
@@ -175,6 +180,7 @@ def emulate(
     # 계통에서 받는 전력(수전) = max(0, 부하 - 태양광) — 기본요금·피크는 이 값 기준
     load_before = (df["site_load_kw"] + df["ev_baseline_kw"] - df["pv_kw"]).clip(lower=0)
     load_after = (net_after + df["absorb_kw"] - df["peak_discharge_kw"] - df["pv_kw"]).clip(lower=0)
+    scenarios = _three_scenarios(df, ev, export_limit_kw, eff, max_charge_kw, max_discharge_kw, params)
     pv_kwh = float(df["pv_kw"].sum())
     cb, ca = float(df["curtail_before_kw"].sum()), float(df["curtail_after_kw"].sum())
     absorbed = float(df["absorb_kw"].sum())
@@ -243,6 +249,7 @@ def emulate(
             "peak_window_avg_after_kw": round(float(load_after[df["is_peak"]].mean()), 1) if df["is_peak"].any() else None,
             "curtailment_benefit_krw": round(benefit_krw, 0),
         },
+        "scenarios": scenarios,
         "daily": {
             "dates": [d.strftime("%Y-%m-%d") for d in daily["date"]],
             "curtail_before_kwh": [round(float(v), 1) for v in daily["curtail_before_kwh"]],
@@ -255,6 +262,87 @@ def emulate(
                        "site_load_kw", "ev_baseline_kw", "opt_charge_kw", "discharge_kw"]],
         "_load_before": load_before, "_load_after": load_after,
     }
+
+
+def _soc_violations(ev: pd.DataFrame, discharge_kw: pd.Series, timestamps: pd.Series, min_soc_pct: float) -> int:
+    """방전으로 최소 보장 SOC 아래로 내려가는 차량-시간 건수. 그 시각 방전량을 연결 차량에 똑같이 나눠
+    관측 SOC에서 뺀다(같은 날 흡수 충전분은 더하지 않는 보수적 계산 — 실제 미달은 이보다 적거나 같다)."""
+    dis = pd.Series(discharge_kw.to_numpy(), index=pd.to_datetime(timestamps.to_numpy()))
+    dis = dis[dis > 0]
+    if dis.empty:
+        return 0
+    conn = ev[ev["connected"].astype(bool) & ev["timestamp"].isin(dis.index)]
+    if conn.empty:
+        return 0
+    n = conn.groupby("timestamp")["ev_id"].transform("count")
+    share_kwh = conn["timestamp"].map(dis) / n
+    soc_after = conn["soc_pct"] - share_kwh / conn["battery_capacity_kwh"] * 100
+    floor = conn["min_soc_pct"] if "min_soc_pct" in conn.columns else min_soc_pct
+    return int((soc_after < floor).sum())
+
+
+def _three_scenarios(df: pd.DataFrame, ev: pd.DataFrame, export_limit_kw: float, eff: float,
+                     max_charge_kw: float, max_discharge_kw: float, params: dict) -> dict:
+    """평가의견 2 — 같은 데이터로 S1 연결 즉시 충전 / S2 흡수 충전 / S3 흡수 + 저녁 피크 방전을 비교한다.
+    S2·S3는 일반 충전(S1) 위에 과잉발전 흡수만 더해 시나리오 효과만 분리한다(AI 최적 스케줄과 별개)."""
+    min_soc = float(params.get("curtailment", {}).get("min_soc_pct", MIN_SOC_PCT))
+    surplus = df["curtail_before_kw"].to_numpy()
+    cap = (df["connected"] * max_charge_kw - df["ev_baseline_kw"]).clip(lower=0).to_numpy()
+    room = df["headroom_kwh"].clip(lower=0).to_numpy()
+    absorb = np.zeros(len(df))
+    for _d, idx in df.groupby("date").indices.items():
+        remaining = None
+        for i in idx:
+            if surplus[i] <= 0:
+                continue
+            if remaining is None:
+                remaining = room[i]
+            a = max(0.0, min(surplus[i], cap[i], remaining))
+            absorb[i] = a
+            remaining -= a
+    absorb_s = pd.Series(absorb, index=df.index)
+    discharge = pd.Series(0.0, index=df.index)
+    for _d, g in df.groupby("date"):
+        energy = float(absorb_s[g.index].sum()) * eff
+        peak_idx = g.index[g["is_peak"]]
+        if energy <= 0 or len(peak_idx) == 0:
+            continue
+        c = (df.loc[peak_idx, "connected"] * max_discharge_kw).to_numpy(dtype=float)
+        if c.sum() > 0:
+            discharge[peak_idx] = np.minimum(c, c / c.sum() * energy)
+
+    base = df["site_load_kw"] + df["ev_baseline_kw"]
+    grid = {
+        "S1": (base - df["pv_kw"]).clip(lower=0),
+        "S2": (base + absorb_s - df["pv_kw"]).clip(lower=0),
+        "S3": (base + absorb_s - discharge - df["pv_kw"]).clip(lower=0),
+    }
+    curtail = {"S1": df["curtail_before_kw"], "S2": df["curtail_before_kw"] - absorb_s, "S3": df["curtail_before_kw"] - absorb_s}
+    peak_mask = df["is_peak"]
+    labels = {"S1": "연결 즉시 충전(비교 기준)", "S2": "남는 재생에너지 흡수 충전", "S3": "흡수 충전 + 저녁 피크 방전"}
+    cb = float(df["curtail_before_kw"].sum())
+    rows = []
+    for k in ("S1", "S2", "S3"):
+        g = grid[k]
+        rows.append({
+            "id": k, "label": labels[k],
+            "absorbed_kwh": round(float(absorb_s.sum()) if k != "S1" else 0.0, 1),
+            "curtail_kwh": round(float(curtail[k].sum()), 1),
+            "curtail_relief_kwh": round(cb - float(curtail[k].sum()), 1),
+            "peak_discharge_kwh": round(float(discharge.sum()) if k == "S3" else 0.0, 1),
+            "peak_grid_kw": round(float(g.max()), 1),
+            "peak_window_avg_kw": round(float(g[peak_mask].mean()), 1) if peak_mask.any() else None,
+            "min_soc_violations": _soc_violations(ev, discharge, df["timestamp"], min_soc) if k == "S3" else 0,
+        })
+    s1 = rows[0]
+    for r in rows:
+        r["peak_grid_reduction_kw"] = round(s1["peak_grid_kw"] - r["peak_grid_kw"], 1)
+        r["peak_window_reduction_kw"] = (round(s1["peak_window_avg_kw"] - r["peak_window_avg_kw"], 1)
+                                         if r["peak_window_avg_kw"] is not None and s1["peak_window_avg_kw"] is not None else None)
+    return {"rows": rows, "min_soc_pct": min_soc,
+            "metrics": ["흡수 충전량(kWh)", "출력제어 완화량(kWh)", "피크 수전 감소량(kW)", "최소 보장 SOC 미달 건수"],
+            "note": "같은 데이터에 시나리오만 바꿔 적용. 방전·흡수는 추론(모의)값, 부하·발전 패턴은 입력 데이터 출처를 따른다. "
+                    "SOC 미달은 같은 날 흡수 충전분을 더하지 않은 보수적 계산."}
 
 
 def public_view(result: dict) -> dict:

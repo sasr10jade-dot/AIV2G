@@ -964,6 +964,7 @@
     <div class="tiles" id="curtail-tiles"></div>
     <div class="chart-wrap" style="height:240px;"><canvas id="curtailChart"></canvas></div>
     <div id="curtail-pattern" style="font-size:12px; margin-top:8px;"></div>
+    <div id="curtail-scenarios" style="margin-top:10px;"></div>
   </div>
 
   <div class="card" id="settle-card">
@@ -2195,6 +2196,14 @@ async function loadCurtailment() {
       `<b>${t('AI 패턴분석')}</b> — ${t('과잉발전 시간대')}: ${p.surplus_hours.map(h => h + t('시')).join(', ') || '-'} · ` +
       `${t('순부하 피크 시간대')}: ${p.derived_peak_hours.map(h => h + t('시')).join(', ')} (${t('방전 설정')}: ${s.peak_hours.join(', ')}${t('시')})<br>` +
       `<b>${t('정제')}</b> — ${t('입력')} ${fmtInt(cl.rows_in)} → ${fmtInt(cl.rows_out)}${t('행')}, ${t('중복')} ${cl.duplicates_removed}, ${t('결측 보간')} ${cl.missing_interpolated}, ${t('음수')} ${cl.negatives_zeroed}, ${t('이상치 대체')} ${cl.outliers_replaced} · <span style="color:var(--text-muted)">${escH(cl.rule)}</span>`;
+    const sc = c.scenarios;
+    document.getElementById('curtail-scenarios').innerHTML = sc ? `<b style="font-size:13px;">${t('3개 시나리오 비교 (같은 데이터)')}</b>
+      <table style="margin-top:6px;"><thead><tr><th>${t('시나리오')}</th><th class="num">${t('흡수 충전량 kWh')}</th><th class="num">${t('출력제어 완화량 kWh')}</th>
+        <th class="num">${t('피크 방전 kWh')}</th><th class="num">${t('최대 수전 kW')}</th><th class="num">${t('피크 수전 감소 kW')}</th><th class="num">${t('피크 시간 평균 감소 kW')}</th><th class="num">${t('최소 SOC 미달 건수')}</th></tr></thead><tbody>` +
+      sc.rows.map(r => `<tr><td><b>${r.id}</b> ${t(r.label)}</td><td class="num">${fmtInt(r.absorbed_kwh)}</td><td class="num">${fmtInt(r.curtail_relief_kwh)}</td>
+        <td class="num">${fmtInt(r.peak_discharge_kwh)}</td><td class="num">${fmtInt(r.peak_grid_kw)}</td><td class="num">${r.peak_grid_reduction_kw}</td>
+        <td class="num">${r.peak_window_reduction_kw ?? '-'}</td><td class="num" style="color:${r.min_soc_violations ? 'var(--danger, #d92d20)' : 'inherit'}">${fmtInt(r.min_soc_violations)}</td></tr>`).join('') +
+      `</tbody></table><p class="muted" style="font-size:11.5px; margin:4px 0 0;">${t('최소 보장 SOC')} ${sc.min_soc_pct}% · ${t(sc.note)}</p>` : '';
     if (window.Chart) {
       const ctx = document.getElementById('curtailChart');
       if (curtailChart) curtailChart.destroy();
@@ -2293,7 +2302,7 @@ function renderEss() {
   const d = essData;
   const members = new Set(d.members.map(m => m.ev_id));
   document.getElementById('ess-msg').textContent =
-    `${t('지정')} ${members.size}${t('대')} (${t('목표')} ${d.group_size_target[0]}~${d.group_size_target[1]}${t('대')}) · ${t(d.criteria)} · ${t(d.label)}`;
+    `${t('지정')} ${members.size}${t('대')} (${t('목표')} ${d.group_size_target[0]}~${d.group_size_target[1]}${t('대')}) · ${t(d.criteria_rule || '')} · ${t(d.criteria)} · ${t(d.label)}`;
   document.getElementById('ess-download').style.display = members.size ? '' : 'none';
   // 기본은 점수 상위 ESS_PREVIEW_ROWS대(추천 범위)만 보이고 나머지는 숨긴다. 지정된 그룹 차량은 항상 보인다.
   // 행을 다시 그리지 않고 숨기기만 하므로 접었다 펼쳐도 체크 상태가 유지된다.
@@ -2302,12 +2311,23 @@ function renderEss() {
       <span class="muted" style="font-size:12px;" id="ess-fold-note"></span>
       <button type="button" class="preset-btn" id="ess-toggle"></button></div>` : '') +
     `<table class="${essExpanded ? '' : 'ess-folded'}" id="ess-tbl"><thead><tr><th>${t('선택')}</th><th>${t('차량')}</th><th>${t('구분')}</th><th class="num">${t('점수')}</th>
-    <th class="num">${t('규칙성')}</th><th class="num">${t('장기 주차(시간/일)')}</th><th class="num">${t('완속 체류(시간)')}</th><th class="num">${t('심야충전 후 주간대기')}</th>
+    <th class="num">${t('규칙성')}</th><th class="num">${t('장기 주차(시간/일)')}</th><th class="num">${t('주차 8h+ 주당 횟수')}</th><th class="num">${t('평균 체류(시간)')}</th><th class="num">${t('플러그인 비중')}</th><th class="num">${t('완속 체류(시간)')}</th><th class="num">${t('심야충전 후 주간대기')}</th>
     <th>${t('방전 허용 시간대')}</th></tr></thead><tbody>` +
     d.candidates.map((c, i) => `<tr class="${i >= ESS_PREVIEW_ROWS && !members.has(c.ev_id) ? 'ess-extra' : ''}"><td><input type="checkbox" class="ess-chk" value="${escH(c.ev_id)}" ${members.has(c.ev_id) ? 'checked' : ''}></td>
       <td>${escH(c.ev_id)}${members.has(c.ev_id) ? ' <span class="tag navy">' + t('그룹') + '</span>' : ''}</td><td>${escH(t(c.group_label))}<br><span style="color:var(--text-muted)">${escH(c.ev_type)} · ${escH(c.affiliation_source)}</span></td>
-      <td class="num">${c.score}</td><td class="num">${c.regularity}</td><td class="num">${c.long_parking_h_per_day}</td><td class="num">${c.slow_charger_dwell_h}</td>
+      <td class="num">${c.score}${c.meets_criteria ? ' <span class="tag navy">' + t('기준 충족') + '</span>' : ''}</td><td class="num">${c.regularity}</td><td class="num">${c.long_parking_h_per_day}</td>
+      <td class="num">${c.long_parking_per_week ?? '-'}</td><td class="num">${c.avg_dwell_h ?? '-'}</td><td class="num">${c.plugin_ratio == null ? '-' : Math.round(c.plugin_ratio * 100) + '%'}</td><td class="num">${c.slow_charger_dwell_h}</td>
       <td class="num">${Math.round(c.night_charge_day_idle_ratio * 100)}%</td><td>${hourRanges(c.discharge_allowed_hours)} (${t('평균')} ${c.discharge_allowed_h_per_day}${t('시간/일')})</td></tr>`).join('') + '</tbody></table>';
+  const ag = d.aggregate;
+  if (ag && ag.summary) {
+    const sm = ag.summary;
+    const peakRows = (ag.by_hour || []).filter(r => [17, 18, 19, 20, 21].includes(r.hour));
+    document.getElementById('ess-table').insertAdjacentHTML('afterbegin', `<div class="tiles" style="margin:4px 0 8px;">
+      <div class="tile"><div class="label">${t('그룹 합산 가상 ESS 용량')} (${t(ag.basis)} ${ag.n_members}${t('대')})</div><div class="value">${fmtInt(sm.avg_capacity_kwh)} kWh</div><div class="sub">${t('평균')} · ${t('최대')} ${sm.best_hour}${t('시')} ${fmtInt(sm.best_hour_capacity_kwh)} kWh</div></div>
+      <div class="tile"><div class="label">${t('합산 가용 출력')}</div><div class="value">${fmtInt(sm.avg_power_kw)} kW</div><div class="sub">${t('최대 동시 가용')} ${sm.max_concurrent}${t('대')}</div></div>
+      <div class="tile"><div class="label">${t('저녁 피크(17~21시) 동시 가용 대수')}</div><div class="value" style="font-size:16px">${peakRows.map(r => r.hour + t('시') + ' ' + r.concurrent_available).join(' · ') || '-'}</div><div class="sub">${escH(t(ag.assumptions || ''))}</div></div>
+    </div>`);
+  }
   if (extra) {
     const btn = document.getElementById('ess-toggle');
     btn.addEventListener('click', () => { essExpanded = !essExpanded; syncEssFold(); });
