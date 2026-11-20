@@ -677,6 +677,15 @@
     <div id="collection-plan" style="margin-top:10px;"></div>
   </div>
 
+  <div class="card" id="mgmt-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>성과·관리 지표판 (필수성과 5 · 관리지표 7 · 경제적 편익 4)</h2>
+      <button type="button" class="preset-btn" id="mgmt-eval" data-i18n>예측 정확도 지금 평가</button>
+    </div>
+    <p class="card-what" data-i18n>평가의견 반영 문안의 성과지표를 한곳에 모았습니다. 필수성과는 공고 기준, 관리지표는 결과물 완성도 관리용이며, 항목마다 실측·추론·모의를 표시합니다.</p>
+    <div id="mgmt-body" style="font-size:12.5px;"><span class="muted" data-i18n>불러오는 중…</span></div>
+  </div>
+
   <div class="card" id="infra-card">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
       <h2 data-sec="01" data-kind="actual" style="margin:0;" data-i18n>실증 인프라 현황 — 참여 장소·충전사업자·서포터즈 차량</h2>
@@ -2401,8 +2410,38 @@ document.getElementById('ess-save').addEventListener('click', async () => {
 
 function loadVppSection() {
   // 대시보드 본 데이터와 따로, 순서대로 불러온다(서버의 무거운 계산은 한 번에 하나만 돈다)
-  loadRevenueSources().then(loadCurtailment).then(loadSettlement).then(loadEss);
+  loadRevenueSources().then(loadCurtailment).then(loadSettlement).then(loadEss).then(() => loadManagement(false));
 }
+
+// 성과·관리 지표판(평가의견 5·6·8·10·11)
+async function loadManagement(evaluate) {
+  const body = document.getElementById('mgmt-body');
+  if (!body) return;
+  try {
+    const r = await fetch('/kpi/management' + (evaluate ? '?evaluate=true' : ''), evaluate ? {} : { axQuiet: true });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const fmtV = (v, u) => v == null ? '-' : `${typeof v === 'number' ? (Math.abs(v) >= 100 ? fmtInt(v) : v) : escH(String(v))}${u ? ' ' + t(u) : ''}`;
+    const okTag = m => m == null ? `<span class="tag gray">${t('판정 전')}</span>` : m ? `<span class="tag navy">${t('달성')}</span>` : `<span class="tag" style="background:rgba(235,94,85,.15)">${t('미달')}</span>`;
+    const mand = `<div class="tiles">` + d.mandatory.map(x => `<div class="tile"><div class="label">${t(x.label)}</div>
+        <div class="value">${fmtV(x.value, x.unit)}</div><div class="sub">${t('목표')} ${fmtV(x.target, x.unit)} ${okTag(x.met)}<br>${escH(t(x.basis || ''))}</div></div>`).join('') + `</div>`;
+    const mg = `<table style="margin-top:8px;"><thead><tr><th>${t('관리 지표')}</th><th class="num">${t('값')}</th><th>${t('내용')}</th><th>${t('구분')}</th></tr></thead><tbody>` +
+      d.management.map(x => `<tr><td><b>${t(x.label)}</b></td><td class="num">${fmtV(x.value, x.unit)}</td><td>${escH(t(x.detail || ''))}</td><td><span class="tag gray">${escH(t(x.kind || ''))}</span></td></tr>`).join('') + '</tbody></table>';
+    const bf = `<table style="margin-top:8px;"><thead><tr><th>${t('경제적 편익')}</th><th class="num">${t('값')}</th><th>${t('산출식')}</th></tr></thead><tbody>` +
+      d.benefits.map(x => `<tr><td><b>${t(x.label)}</b></td><td class="num">${fmtV(x.value, x.unit)}</td><td style="font-size:11.5px;">${escH(t(x.formula))}</td></tr>`).join('') +
+      `</tbody></table><p class="muted" style="font-size:11.5px; margin:2px 0 0;">${escH(t(d.benefit_basis))}</p>`;
+    const ds = `<table style="margin-top:8px;"><thead><tr><th>${t('데이터 원천')}</th><th class="num">${t('건수')}</th><th>${t('성과 산입')}</th><th>${t('구분')}</th></tr></thead><tbody>` +
+      d.data_sources.map(x => `<tr><td>${t(x.source)}</td><td class="num">${x.count == null ? '-' : fmtInt(x.count)}</td><td>${x.counted == null ? '-' : x.counted ? t('산입') : t('제외·보조')}</td><td>${escH(t(x.kind || ''))}</td></tr>`).join('') + '</tbody></table>';
+    const refs = `<div style="margin-top:8px;"><b>${t('V2G 비즈니스 레퍼런스 4종')}</b> ` + d.references.map(x => `<span class="tag ${x.status.startsWith('문서') ? 'gray' : 'navy'}" style="margin:2px;" title="${escH(x.where)}">${t(x.label)} · ${t(x.status)}</span>`).join('') + '</div>';
+    const comp = `<div style="margin-top:6px;"><b>${t('실질 보상 단계')}</b><ol style="margin:4px 0 0 18px; padding:0;">` + d.compensation.map(x =>
+      `<li>${t(x.label)} <span class="tag gray">${t(x.status)}</span>${x.estimate ? ` — ${t(x.estimate.label)}: ${t('참여자 합계')} ${fmtInt(x.estimate.participant_krw)}${t('원')}, ${t('차량당')} ${fmtInt(x.estimate.per_vehicle_krw)}${t('원')} (${t('모의')})` : ''}</li>`).join('') + '</ol></div>';
+    body.innerHTML = mand + `<details style="margin-top:6px;" open><summary style="cursor:pointer; font-weight:600;">${t('관리 지표 7 · 경제적 편익 4')}</summary>${mg}${bf}</details>` +
+      `<details style="margin-top:6px;"><summary style="cursor:pointer; font-weight:600;">${t('원천별 데이터 · 레퍼런스 · 보상 단계')}</summary>${ds}${refs}${comp}</details>`;
+  } catch (e) {
+    body.innerHTML = `<span class="muted">${t('지표판을 불러오지 못했습니다')} (${escH(e.message)})</span>`;
+  }
+}
+document.getElementById('mgmt-eval').addEventListener('click', () => loadManagement(true));
 
 function renderEffect(data) {
   const e = data.effect_verification;

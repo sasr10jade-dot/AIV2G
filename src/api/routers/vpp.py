@@ -148,6 +148,30 @@ def create_settlement_run(body: RunIn, request: Request, user: dict = Depends(re
     return run
 
 
+@router.get("/kpi/management", summary="성과·관리 지표판 — 필수성과 5·관리지표 7·경제적 편익 4·원천별 데이터·레퍼런스·보상 단계(평가의견 5·6·8·10·11)",
+            dependencies=[Depends(require_admin)])
+def management_board(evaluate: bool = Query(False, description="true면 예측 정확도를 지금 계산(수십 초), 아니면 캐시된 평가만 사용")) -> dict:
+    from src import management
+    from src.api.routers import models as models_router
+    from src.appadmin import survey
+    from src.optimizer import ess_group
+    from src.settlement import ledger
+    b = bundle()
+    accuracy = None
+    hit = models_router._eval_cache.get("v")
+    evals = models_router.plan_target_evaluations()[0] if evaluate else (hit[2] if hit else None)
+    if evals:
+        ev = evals.get("ev_charging_demand_kw") or next(iter(evals.values()))
+        accuracy = {"accuracy_pct": ev["test"].get("accuracy_pct"), "basis": "검증(시험) 구간 · " + ev["target_col"]}
+    members = [m["ev_id"] for m in _members()]
+    cands = ess_group.analyze_candidates(b["ev_df"], b["charger_df"], _affiliation_of(b["ev_df"]))
+    agg = ess_group.aggregate_capacity(b["ev_df"], members or [c["ev_id"] for c in ess_group.recommend(cands)])
+    trades = _trades(b)
+    incentives = ledger.simulate_incentives(trades, b["params"]) if not trades.empty else None
+    return management.build_board(b, accuracy=accuracy, settlement=ledger.summary(b["params"]), surveys=survey.list_all(),
+                                  ess_aggregate=agg, incentives=incentives)
+
+
 @router.get("/vpp/settlement/months", summary="월별 정산 상태 — 월 1회 모의 정산(미정산·산정·확정)", dependencies=[Depends(require_admin)])
 def settlement_months() -> dict:
     from src.settlement import ledger

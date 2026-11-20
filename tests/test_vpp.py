@@ -297,3 +297,14 @@ def test_monthly_settlement_endpoints(admin, small_bundle):
     csv = client.get(f"/vpp/settlement/institution-report?fmt=csv&month={m}")
     assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
     assert client.get("/vpp/settlement/institution-report").json()["scope"].startswith("관용차량")
+
+
+def test_management_board_review_opinions(admin, small_bundle):
+    """평가의견 5·6·8·10·11: 필수성과 5, 관리지표 7, 경제적 편익 4, 원천별 데이터, 레퍼런스 4, 보상 3단계."""
+    r = client.get("/kpi/management")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert len(d["mandatory"]) == 5 and len(d["management"]) == 7 and len(d["benefits"]) == 4
+    assert len(d["references"]) == 4 and [c["stage"] for c in d["compensation"]] == [1, 2, 3]
+    assert {"counted", "count", "source"} <= set(d["data_sources"][0])
+    assert d["data_plan"]["total"] == 4615
