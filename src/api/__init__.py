@@ -122,7 +122,7 @@ def root() -> RedirectResponse:
 
 @app.get("/login", include_in_schema=False)
 def login_page() -> FileResponse:
-    return FileResponse(STATIC_DIR / "login.html")
+    return FileResponse(STATIC_DIR / "login.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/dev", include_in_schema=False)

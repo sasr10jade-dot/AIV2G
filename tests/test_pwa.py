@@ -250,3 +250,11 @@ def test_lan_https_info_and_ca_cert(tmp_path, monkeypatch):
     assert r.status_code == 200 and "BEGIN CERTIFICATE" in r.text and "SECRET" not in r.text
     assert r.headers["content-type"].startswith("application/x-x509-ca-cert")
     assert client.get("/pwa/lan-ca.key").status_code == 404
+
+
+def test_html_pages_are_not_cached_after_deploy():
+    """배포 후 이전 화면이 남지 않게 HTML은 no-cache."""
+    for path in ("/dashboard", "/login", "/dev"):
+        r = client.get(path, follow_redirects=False)
+        if r.status_code == 200:
+            assert "no-cache" in r.headers.get("cache-control", ""), path

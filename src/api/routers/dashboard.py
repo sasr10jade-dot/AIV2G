@@ -392,7 +392,7 @@ def _collection(ev_df, charger_df, provenance: dict) -> dict:
 @router.get("/dashboard", response_class=FileResponse, include_in_schema=False)
 def dashboard_page() -> FileResponse:
     """실시간 웹 대시보드 HTML 페이지 (Swagger에는 노출하지 않음 — API가 아니라 화면)."""
-    return FileResponse(STATIC_DIR / "dashboard.html")
+    return FileResponse(STATIC_DIR / "dashboard.html", headers={"Cache-Control": "no-cache"})   # 배포 후 바로 최신 화면
 
 
 @router.get(
