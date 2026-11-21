@@ -30,6 +30,12 @@ class Tariff:
     rates: dict[str, float]
     # 계절별 시간대·단가(한전 EV 충전전력요금처럼 여름·봄가을·겨울로 다른 경우). 없으면 hours·rates를 연중 쓴다.
     seasons: tuple = ()   # ((months, hours, rates, name), ...)
+    # 요일 규칙(한전 계시별): 토요일은 구간명 치환(예: peak→mid), 일요일·공휴일은 하루 종일 한 구간(예: light).
+    saturday_map: tuple = ()          # (("peak", "mid"), ...)
+    sunday_band: str | None = None
+    holidays: frozenset = frozenset()  # "YYYY-MM-DD"
+    # 할인: ((months, day_types, hours, factor, name), ...) — day_types ⊂ {"weekday","saturday","sunday_holiday"}
+    discounts: tuple = ()
 
     def _season(self, month: int):
         for months, hours, rates, name in self.seasons:
@@ -37,21 +43,43 @@ class Tariff:
                 return hours, rates, name
         return self.hours, self.rates, None
 
-    def band_at(self, ts) -> str:
+    def day_type(self, ts, holiday: bool | None = None) -> str:
         t = pd.Timestamp(ts)
-        return self._season(t.month)[0][t.hour]
+        if holiday or t.weekday() == 6 or t.strftime("%Y-%m-%d") in self.holidays:
+            return "sunday_holiday"
+        return "saturday" if t.weekday() == 5 else "weekday"
+
+    def band_at(self, ts, holiday: bool | None = None) -> str:
+        t = pd.Timestamp(ts)
+        band = self._season(t.month)[0][t.hour]
+        dt = self.day_type(t, holiday)
+        if dt == "sunday_holiday" and self.sunday_band:
+            return self.sunday_band
+        if dt == "saturday":
+            return dict(self.saturday_map).get(band, band)
+        return band
 
     def season_at(self, ts) -> str | None:
         return self._season(pd.Timestamp(ts).month)[2]
 
-    def price_at(self, ts) -> float:
+    def discount_at(self, ts, holiday: bool | None = None) -> tuple[float, str | None]:
         t = pd.Timestamp(ts)
-        hours, rates, _ = self._season(t.month)
-        return float(rates[hours[t.hour]])
+        dt = self.day_type(t, holiday)
+        for months, day_types, hours, factor, name in self.discounts:
+            if t.month in months and dt in day_types and t.hour in hours:
+                return factor, name
+        return 1.0, None
 
-    def price_series(self, timestamps) -> pd.Series:
+    def price_at(self, ts, holiday: bool | None = None) -> float:
+        t = pd.Timestamp(ts)
+        rates = self._season(t.month)[1]
+        return float(rates[self.band_at(t, holiday)]) * self.discount_at(t, holiday)[0]
+
+    def price_series(self, timestamps, holidays=None) -> pd.Series:
+        """holidays: 시각별 공휴일 여부(같은 길이의 bool 열, 예: grid_signal.is_holiday). 없으면 요일·설정 공휴일만."""
         idx = pd.DatetimeIndex(timestamps)
-        return pd.Series([self.price_at(t) for t in idx], index=idx, dtype=float)
+        hol = [None] * len(idx) if holidays is None else [bool(h) for h in holidays]
+        return pd.Series([self.price_at(t, h) for t, h in zip(idx, hol)], index=idx, dtype=float)
 
 
 def _validate(tid: str, item: dict) -> Tariff:
@@ -73,8 +101,24 @@ def _validate(tid: str, item: dict) -> Tariff:
         if any(float(v) < 0 for v in s_rates.values()):
             raise TariffError(f"{tid}/{s.get('name')}: 음수 단가")
         seasons.append((tuple(int(m) for m in s["months"]), tuple(s_hours), {k: float(v) for k, v in s_rates.items()}, s.get("name")))
+    all_bands = set(rates) | {b for _, _, r, _ in seasons for b in r}
+    days = item.get("day_rules", {}) or {}
+    sat = tuple((str(k), str(v)) for k, v in (days.get("saturday_map") or {}).items())
+    sun = days.get("sunday_holiday_band")
+    if any(v not in all_bands for _, v in sat) or (sun and sun not in all_bands):
+        raise TariffError(f"{tid}: day_rules에 없는 구간명")
+    discounts = []
+    for d in item.get("discounts", []) or []:
+        factor = float(d.get("factor", 1.0))
+        if not 0 <= factor <= 1:
+            raise TariffError(f"{tid}/{d.get('name')}: 할인 factor는 0~1")
+        day_types = frozenset(d.get("day_types", []))
+        if day_types - {"weekday", "saturday", "sunday_holiday"}:
+            raise TariffError(f"{tid}/{d.get('name')}: day_types 오류")
+        discounts.append((tuple(int(m) for m in d["months"]), day_types, frozenset(int(h) for h in d["hours"]), factor, d.get("name")))
     return Tariff(tid, item.get("label", tid), bool(item.get("verified", False)), tuple(hours),
-                  {k: float(v) for k, v in rates.items()}, tuple(seasons))
+                  {k: float(v) for k, v in rates.items()}, tuple(seasons), sat, sun,
+                  frozenset(days.get("holidays", []) or []), tuple(discounts))
 
 
 def load_tariffs(path: Path | None = None) -> dict[str, Tariff]:

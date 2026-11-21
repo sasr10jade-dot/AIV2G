@@ -92,6 +92,19 @@ def test_tariff_seasons_change_price_for_same_hour():
     assert tf.price_at("2026-07-15 14:00") != tf.price_at("2026-04-15 14:00")    # 같은 시각이라도 계절별 단가가 다르다
 
 
+def test_2026_reform_bands_day_rules_and_weekend_discount():
+    """2026-04-16 개편 잠정 적용: 여름 18~21시 최대, 11~15시 중간, 토요일 최대→중간, 일·공휴일 경부하,
+    봄가을 주말 11~14시 50% — 보도된 할인액(토 48.6·일 42.7원)과 일치."""
+    tf = t.get_tariff("kepco_ev_example")
+    assert tf.band_at("2026-07-15 19:00") == "peak" and tf.band_at("2026-07-15 11:00") == "mid"   # 수요일
+    assert tf.band_at("2026-07-18 19:00") == "mid" and tf.band_at("2026-07-19 19:00") == "light"  # 토·일
+    assert tf.price_at("2026-10-10 12:00") == pytest.approx(48.6) and tf.price_at("2026-10-11 12:00") == pytest.approx(42.7)
+    assert tf.price_at("2026-10-14 12:00") == pytest.approx(97.2)                                 # 평일은 할인 없음
+    assert tf.price_at("2026-10-14 19:00", holiday=True) == pytest.approx(85.4)                   # 평일 공휴일 = 경부하
+    old = t.get_tariff("kepco_ev_2023")
+    assert old.band_at("2026-07-15 19:00") == "mid" and old.price_at("2026-10-10 12:00") == old.price_at("2026-10-14 12:00")
+
+
 def test_invalid_tariff_rejected(tmp_path):
     p = tmp_path / "t.json"
     p.write_text(json.dumps({"tariffs": {"x": {"hours": ["a"] * 23, "rates": {"a": 1}}}}), encoding="utf-8")

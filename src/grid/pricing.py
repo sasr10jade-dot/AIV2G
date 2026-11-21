@@ -89,13 +89,16 @@ def build_price_model(
     compensation_id: str = DEFAULT_COMPENSATION_ID,
     tariff_path: Path | None = None,
     compensation_path: Path | None = None,
+    holiday_by_time: dict | None = None,
 ) -> PriceModel:
-    """`grid_price_by_time`은 grid_signal 가격이다(grid_signal 보상에만 쓰임)."""
+    """`grid_price_by_time`은 grid_signal 가격이다(grid_signal 보상에만 쓰임).
+    `holiday_by_time`은 시각별 공휴일 여부 — 평일 공휴일만 일요일 요금으로 본다(토·일은 요일 규칙이 따로 처리)."""
     tariff = get_tariff(tariff_id, tariff_path)
     comp = get_compensation(compensation_id, compensation_path)
     times = [pd.Timestamp(t) for t in timestamps]
+    hol = holiday_by_time or {}
 
-    buy = {t: tariff.price_at(t) for t in times}
+    buy = {t: tariff.price_at(t, hol.get(t) in (1, True) and t.weekday() < 5) for t in times}
     if comp.kind == "zero":
         sell = {t: 0.0 for t in times}
     elif comp.kind == "grid_signal":
@@ -108,4 +111,5 @@ def build_price_model(
 def price_model_for_grid(grid_df: pd.DataFrame, tariff_id: str = DEFAULT_TARIFF_ID,
                          compensation_id: str = DEFAULT_COMPENSATION_ID) -> PriceModel:
     grid_price = dict(zip(grid_df["timestamp"], grid_df["price_krw_per_kwh"]))
-    return build_price_model(grid_df["timestamp"], grid_price, tariff_id, compensation_id)
+    hol = dict(zip(grid_df["timestamp"], grid_df["is_holiday"])) if "is_holiday" in grid_df.columns else None
+    return build_price_model(grid_df["timestamp"], grid_price, tariff_id, compensation_id, holiday_by_time=hol)
