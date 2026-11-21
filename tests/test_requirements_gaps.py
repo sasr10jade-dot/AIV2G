@@ -1,5 +1,7 @@
 """요구사항정의서 v1.0 미흡·누락 보강 항목 테스트 — K01 집계 단위, A02 제외 차종, Q04 위치정보 동의, A07 관용/민간,
 K02 예비 Pool, A04 CPO 수신 실적 분리, C04·Y2A02 조건별 분석 축, 내부망 간편 로그인, E01 한계 시트."""
+import json
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -371,3 +373,16 @@ def test_review_gap_fixes_value_maps_safety_cap_and_compat():
                        "charging_kw": [0.0, 7.0, 0.0]})
     comp = {r["vehicle_model"]: r for r in management.obd_compatibility(ev)}
     assert comp["m1"]["status"] == "확인 필요" and comp["m2"]["status"] == "정상"
+
+
+def test_standard_names_verified_units_and_no_invented_fields():
+    """표준 문서 대조: VSS 단위 변환(kW→W, km→m), OCPP 1.6J BootNotification 식별자 없음, OCPI 평균 출력은 파생값."""
+    from src.pipeline import standards
+    m = standards.load_mapping()
+    assert m["verified"] is True and "chargeBoxIdentity" not in json.dumps(m["tables"], ensure_ascii=False)
+    ev = pd.DataFrame({"ev_id": ["EV-1"], "charging_kw": [7.0], "odometer_km": [12.5], "soc_pct": [50.0]})
+    v = standards.to_standard(ev, "ev_telemetry", "vss")
+    assert v["Vehicle.Powertrain.TractionBattery.CurrentPower"].iloc[0] == 7000.0
+    assert v["Vehicle.TraveledDistance"].iloc[0] == 12500.0
+    ch = pd.DataFrame({"session_id": ["s1"], "avg_power_kw": [7.0]})
+    assert "Connector.max_electric_power" not in standards.to_standard(ch, "charger_sessions", "ocpi").columns
