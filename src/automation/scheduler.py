@@ -11,13 +11,10 @@
 """
 from dataclasses import replace
 
-import numpy as np
 from sklearn.metrics import mean_absolute_error
 
 from src.datagen.config import SimConfig
-from src.datagen.ev import generate_ev_telemetry
-from src.datagen.grid import generate_grid_signal
-from src.pipeline.store import build_city_hourly
+from src.datagen.scenario import synthetic_city_hourly
 from src.model.demand_forecast import train_forecast_model, TEST_HOURS
 from src.model.features import build_features
 from . import issues
@@ -31,10 +28,7 @@ def bootstrap(registry: ModelRegistry, base_cfg: SimConfig, target_col: str) -> 
     """레지스트리가 비어 있으면 최초 모델(v1)을 등록해 사이클을 시작할 수 있게 한다."""
     if registry.active_version() is not None:
         return
-    rng = np.random.default_rng(base_cfg.random_seed)
-    city_hourly = build_city_hourly(
-        generate_ev_telemetry(base_cfg, rng), generate_grid_signal(base_cfg, rng), base_cfg
-    )
+    city_hourly = synthetic_city_hourly(base_cfg)   # 서포터즈 OBD + 거점 충전 세션(결합 데이터셋)
     result = train_forecast_model(city_hourly, target_col)
     registry.register(result.model, result.feature_cols, base_cfg.weeks, result.mae, result.rmse, result.n_train,
                       data_range=result.data_range, data_source="synthetic", holdout_mape=result.mape, holdout_r2=result.r2)
@@ -44,10 +38,7 @@ def run_cycle(
     registry: ModelRegistry, base_cfg: SimConfig, week_offset: int, target_col: str, fleet_growth: int = 0
 ) -> dict:
     cfg_new = replace(base_cfg, weeks=base_cfg.weeks + week_offset, n_ev=base_cfg.n_ev + fleet_growth)
-    rng = np.random.default_rng(cfg_new.random_seed)
-    city_hourly = build_city_hourly(
-        generate_ev_telemetry(cfg_new, rng), generate_grid_signal(cfg_new, rng), cfg_new
-    )
+    city_hourly = synthetic_city_hourly(cfg_new)
     feat_df, _ = build_features(city_hourly, target_col)
     new_period = feat_df.iloc[-TEST_HOURS:]
 

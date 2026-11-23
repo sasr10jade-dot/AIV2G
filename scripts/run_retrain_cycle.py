@@ -36,8 +36,8 @@ HISTORY = DATA_DIR / "batch" / "retrain_history.jsonl"
 
 def main() -> int:
     cfg = SimConfig()
-    ev_df, _ch, grid_df, _real = source.load_scenario(cfg)
-    city_hourly = build_city_hourly(ev_df, grid_df, cfg)
+    ev_df, ch_df, grid_df, _real = source.load_scenario(cfg)
+    city_hourly = build_city_hourly(ev_df, grid_df, cfg, charger_df=ch_df)
     data_source = "measured" if source.provenance().get("ev_telemetry") == "measured" else "synthetic"
     started = datetime.now(timezone.utc).isoformat(timespec="seconds")
     results = []

@@ -289,7 +289,7 @@ CPO 3사 REST/CSV ───────┼─▶ 표준 스키마·품질검증 
 | 1 | 공통 스키마·매핑 레지스트리, VSS·OCPP 1.6J·OCPI 2.2.1 병기, 7단계, 규칙표 행 추가로 편입 | 매핑 레지스트리·7단계·표준 형식 출력(가명) | `config/standard_mapping.json`, `src/pipeline/standards.py`, `GET /ingest/standards`, `GET /ingest/export/standard` |
 | 2 | 거점 3곳 가상 마이크로그리드, 3개 시나리오, 흡수량·완화량·피크 감소·SOC 미달 | S1/S2/S3 비교표 | `src/optimizer/curtailment.py` `scenarios`, 대시보드 05 |
 | 3 | 계량→원장→재원별 정산→배분→포인트, 월 1회, 민간 개인 포인트·관용 기관 리포트 | 월별 상태·월 단위 산정, 기관 리포트(CSV) | `ledger.month_status`, `ledger.institution_report`, `/vpp/settlement/months`, `/vpp/settlement/institution-report` |
-| 4 | 4,615건(1,365+3,250), 이탈 16%→4,397, 6개 마일스톤, 주간 점검, 90% 2주 연속 대응 | 계획 수치·주간 점검표·경고·마일스톤(2개 입력) | `src/kpi.py` `DATA_PLAN`, `weekly_monitor`, `config/data_plan.json` |
+| 4 | (13장으로 갱신) 4,233건(충전 1,170·운행 d + 거점 3,250, 이탈 16%, 결합 성공률 ≥94.5%), 6개 마일스톤, 주간 점검, 90% 2주 연속 대응 | 계획 수치·주간 점검표·경고·마일스톤(2개 입력) | `src/kpi.py` `DATA_PLAN`, `weekly_monitor`, `config/data_plan.json` |
 | 5 | 필수성과 5 + 관리지표 7 | 성과·관리 지표판 | `src/management.py`, `GET /kpi/management` |
 | 6 | 레퍼런스 4종 | 지표판에 상태 표시(벤치마크는 문서) | 〃 |
 | 7 | 리스 사업자 → 개인 참여단·업무용 Fleet | 문서 사항(시스템 변경 없음) | - |
@@ -302,3 +302,17 @@ CPO 3사 REST/CSV ───────┼─▶ 표준 스키마·품질검증 
 | 14 | 1건 정의, CPO 3,250(서포터즈 세션 제외), 중복 제거 전·후 건수 | 집계 단계(session_funnel)·서포터즈 세션 제외 | `src/kpi.py` |
 
 남은 확인 사항: 마일스톤 4개 날짜(보완상세 일정표), 2026-04-16 개편 한전 전기차 요금표 원문(현재 kepco_ev_example에 개편 시간대·토/일·공휴일 규칙·봄가을 주말 11~14시 50% 할인을 잠정 적용, 단가는 2023 게시값, verified=false; 개편 전 표는 kepco_ev_2023; 표준 명칭은 2026-11-21 VSS·OCPP 1.6J·OCPI 2.2.1 원문 대조 완료, verified=true), 대조 지역 공공데이터 수집, 관용차 포인트를 개인 잔액에서 뺄지(현재는 리포트에서 기관 귀속 환산값으로만 구분).
+
+## 13. 2026-11-23 데이터셋 정의·확보량 산식·예측 대상 (문제·답변 v1.1 결정)
+
+| 항목 | 결정 | 구현 |
+|---|---|---|
+| 1건 정의 | 유효 이벤트 1회(차량 운행·차량 충전·거점 충전) × [① 차량·충전기 결합 + ② AI 학습 블록] | `src/pipeline/dataset.py`, `GET /kpi/dataset`, `kpi.count_by_year(grid_df=)` |
+| 확보량 산식 | N = {30×(충전 3.0+운행 d)×13×(1−16%) + 250×13} × r → 4,233건(d=0), r ≥ 94.5% | `kpi.build_data_plan`, `config/data_plan.json` plan_inputs |
+| AI 학습 반영 | 거점 세션(서포터즈 제외)을 시간 단위 kW로 배분해 충전수요 라벨에 합산 | `store.site_charging_hourly`, `build_city_hourly(charger_df=)`, `datagen/scenario.py` |
+| 차량·충전기 결합 | 서포터즈 충전 인증 태그(idTag) 등록 → 수신 세션 ev_id 결합(태그 원문 미보관) | `src/registry/charge_tags.py`, `/cpo/charge-tags`, `/cpo/ingest` 저장 |
+| B형 차량 블록 | 충전기 측 시작·종료 SOC·차종(선택) — CPO 제공 범위 요청 | `schema.CHARGER_SESSION_SCHEMA`, `cpo/base.OPTIONAL_COLUMNS` |
+| 수집 기간 | 13주 시작·종료일 명시(마일스톤 확정 후 입력) | `config/data_plan.json` collection, `kpi.weekly_monitor` |
+| 예측 대상 | 주 = 시간대별 EV 충전수요, 보조 = EV 가용 배터리 자원, 전력수요 = 입력 변수, '4종' = BM 레퍼런스 | `forecast_service.ALLOWED_TARGETS` |
+
+남은 입력값: 주간 운행 횟수 d(OBD 실측 후), 본 수집 시작·종료일(마일스톤 확정 후).

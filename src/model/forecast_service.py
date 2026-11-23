@@ -29,7 +29,8 @@ GRANULARITY_PRESETS = {
     "weekly": {"horizon_hours": 24 * 180, "bucket": "week", "label": "월별"},
 }
 EXOGENOUS_COLS = ["power_demand_mw", "renewable_gen_mw", "temperature_c", "price_krw_per_kwh", "is_holiday"]
-ALLOWED_TARGETS = {"ev_charging_demand_kw", "ev_available_v2g_kwh", "power_demand_mw"}
+# 예측 대상(2026-11-23 확정): 주 = 시간대별 EV 충전수요, 보조 = EV 가용 배터리 자원. 전력수요는 입력 변수(EXOGENOUS_COLS)
+ALLOWED_TARGETS = {"ev_charging_demand_kw", "ev_available_v2g_kwh"}
 
 
 def _load_model(target_col: str, cfg: SimConfig):
@@ -59,8 +60,8 @@ def forecast_latest(target_col: str, cfg: SimConfig | None = None, periods: int 
     cfg = cfg or SimConfig()
     model, feature_cols, info = _load_model(target_col, cfg)
 
-    ev_df, _charger_df, grid_df, is_real = load_scenario(cfg)
-    city_hourly = build_city_hourly(ev_df, grid_df, cfg)
+    ev_df, charger_df, grid_df, is_real = load_scenario(cfg)
+    city_hourly = build_city_hourly(ev_df, grid_df, cfg, charger_df=charger_df)
     feat_df, _ = build_features(city_hourly, target_col)
     recent = feat_df.iloc[-periods:]
 
@@ -112,8 +113,8 @@ def forecast_horizon(target_col: str, granularity: str, cfg: SimConfig | None = 
     cfg = cfg or SimConfig()
     model, feature_cols, info = _load_model(target_col, cfg)
 
-    ev_df, _charger_df, grid_df, is_real = load_scenario(cfg)
-    city_hourly = build_city_hourly(ev_df, grid_df, cfg).sort_values("timestamp").reset_index(drop=True)
+    ev_df, charger_df, grid_df, is_real = load_scenario(cfg)
+    city_hourly = build_city_hourly(ev_df, grid_df, cfg, charger_df=charger_df).sort_values("timestamp").reset_index(drop=True)
     n_hist = len(city_hourly)
 
     last_ts = city_hourly["timestamp"].max()

@@ -15,7 +15,11 @@ import pandas as pd
 # 어댑터가 반환해야 하는 표준 세션 컬럼 (session_id는 사업자 내부 ID — 전역 유일성은 sync에서 보장)
 SESSION_COLUMNS = ["session_id", "charger_id", "zone", "start_ts", "duration_h", "energy_kwh", "ev_id"]
 # 계획서 4.1·13장 용역 수집 항목 중 사업자가 줄 수 있으면 받는 선택 컬럼(종료 시각·충전기 종류·커넥터·출력·종료 사유·오류 코드)
-OPTIONAL_COLUMNS = ["end_ts", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code", "site_id"]
+OPTIONAL_COLUMNS = ["end_ts", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code", "site_id",
+                    # B 거점 결합형 차량 블록(2026-11-23 결정: CPO 데이터 제공 범위에 포함 요청) — OCPP MeterValues SoC 등
+                    "soc_start_pct", "soc_end_pct", "vehicle_model"]
+# 저장하지 않고 ev_id 결합에만 쓰는 입력 컬럼(충전 인증 태그 원문 — src/registry/charge_tags.py)
+TRANSIENT_COLUMNS = ["id_tag"]
 
 
 class CpoAdapter(ABC):
@@ -57,6 +61,11 @@ def normalize_sessions(df: pd.DataFrame) -> pd.DataFrame:
     extra = [c for c in OPTIONAL_COLUMNS if c in out.columns]
     if "end_ts" in extra:
         out["end_ts"] = pd.to_datetime(out["end_ts"], errors="coerce")
-    if "avg_power_kw" in extra:
-        out["avg_power_kw"] = pd.to_numeric(out["avg_power_kw"], errors="coerce")
-    return out[SESSION_COLUMNS + extra]
+    for col in ("avg_power_kw", "soc_start_pct", "soc_end_pct"):
+        if col in extra:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+    for col in ("soc_start_pct", "soc_end_pct"):
+        if col in extra:
+            out.loc[(out[col] < 0) | (out[col] > 100), col] = None   # 범위 밖 SOC는 버리고 세션은 살린다
+    transient = [c for c in TRANSIENT_COLUMNS if c in out.columns]
+    return out[SESSION_COLUMNS + extra + transient]

@@ -1,7 +1,18 @@
 {
-  "_comment": "1차년도 일정 마일스톤(평가의견 4 반영 문안: '11.30 모집 공지부터 4.15 결과평가까지 6개 마일스톤'). 문안에 날짜가 있는 2개만 넣었다. 나머지 4개는 「평가의견별 수정 사업계획 보완상세 v0.02」의 일정표 기준으로 milestones에 추가하고 verified를 true로 바꾼다.",
+  "_comment": "1차년도 데이터셋 확보 계획(평가의견 4·14, 2026-11-23 결정). plan_inputs는 확보량 산식 입력값 — N = {차량 × (충전 주 횟수 + 운행 주 횟수) × 주 × (1 − 이탈률) + 거점 주간 세션 × 주} × 결합 성공률 r. drive_per_vehicle_week(운행 주 횟수)는 OBD 실측 후 입력(0이면 운행 미산입, 보수적 기준). collection은 본 수집 13주의 시작·종료일 — 마일스톤 확정 후 입력(null이면 주간 점검은 최근 13주 기준). 마일스톤은 문안에 날짜가 있는 2개만 넣었다. 나머지 4개는 「평가의견별 수정 사업계획 보완상세 v0.02」의 일정표 기준으로 milestones에 추가하고 verified를 true로 바꾼다.",
   "verified": false,
   "note": "6개 중 2개 입력(나머지 4개는 보완상세 일정표 확인 후 추가)",
+  "plan_inputs": {
+    "vehicles": 30,
+    "charge_per_vehicle_week": 3.0,
+    "drive_per_vehicle_week": 0.0,
+    "weeks": 13,
+    "site_sessions_per_week": 250,
+    "attrition_pct": 16,
+    "join_rate_pct": 100.0,
+    "target": 4000
+  },
+  "collection": {"start": null, "end": null},
   "milestones": [
     {"id": "M1", "date": "2026-11-30", "title": "서포터즈 모집 공지"},
     {"id": "M6", "date": "2027-04-15", "title": "결과평가"}

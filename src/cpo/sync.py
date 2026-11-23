@@ -19,7 +19,9 @@ from .base import OPTIONAL_COLUMNS, CpoAdapter
 
 
 def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> int:
-    out = df.copy()
+    from src.registry import charge_tags
+    out, _ = charge_tags.fill_ev_ids(df)   # 인증 태그 → 서포터즈 차량 ID(태그 원문은 저장하지 않음)
+    out = out.copy()
     out["session_id"] = adapter.operator_id + ":" + out["session_id"].astype(str)
     out["operator_id"] = adapter.operator_id
     out["source"] = adapter.source_kind
@@ -38,7 +40,8 @@ def _upsert(con: sqlite3.Connection, df: pd.DataFrame, adapter: CpoAdapter) -> i
     migrate(con)  # operator_id/source 컬럼 보장
     # 과거 인제스트가 만든 테이블에는 선택 컬럼(ev_id 등)이 없을 수 있다 — 빠진 컬럼은 추가한다
     have = {r[1] for r in con.execute("PRAGMA table_info(charger_sessions)")}
-    types = {"zone": "INTEGER", "duration_h": "REAL", "energy_kwh": "REAL", "avg_power_kw": "REAL"}
+    types = {"zone": "INTEGER", "duration_h": "REAL", "energy_kwh": "REAL", "avg_power_kw": "REAL",
+             "soc_start_pct": "REAL", "soc_end_pct": "REAL"}
     for col in cols:
         if col not in have:
             con.execute(f"ALTER TABLE charger_sessions ADD COLUMN {col} {types.get(col, 'TEXT')}")

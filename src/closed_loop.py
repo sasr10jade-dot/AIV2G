@@ -10,13 +10,10 @@
 """
 from dataclasses import replace
 
-import numpy as np
 from sklearn.metrics import mean_absolute_error
 
 from src.datagen.config import SimConfig
-from src.datagen.ev import generate_ev_telemetry
-from src.datagen.grid import generate_grid_signal
-from src.pipeline.store import build_city_hourly
+from src.datagen.scenario import synthetic_city_hourly
 from src.model.demand_forecast import train_forecast_model, ForecastResult, TEST_HOURS
 from src.model.features import build_features
 
@@ -40,19 +37,9 @@ def run_closed_loop_cycle(
     cfg_after = replace(base_cfg, weeks=base_cfg.weeks + 1, n_ev=base_cfg.n_ev + fleet_growth)
 
     if before is None:
-        before = train_forecast_model(
-            build_city_hourly(
-                generate_ev_telemetry(cfg_before, np.random.default_rng(cfg_before.random_seed)),
-                generate_grid_signal(cfg_before, np.random.default_rng(cfg_before.random_seed)),
-                cfg_before,
-            ),
-            target_col,
-        )
+        before = train_forecast_model(synthetic_city_hourly(cfg_before), target_col)
 
-    rng = np.random.default_rng(cfg_after.random_seed)
-    city_hourly_after = build_city_hourly(
-        generate_ev_telemetry(cfg_after, rng), generate_grid_signal(cfg_after, rng), cfg_after
-    )
+    city_hourly_after = synthetic_city_hourly(cfg_after)   # 서포터즈 OBD + 거점 충전 세션(결합 데이터셋)
     feat_after, _ = build_features(city_hourly_after, target_col)
     new_period = feat_after.iloc[-TEST_HOURS:]
 

@@ -148,6 +148,26 @@ def create_settlement_run(body: RunIn, request: Request, user: dict = Depends(re
     return run
 
 
+@router.get("/kpi/dataset", summary="실증 데이터셋(결합 레코드) 현황 — 이벤트 종류별 건수·결합 성공률·연차별 성과 건수·확보 계획(평가의견 4·14)",
+            dependencies=[Depends(require_admin)])
+def dataset_status(sample: int = Query(0, ge=0, le=50, description="결합 레코드 예시 행 수(가명 처리)")) -> dict:
+    import json
+
+    from src.datagen.config import SimConfig
+    from src.pipeline import dataset, source
+    from src.privacy.pseudonym import pseudo_id
+    ev_df, charger_df, grid_df, is_real = source.load_scenario(SimConfig())
+    ds = dataset.build_dataset(ev_df, charger_df, grid_df)
+    out = {"is_real_data": is_real, "provenance": source.provenance(), **dataset.summarize(ds)}
+    if sample and not ds.empty:
+        cols = [c for c in ("source", "kind", "ev_id", "start_ts", "end_ts", "soc_start_pct", "soc_end_pct", "energy_kwh",
+                            "charger_id", "site_id", *dataset.CONTEXT_COLS, "context_ok", "counted", "project_year") if c in ds.columns]
+        rows = ds[cols].head(sample).copy()
+        rows["ev_id"] = rows["ev_id"].map(lambda v: pseudo_id("ev", str(v)) if isinstance(v, str) and v else None)
+        out["sample"] = json.loads(rows.to_json(orient="records", date_format="iso", force_ascii=False))
+    return out
+
+
 @router.get("/kpi/management", summary="성과·관리 지표판 — 필수성과 5·관리지표 7·경제적 편익 4·원천별 데이터·레퍼런스·보상 단계(평가의견 5·6·8·10·11)",
             dependencies=[Depends(require_admin)])
 def management_board(evaluate: bool = Query(False, description="true면 예측 정확도를 지금 계산(수십 초), 아니면 캐시된 평가만 사용")) -> dict:

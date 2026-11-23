@@ -73,8 +73,43 @@ def build_charger_utilization_hourly(charger_df: pd.DataFrame) -> pd.DataFrame:
     return result.sort_values(["timestamp", "zone"]).reset_index(drop=True)
 
 
-def build_city_hourly(ev_df: pd.DataFrame, grid_df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
+def site_charging_hourly(charger_df: pd.DataFrame | None, exclude_ev_ids: set | None = None) -> pd.DataFrame:
+    """거점(CPO) 충전 세션을 시간 단위 충전 출력(kW)으로 배분 — 세션 충전량을 충전 시간에 걸쳐 고르게 나눈다.
+    서포터즈 차량 세션(exclude_ev_ids)은 차량 OBD 충전수요에 이미 들어가므로 뺀다(B 거점 결합형만)."""
+    from src import kpi
+
+    rows = kpi.session_funnel(charger_df, exclude_ev_ids)["_rows"] if charger_df is not None else pd.DataFrame()
+    if rows is None or rows.empty:
+        return pd.DataFrame(columns=["timestamp", "site_charging_demand_kw"])
+    start = rows["_start"].astype("datetime64[ns]").to_numpy()
+    if "duration_h" in rows.columns:
+        dur_h = pd.to_numeric(rows["duration_h"], errors="coerce").fillna(1.0).clip(lower=1 / 60).to_numpy()
+    else:
+        end = pd.to_datetime(rows.get("end_ts"), errors="coerce")
+        dur_h = ((end - rows["_start"]).dt.total_seconds() / 3600).fillna(1.0).clip(lower=1 / 60).to_numpy()
+    energy = pd.to_numeric(rows["energy_kwh"], errors="coerce").fillna(0).to_numpy()
+    end = start + (dur_h * 3600e9).astype("timedelta64[ns]")
+    h0 = start.astype("datetime64[h]")
+    n_hours = ((end.astype("datetime64[h]") - h0).astype(int) + 1)
+    idx = np.repeat(np.arange(len(start)), n_hours)
+    offs = np.concatenate([np.arange(k) for k in n_hours]) if len(n_hours) else np.array([], dtype=int)
+    hour = h0[idx] + offs.astype("timedelta64[h]")
+    seg_start = np.maximum(start[idx], hour.astype("datetime64[ns]"))
+    seg_end = np.minimum(end[idx], (hour + np.timedelta64(1, "h")).astype("datetime64[ns]"))
+    overlap_h = np.clip((seg_end - seg_start).astype("timedelta64[s]").astype(float) / 3600, 0, 1)
+    kwh = energy[idx] * overlap_h / dur_h[idx]      # 그 1시간에 들어간 kWh = 그 시간의 평균 kW
+    out = (pd.DataFrame({"timestamp": hour.astype("datetime64[ns]"), "site_charging_demand_kw": kwh})
+           .groupby("timestamp", as_index=False)["site_charging_demand_kw"].sum())
+    return out
+
+
+def build_city_hourly(ev_df: pd.DataFrame, grid_df: pd.DataFrame, cfg: SimConfig,
+                      charger_df: pd.DataFrame | None = None) -> pd.DataFrame:
     """도시 단위 시간별 통합 뷰 — AI 수요·공급 예측모델(WS2)의 학습 원천.
+
+    charger_df가 주어지면(평가의견 4·14 보완, P4) 거점 충전 세션(서포터즈 차량 세션 제외)을 시간 단위로 배분한
+    `site_charging_demand_kw`를 만들고, 학습 라벨 `ev_charging_demand_kw` = 서포터즈 OBD 충전 출력 합 + 거점 충전 출력 합으로
+    잡는다 — 결합 데이터셋(A 서포터즈 결합형 + B 거점 결합형)이 모두 학습에 들어간다. 주지 않으면 기존처럼 OBD만.
 
     `ev_available_v2g_kwh`는 V2G 미지원 차종(`v2g_capable=False`)을 제외하고 계산한다 —
     실제로 방전이 불가능한 차량의 배터리를 "가용 자원"으로 잘못 집계하면 예측모델이
@@ -110,6 +145,15 @@ def build_city_hourly(ev_df: pd.DataFrame, grid_df: pd.DataFrame, cfg: SimConfig
     city = grid_df.merge(agg, on="timestamp", how="left").sort_values("timestamp").reset_index(drop=True)
     fill_cols = ["ev_charging_demand_kw", "ev_available_v2g_kwh", "ev_connected_count"]
     city[fill_cols] = city[fill_cols].fillna(0.0)
+    if charger_df is not None:
+        supporters = set(ev_df["ev_id"].dropna().astype(str)) if "ev_id" in ev_df.columns else set()
+        site = site_charging_hourly(charger_df, supporters)
+        city["timestamp"] = pd.to_datetime(city["timestamp"])
+        site["timestamp"] = pd.to_datetime(site["timestamp"]).astype(city["timestamp"].dtype)
+        city = city.merge(site, on="timestamp", how="left")
+        city["site_charging_demand_kw"] = city["site_charging_demand_kw"].fillna(0.0).round(3)
+        city["supporter_charging_demand_kw"] = city["ev_charging_demand_kw"]
+        city["ev_charging_demand_kw"] = city["supporter_charging_demand_kw"] + city["site_charging_demand_kw"]
     return city
 
 

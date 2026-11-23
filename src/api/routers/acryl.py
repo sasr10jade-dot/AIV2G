@@ -109,8 +109,8 @@ def forecast_evaluation(target: str) -> dict:
     if target not in link.FORECAST_TARGETS:
         raise HTTPException(status_code=404, detail="알 수 없는 예측 대상입니다")
     cfg = SimConfig()
-    ev_df, _c, grid_df, is_real = load_scenario(cfg)
-    result = link.evaluate_against_actual(target, build_city_hourly(ev_df, grid_df, cfg))
+    ev_df, ch_df, grid_df, is_real = load_scenario(cfg)
+    result = link.evaluate_against_actual(target, build_city_hourly(ev_df, grid_df, cfg, charger_df=ch_df))
     result["actual_is_real"] = is_real
     return result
 

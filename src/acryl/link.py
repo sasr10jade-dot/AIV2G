@@ -104,7 +104,7 @@ def export_training_dataset(actor: str, period_start: str | None = None, period_
         raise LinkError("종료일이 시작일보다 빠릅니다")
     cfg = cfg or SimConfig()
     ev_df, charger_df, grid_df, is_real = load_scenario(cfg)
-    city = build_city_hourly(ev_df, grid_df, cfg)
+    city = build_city_hourly(ev_df, grid_df, cfg, charger_df=charger_df)
 
     excluded = _share_withdrawn(ev_df["ev_id"].unique())
     ev_df = ev_df[~ev_df["ev_id"].isin(excluded)]

@@ -48,6 +48,21 @@ def charger_type_for(charger_idx: int) -> tuple[str, str, float]:
     return CHARGER_TYPES["DC_FAST" if charger_idx % FAST_EVERY == FAST_EVERY - 1 else "AC_SLOW"]
 
 
+# 거점(공공·업무 빌딩·노상) 충전 시작 시각 분포(시간대별 상대 가중치) — 출근 후 오전·점심 뒤·퇴근 무렵이 많고 심야는 적다.
+# 거점 세션도 AI 학습 라벨에 들어가므로(2026-11-23) 하루 중 무작위(균등)가 아니라 이용 패턴을 따르게 한다(합성 가정값).
+START_HOUR_WEIGHTS = np.array([0.3, 0.2, 0.15, 0.15, 0.2, 0.4, 0.8, 1.4, 2.2, 2.4, 2.0, 1.6,
+                               1.5, 1.9, 1.8, 1.5, 1.4, 1.6, 1.9, 1.8, 1.4, 1.0, 0.7, 0.5])
+_START_CDF = np.concatenate([[0.0], np.cumsum(START_HOUR_WEIGHTS) / START_HOUR_WEIGHTS.sum()])
+
+
+def _profile_start_hour(u: float) -> float:
+    """균등분포 값 u∈[0,24)를 시간대 분포를 따르는 시작 시각으로 바꾼다(역누적분포 — 난수 소비량은 그대로)."""
+    q = min(max(u / 24.0, 0.0), 1.0 - 1e-12)
+    h = int(np.searchsorted(_START_CDF, q, side="right") - 1)
+    lo, hi = _START_CDF[h], _START_CDF[h + 1]
+    return h + (q - lo) / (hi - lo)
+
+
 def _stop_reason(session_no: int) -> tuple[str, str | None]:
     """종료 사유·오류 코드(OCPP StopTransaction reason / StatusNotification errorCode 표기를 따른다).
     합성 데이터는 소수 세션만 비정상 종료로 둔다."""
@@ -96,7 +111,7 @@ def generate_charger_sessions(
         for day in range(cfg.charger_days):
             n_sessions_today = rng.poisson(cfg.charger_avg_sessions_per_day)
             for _ in range(n_sessions_today):
-                start_hour = rng.uniform(0, 24)
+                start_hour = _profile_start_hour(rng.uniform(0, 24))
                 start_ts = ts_start + pd.Timedelta(days=day, hours=start_hour)
                 duration_h = (max(rng.normal(AVG_FAST_SESSION_HOURS, 0.2), 0.15) if fast
                               else max(rng.normal(AVG_SESSION_HOURS, 0.8), 0.3))

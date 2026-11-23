@@ -20,7 +20,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 - config/        : CPO 3사 연계, 공공 API, 요금표, 거점, 차종(제외 차종 포함), VPP·정산 가정값(vpp_settlement.json)
 - data/          : SQLite DB(curated.db·privacy.db), 계정(users.json), CPO 수신 실적(cpo_status.json) — 실행 중 생성
 - scripts/       : 서버 구동(run_dev_lan.cmd), CPO 동기화, 실차 OBD 배치, API 문서 생성 등
-- tests/         : pytest 테스트 스위트(579개)
+- tests/         : pytest 테스트 스위트(588개)
 - android/       : 서포터즈 모바일 TWA 안드로이드 앱 빌드 프로젝트
 
 --------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
         흡수량·출력제어 완화량·피크 수전 감소·최소 보장 SOC 미달 건수. 대시보드 05 출력제어 카드.
   의견3 정산: 월 1회 산정(POST /vpp/settlement/runs {month}), GET /vpp/settlement/months,
         관용차 기관 단위 리포트 GET /vpp/settlement/institution-report(?fmt=csv&month=).
-  의견4·14 데이터 확보 계획: src/kpi.py DATA_PLAN(OBD 1,365 + CPO 거점 3,250 = 4,615, 이탈 16% 시 4,397),
+  의견4·14 데이터 확보 계획: src/kpi.py DATA_PLAN(→ 3-4절: 충전 3.0회+운행, 4,233건·결합 성공률 ≥94.5%),
         1건 정의(유효·중복 제거·서포터즈 차량 세션 제외, session_funnel), 주간 점검표·90%/80% 2주 연속 경고(weekly_monitor),
         마일스톤 config/data_plan.json — 문안에 날짜가 있는 2개만 입력, 나머지 4개는 보완상세 일정표 확인 후 추가.
   의견5·6·8·10·11 성과·관리 지표판: src/management.py, GET /kpi/management(대시보드 01 카드) —
@@ -147,6 +147,28 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
         합산 가상 ESS 용량·출력·시간대별 동시 가용 대수(ess_group.aggregate_capacity).
   의견7(리스 사업자): 문서 사항 — 시스템 변경 없음. 의견6 벤치마크는 문서 산출물.
   [화면 캐시] /dashboard·/login HTML no-cache(배포 후 이전 화면이 남던 문제).
+
+--------------------------------------------------------------------------------
+3-4. 2026-11-23 데이터셋 정의·확보량 산식·예측 대상 정리 (문제·답변 v1.1 결정 반영)
+--------------------------------------------------------------------------------
+  [1건 정의] 유효 이벤트 1회(차량 운행·차량 충전·거점 충전) × [① 차량·충전기 결합 블록 + ② AI 학습 블록(같은 1시간 외부환경)].
+        src/pipeline/dataset.py build_dataset/summarize, GET /kpi/dataset(?sample=). 연차별 성과 건수(summarize_kpi)는 grid_df가 있으면
+        결합 레코드 기준(① 필수 충족 ∧ ② 결합 성공)으로 센다. 서포터즈 충전이 연계 충전기에서 일어나면 그 세션을 A형 충전에 결합(±1시간).
+  [산식] N = {30대 × (충전 주 3.0회 + 운행 주 d회) × 13주 × (1 − 16%) + 거점 주 250세션 × 13주} × 결합 성공률 r
+        → d=0(보수적) 4,233건, 목표 4,000건 조건 r ≥ 94.5%. 입력값은 config/data_plan.json plan_inputs(kpi.build_data_plan).
+        주간 점검: 운행이 계획에 없으면(d=0) OBD 계획 대비율은 충전 건만 비교하고 운행 건은 obd_drive로 따로 표시.
+        본 수집 기간: data_plan.json collection.start/end(마일스톤 확정 후 입력, null이면 최근 13주).
+  [AI 학습] build_city_hourly(..., charger_df=)가 거점 세션(서포터즈 제외)을 시간 단위 kW로 배분(site_charging_demand_kw)해
+        학습 라벨 ev_charging_demand_kw = 서포터즈 OBD 충전 + 거점 충전. 대시보드·모델 평가·예측 서비스·재학습·Closed-loop 모두 같은 구성
+        (합성은 src/datagen/scenario.py). 합성 거점 세션 시작 시각은 시간대 분포(START_HOUR_WEIGHTS, 가정값)를 따른다.
+  [충전 인증 태그] 서포터즈 충전카드·RFID(OCPP idTag) ↔ 차량: src/registry/charge_tags.py(태그 원문 미보관, HMAC 가명 PT-…),
+        POST/GET/DELETE /cpo/charge-tags. CPO 수신(POST /cpo/ingest/{cpo_id})은 이제 curated.db charger_sessions에 저장하고
+        id_tag로 ev_id를 채운다(id_tag는 저장하지 않음).
+  [B형 차량 블록] 충전기 세션 선택 항목 soc_start_pct·soc_end_pct·vehicle_model(스키마·CPO 수신·어댑터) — CPO 데이터 제공 범위 요청.
+  [예측 대상] 주 = 시간대별 EV 충전수요(kW), 보조 = EV 가용 배터리 자원(kWh). 전력수요는 입력 변수(forecast_service.ALLOWED_TARGETS에서 제외).
+        '4종'은 V2G BM 레퍼런스(수익 산정·모의 정산·VoC·벤치마크)에만 쓴다.
+  [참고] 합성 기본 시나리오 충전수요 예측 정확도: 거점 세션 포함 전 69.6% → 포함 후 65.8%(R² 0.92→0.79) — 거점 세션의 무작위성 때문.
+        실측 데이터로 다시 평가 필요.
 
 --------------------------------------------------------------------------------
 4. 핵심 인수인계 문서 위치

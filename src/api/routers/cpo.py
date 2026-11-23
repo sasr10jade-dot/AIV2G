@@ -40,6 +40,11 @@ class CpoSessionItem(BaseModel):
     stop_reason: Optional[str] = Field(None, description="충전 종료 사유 (Local, Remote, Emergency 등)")
     error_code: Optional[str] = Field(None, description="오류 코드 (NoError 등)")
     zone: Optional[int] = Field(0, description="권역 코드")
+    # B 거점 결합형 차량 블록·서포터즈 결합(2026-11-23 결정) — 제공 가능하면 함께 보낸다
+    soc_start_pct: Optional[float] = Field(None, ge=0, le=100, description="충전 시작 SOC(%) — OCPP MeterValues SoC")
+    soc_end_pct: Optional[float] = Field(None, ge=0, le=100, description="충전 종료 SOC(%)")
+    vehicle_model: Optional[str] = Field(None, description="차종(제공 가능 시)")
+    id_tag: Optional[str] = Field(None, description="충전 인증 태그(OCPP idTag) — 서포터즈 차량 결합에만 쓰고 원문은 저장하지 않음")
 
 
 class CpoIngestPayload(BaseModel):
@@ -218,10 +223,43 @@ def ingest_cpo_sessions(
                 "connector_type": item.connector_type or "AC_SLOW",
                 "stop_reason": item.stop_reason or "NormalStop",
                 "error_code": item.error_code or "NoError",
-                "zone": item.zone or 1
+                "zone": item.zone or 1,
+                "soc_start_pct": item.soc_start_pct,
+                "soc_end_pct": item.soc_end_pct,
+                "vehicle_model": item.vehicle_model,
+                "id_tag": item.id_tag,
             })
         except Exception as e:
             errors.append({"index": idx, "session_id": item.session_id, "reason": str(e)})
+
+    # 받은 세션을 curated.db charger_sessions에 저장(당기기 동기화와 같은 경로 — 멱등, 인증 태그 → 차량 ID 결합)
+    stored, linked = 0, 0
+    if valid_sessions:
+        import pandas as pd
+
+        from src.cpo.base import normalize_sessions
+        from src.cpo.sync import _upsert
+        from src.pipeline import store
+        from src.registry import charge_tags
+
+        df = pd.DataFrame(valid_sessions)
+        df["session_id"] = df["session_id"].str.split(":", n=1).str[1]   # _upsert가 사업자 접두어를 붙인다
+        df["ev_id"] = None
+        df = df.dropna(axis=1, how="all").assign(ev_id=None)
+        _, linked = charge_tags.fill_ev_ids(df)
+
+        class _Push:
+            operator_id, source_kind = cpo_id, "cpo_push"
+
+        con = store.get_connection()
+        try:
+            stored = _upsert(con, normalize_sessions(df), _Push())
+            con.commit()
+        except Exception as e:   # 저장 실패는 수신 결과에 알리고 수신 자체는 막지 않는다
+            con.rollback()
+            errors.append({"index": None, "session_id": None, "reason": f"저장 실패: {e}"})
+        finally:
+            con.close()
 
     try:
         runtime = load_cpo_status()
@@ -243,5 +281,36 @@ def ingest_cpo_sessions(
         "batch_date": payload.batch_date,
         "received": received_count,
         "valid": len(valid_sessions),
+        "stored": stored,
+        "linked_to_supporter": linked,
         "errors": errors
     }
+
+
+class ChargeTagIn(BaseModel):
+    ev_id: str = Field(..., description="서포터즈 차량 ID")
+    id_tag: str = Field(..., description="충전 회원카드·RFID 번호(OCPP idTag) — 가명(PT-…)으로만 저장")
+
+
+@router.get("/charge-tags", summary="서포터즈 충전 인증 태그 ↔ 차량 매핑 목록(가명)", dependencies=[Depends(require_admin)])
+def list_charge_tags() -> dict:
+    from src.registry import charge_tags
+    items = charge_tags.list_tags()
+    return {"count": len(items), "items": items}
+
+
+@router.post("/charge-tags", summary="서포터즈 충전 인증 태그 등록 — 충전기 세션과 차량 OBD 결합(A 서포터즈 결합형)")
+def add_charge_tag(body: ChargeTagIn, user: dict = Depends(require_admin)) -> dict:
+    from src.registry import charge_tags
+    try:
+        return charge_tags.register(body.ev_id, body.id_tag, by=user.get("username") if isinstance(user, dict) else None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/charge-tags/{tag_pseudo_id}", summary="서포터즈 충전 인증 태그 삭제", dependencies=[Depends(require_admin)])
+def delete_charge_tag(tag_pseudo_id: str) -> dict:
+    from src.registry import charge_tags
+    if not charge_tags.unregister(tag_pseudo_id):
+        raise HTTPException(status_code=404, detail="등록되지 않은 태그입니다")
+    return {"deleted": tag_pseudo_id}

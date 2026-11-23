@@ -93,6 +93,7 @@ def _warm_one_preset(preset: dict) -> None:
     _cached_heavy_compute(
         cfg, DEFAULT_TARGET, ev_df, grid_df,
         preset["max_charge_kw"], preset["max_discharge_kw"], preset["reserve_soc"], preset["target_soc"],
+        charger_df=_charger_df,
     )
 
 
@@ -121,6 +122,7 @@ def start_cache_warmer() -> None:
 def _cached_heavy_compute(
     cfg: SimConfig, target_col: str, ev_df: pd.DataFrame, grid_df: pd.DataFrame,
     max_charge_kw: float, max_discharge_kw: float, reserve_soc: float, target_soc: float,
+    charger_df: pd.DataFrame | None = None,
 ):
     key = (
         cfg.n_ev, cfg.n_chargers, cfg.weeks, cfg.n_zones, cfg.random_seed, cfg.start_date,
@@ -146,7 +148,7 @@ def _cached_heavy_compute(
     )
     comparison = aggregate_comparison(ev_df, run["schedule"])
     revenue = compute_fleet_revenue_comparison(comparison, grid_df, economics)
-    city_hourly = build_city_hourly(ev_df, grid_df, cfg)
+    city_hourly = build_city_hourly(ev_df, grid_df, cfg, charger_df=charger_df)   # 결합 데이터셋(서포터즈 OBD + 거점 세션)
     forecast_result = train_forecast_model(city_hourly, target_col)
     # AI 추론 V2G 예측률 — ㈜아크릴 예측이 실측과 겹치면 그것으로, 아니면 기준 모델의 홀드아웃(마지막 2주)으로 계산한다
     v2g_eval = acryl_link.evaluate_against_actual(V2G_TARGET, city_hourly)
@@ -242,6 +244,7 @@ def build_dashboard_payload(
     comparison, revenue, forecast_result, closed_loop, effect = _cached_heavy_compute(
         cfg, target_col, ev_df, grid_df,
         max_charge_kw, max_discharge_kw, reserve_soc, target_soc,
+        charger_df=charger_df,
     )
     poc_views = {gran: _bucket_poc(comparison, bucket) for gran, bucket in (("hourly", "hour"), ("daily", "day"), ("weekly", "week"))}
     fit_df = forecast_result.test_df.sort_values("timestamp")
@@ -290,7 +293,7 @@ def build_dashboard_payload(
             "charger_type_count": kpi_summary.charger_type_count,
             "targets": kpi_summary.targets,
             "infra": infra_status(ev_df, charger_df, load_site_registry()),   # 참여 장소·사업자별 충전기·활동 차량 현황
-            "collection": _collection(ev_df, charger_df, kpi_summary.provenance),   # 데이터 현황판(일자별·수집 속도·차량별)
+            "collection": _collection(ev_df, charger_df, kpi_summary.provenance, grid_df),   # 데이터 현황판(일자별·수집 속도·차량별)
             "charger_utilization_avg_pct": avg_utilization_pct,
             "charger_utilization_peak_pct": peak_utilization_pct,
             "charger_utilization_peak_at": peak_utilization_at,
@@ -375,12 +378,13 @@ def _vehicle_status_with_registry(ev_df) -> list[dict]:
     return rows
 
 
-def _collection(ev_df, charger_df, provenance: dict) -> dict:
+def _collection(ev_df, charger_df, provenance: dict, grid_df=None) -> dict:
     """실측 표만 세어 성과 실적 기준으로 보여 준다. 실측 표가 하나도 없으면(데모) 전체를 세어 '모의 미리보기'로 표시한다."""
     sessions = provenance.get("charger_sessions") == "measured"
     vehicle_days = provenance.get("ev_telemetry") == "measured"
     preview = not (sessions or vehicle_days)
-    out = collection_status(ev_df, charger_df, count_sessions=sessions or preview, count_vehicle_days=vehicle_days or preview)
+    out = collection_status(ev_df, charger_df, count_sessions=sessions or preview, count_vehicle_days=vehicle_days or preview,
+                            grid_df=grid_df)   # 결합 데이터셋(① 차량·충전기 + ② AI 학습 블록) 요약
     out["preview"] = preview
     from src.registry import service as registry
     out["reserve_count"] = registry.reserve_count()

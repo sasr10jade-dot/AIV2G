@@ -45,6 +45,10 @@ CHARGER_SESSION_SCHEMA = [
     ColumnSpec("stop_reason", "str", required=False),
     ColumnSpec("error_code", "str", required=False),
     ColumnSpec("site_id", "str", required=False),           # 실증 참여 장소 — "참여 장소 3곳 이상" 집계
+    # B 거점 결합형 차량 블록(2026-11-23 결정, CPO 데이터 제공 범위 요청) — 충전기 측 SOC(OCPP MeterValues)·차종
+    ColumnSpec("soc_start_pct", "float", min_value=0, max_value=100, required=False),
+    ColumnSpec("soc_end_pct", "float", min_value=0, max_value=100, required=False),
+    ColumnSpec("vehicle_model", "str", required=False),
 ]
 
 GRID_SIGNAL_SCHEMA = [

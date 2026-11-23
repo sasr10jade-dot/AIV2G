@@ -17,7 +17,7 @@ import secrets
 from src.paths import DATA_DIR
 
 KEY_FILE = DATA_DIR / ".pseudo_key"
-_PREFIX = {"plate": "PV", "ev": "PE", "user": "PU"}
+_PREFIX = {"plate": "PV", "ev": "PE", "user": "PU", "tag": "PT"}   # tag: 충전 인증 수단(회원카드·RFID, OCPP idTag)
 
 
 def _key() -> bytes:

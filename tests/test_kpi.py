@@ -17,6 +17,12 @@ def _sessions(starts, energy=None):
                          "energy_kwh": energy if energy is not None else [5.0] * len(starts)})
 
 
+def _grid(start, hours):
+    ts = pd.date_range(start, periods=hours, freq="h")
+    return pd.DataFrame({"timestamp": ts, "power_demand_mw": 100.0, "renewable_gen_mw": 10.0, "temperature_c": 5.0,
+                         "price_krw_per_kwh": 120.0, "is_holiday": 0})
+
+
 def test_plan_targets_match_v1_0():
     t = kpi.plan_targets()
     assert (t["ev"], t["ev_models"], t["chargers"], t["charger_types"]) == (30, 2, 150, 2)
@@ -66,13 +72,13 @@ def test_records_are_split_by_year_without_overlap():
 
 
 def test_public_data_is_reference_only_and_zero_when_synthetic():
-    ev = _ev([("2026-12-01 08:00", "A", True, False, 0.0, "m1")])
+    ev = _ev([("2026-12-01 08:00", "A", True, False, 0.0, "m1")]).assign(soc_pct=60.0)
     ch = _sessions(["2026-12-01"])
-    grid = pd.DataFrame({"timestamp": pd.date_range("2026-12-01", periods=24, freq="h")})
+    grid = _grid("2026-12-01", 24)
     assert kpi.summarize_kpi(ev, ch, grid, grid_is_real=False).public_reference_records == 0
     real = kpi.summarize_kpi(ev, ch, grid, grid_is_real=True)
     assert real.public_reference_records == 96
-    assert real.by_year[0].records == 2                       # 공개 데이터는 성과 건수에 넣지 않는다
+    assert real.by_year[0].records == 2                       # 공개 데이터는 성과 건수에 넣지 않는다(결합 레코드 2건만)
 
 
 def test_summary_on_generated_scenario_has_plan_scale():
@@ -152,12 +158,18 @@ def test_collection_status_excludes_synthetic_tables():
 
 
 def test_data_plan_matches_review_opinion_4_and_14():
-    """평가의견 4·14: OBD 1,365 + CPO 3,250 = 4,615건, 이탈 16% 반영 시 4,397건 ≥ 목표 4,000건."""
+    """평가의견 4·14(2026-11-23 결정): 충전 주 3.0회·운행 포함(d=0 보수적) — 30×3.0×13 = 1,170, 거점 250×13 = 3,250,
+    이탈 16% 반영 4,233건 ≥ 4,000건, 결합 성공률 r ≥ 94.5%."""
     p = kpi.DATA_PLAN
-    assert p["obd"]["count"] == round(30 * 3.5 * 13) == 1365
+    assert p["obd"]["per_vehicle_week"] == 3.0 and p["obd"]["drive_per_vehicle_week"] == 0.0
+    assert p["obd"]["count"] == round(30 * 3.0 * 13) == 1170
     assert p["cpo"]["count"] == 250 * 13 == 3250
-    assert p["total"] == 1365 + 3250 == 4615
-    assert p["total_with_attrition"] == round(1365 * (1 - 0.16) + 3250) == 4397 and p["total_with_attrition"] >= p["target"]
+    assert p["total"] == 1170 + 3250 == 4420
+    assert p["total_with_attrition"] == round(1170 * (1 - 0.16) + 3250) == 4233 and p["expected"] >= p["target"]
+    assert p["min_join_rate_pct"] == 94.5
+    d1 = kpi.build_data_plan({"drive_per_vehicle_week": 1.0})       # 운행 주 1회 산입 시 327.6건 추가
+    assert d1["obd"]["drive_count"] == 390 and d1["total_with_attrition"] == round((1170 + 390) * 0.84 + 3250)
+    assert kpi.build_data_plan({"join_rate_pct": 94.0})["expected"] < 4000 <= kpi.build_data_plan({"join_rate_pct": 94.5})["expected"]
 
 
 def test_session_funnel_dedups_and_excludes_supporter_sessions():
@@ -175,9 +187,9 @@ def test_session_funnel_dedups_and_excludes_supporter_sessions():
 
 
 def test_weekly_monitor_alerts_after_two_weeks_below_plan():
-    starts = pd.date_range("2026-12-07", periods=21, freq="D")   # 3주, 하루 1건 → 주 7건(계획 355건 대비 크게 미달)
+    starts = pd.date_range("2026-12-07", periods=21, freq="D")   # 3주, 하루 1건 → 주 7건(계획 340건 대비 크게 미달)
     w = kpi.weekly_monitor(_ev([]), _sessions(list(starts)))
     assert len(w["rows"]) == 3 and w["rows"][-1]["cumulative"] == 21
     codes = {a["code"] for a in w["alerts"]}
     assert "weekly_below_90" in codes and "obd_below_80" in codes
-    assert w["plan"] == {"obd": 105, "cpo": 250, "total": 355}
+    assert w["plan"] == {"obd": 90, "cpo": 250, "total": 340}

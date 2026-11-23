@@ -17,6 +17,8 @@ def _isolated_privacy(tmp_path, monkeypatch):
     monkeypatch.delenv("PII_KEY", raising=False)                    # 개발자 환경변수가 테스트 키를 덮지 않게
     from src.api.routers import cpo
     monkeypatch.setattr(cpo, "CPO_STATUS_PATH", tmp_path / "cpo_status.json")   # CPO 수신 실적을 실제 data/에 쓰지 않게
+    from src.registry import charge_tags
+    monkeypatch.setattr(charge_tags, "TAGS_FILE", tmp_path / "charge_tags.json")   # 충전 인증 태그 매핑도 격리
     monkeypatch.setenv("QUICK_LOGIN_LAN_ONLY", "0")
     monkeypatch.setenv("LLM_EXPLANATION", "0")   # 테스트 중 실제 Claude API를 부르지 않는다
 

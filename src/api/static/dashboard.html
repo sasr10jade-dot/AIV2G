@@ -1621,16 +1621,20 @@ function renderCollectionPlan(c) {
   if (!box) return;
   const p = c.data_plan, w = c.weekly || {}, f = c.funnel, ms = c.milestones || {};
   if (!p) { box.innerHTML = ''; return; }
+  const ob = p.obd || {}, ds = c.dataset, vk = c.vehicle_kinds || {};
   const plan = `<div style="font-size:12.5px; line-height:1.7;">
-      <b>${t('1차년도 확보 계획')}</b> — ${t('차량 OBD')} ${p.obd.vehicles}${t('대')} × ${t('주')} ${p.obd.per_vehicle_week}${t('회')} × ${p.obd.weeks}${t('주')} = <b>${fmtInt(p.obd.count)}</b>
-      + ${t('CPO 거점 세션')} ${t('주')} ${p.cpo.per_week}${t('건')} × ${p.cpo.weeks}${t('주')} = <b>${fmtInt(p.cpo.count)}</b>
-      → <b>${fmtInt(p.total)}${t('건')}</b> · ${t('이탈')} ${p.attrition_pct}% ${t('반영 시')} <b>${fmtInt(p.total_with_attrition)}${t('건')}</b> (${t('목표')} ${fmtInt(p.target)}${t('건')})
-      <span class="muted"> · ${t('서포터즈 차량의 충전 세션은 OBD로 세므로 CPO 건수에서 제외')}</span></div>`;
+      <b>${t('1차년도 데이터셋 확보 계획')}</b> — ${t('A 서포터즈 결합형')} ${ob.vehicles}${t('대')} × (${t('충전')} ${t('주')} ${ob.per_vehicle_week}${t('회')} + ${t('운행')} ${t('주')} ${ob.drive_per_vehicle_week || 0}${t('회')}) × ${ob.weeks}${t('주')} = <b>${fmtInt(ob.count)}</b>
+      + ${t('B 거점 결합형')} ${t('주')} ${p.cpo.per_week}${t('건')} × ${p.cpo.weeks}${t('주')} = <b>${fmtInt(p.cpo.count)}</b>
+      → ${t('이탈')} ${p.attrition_pct}% ${t('반영 시')} <b>${fmtInt(p.total_with_attrition)}${t('건')}</b> × ${t('결합 성공률')} ${p.join_rate_pct}% = <b>${fmtInt(p.expected)}${t('건')}</b> (${t('목표')} ${fmtInt(p.target)}${t('건')}, ${t('달성 조건')} r ≥ ${p.min_join_rate_pct}%)
+      <span class="muted"> · ${t('1건 = 이벤트(운행·충전·거점 충전) × ① 차량·충전기 + ② AI 학습 블록')}${(ob.drive_per_vehicle_week || 0) ? '' : ' · ' + t('운행 건은 계획 미산입(추가 확보분)')}</span></div>`
+    + (ds ? `<div style="font-size:12px; margin-top:2px;">${t('결합 데이터셋')}: ${t('운행')} ${fmtInt((ds.by_kind.drive || {}).counted)} · ${t('차량 충전')} ${fmtInt((ds.by_kind.charge || {}).counted)} · ${t('거점 충전')} ${fmtInt((ds.by_kind.site_charge || {}).counted)} → <b>${t('성과 산입')} ${fmtInt(ds.counted)}</b>
+      · ${t('결합 성공률')} <b style="color:${ds.join_rate_ok === false ? 'var(--danger, #d92d20)' : 'inherit'}">${ds.join_rate_pct == null ? '-' : ds.join_rate_pct + '%'}</b>
+      · ${t('충전기 세션과 결합된 서포터즈 충전')} ${fmtInt(ds.supporter_charges_linked_to_charger)}</div>` : (vk.charge != null ? `<div style="font-size:12px; margin-top:2px;">${t('차량 세션')}: ${t('충전')} ${fmtInt(vk.charge)} · ${t('운행')} ${fmtInt(vk.drive)}</div>` : ''));
   const funnel = f ? `<div style="font-size:12px; color:var(--muted); margin-top:2px;">${t('충전 세션 건수')}: ${t('원천')} ${fmtInt(f.raw)} → ${t('유효')} ${fmtInt(f.valid)} → ${t('중복 제거 후')} ${fmtInt(f.deduplicated)} → ${t('서포터즈 세션 제외')} −${fmtInt(f.supporter_excluded)} → <b>${t('성과 산입')} ${fmtInt(f.counted)}</b></div>` : '';
   const rows = w.rows || [];
   const th = w.thresholds || {};
-  const table = rows.length ? `<table style="margin-top:6px;"><thead><tr><th>${t('주 시작일')}</th><th class="num">${t('활동 차량')}</th><th class="num">${t('OBD 세션')}</th><th class="num">${t('CPO 세션')}</th><th class="num">${t('주간 계')}</th><th class="num">${t('계획 대비')}</th><th class="num">${t('누적')}</th><th class="num">${t('누적 계획 대비')}</th></tr></thead><tbody>` +
-      rows.slice().reverse().map(r => `<tr><td>${r.week_start}</td><td class="num">${r.active_vehicles}</td><td class="num">${fmtInt(r.obd)}</td><td class="num">${fmtInt(r.cpo)}</td><td class="num">${fmtInt(r.total)}</td>
+  const table = rows.length ? `<table style="margin-top:6px;"><thead><tr><th>${t('주 시작일')}</th><th class="num">${t('활동 차량')}</th><th class="num">${t('OBD 충전')}</th><th class="num">${t('OBD 운행')}</th><th class="num">${t('CPO 세션')}</th><th class="num">${t('주간 계')}</th><th class="num">${t('계획 대비')}</th><th class="num">${t('누적')}</th><th class="num">${t('누적 계획 대비')}</th></tr></thead><tbody>` +
+      rows.slice().reverse().map(r => `<tr><td>${r.week_start}</td><td class="num">${r.active_vehicles}</td><td class="num">${fmtInt(r.obd)}</td><td class="num">${fmtInt(r.obd_drive || 0)}</td><td class="num">${fmtInt(r.cpo)}</td><td class="num">${fmtInt(r.total)}</td>
         <td class="num" style="color:${r.ratio_pct < (th.weekly_pct || 90) ? 'var(--danger, #d92d20)' : 'inherit'}">${r.ratio_pct}%</td><td class="num">${fmtInt(r.cumulative)}</td><td class="num">${r.cumulative_pct}%</td></tr>`).join('') + '</tbody></table>' : '';
   const msHtml = (ms.items || []).length ? `<div style="font-size:12px; margin-top:6px;"><b>${t('마일스톤')}</b> ${(ms.items || []).map(m => `<span class="tag ${m.done ? 'navy' : 'gray'}" style="margin-left:4px;">${m.date} ${escH(m.title)}</span>`).join('')}${ms.verified ? '' : ` <span class="muted">(${escH(ms.note || t('일정 확정 전'))})</span>`}</div>` : '';
   box.innerHTML = plan + funnel + msHtml + (rows.length ? `<details id="collection-weekly" ${collectionPlanOpen ? 'open' : ''} style="margin-top:6px;"><summary style="cursor:pointer; font-size:12.5px; font-weight:600;">${t('주간 점검표')} (${t('계획')} ${t('주')} ${fmtInt((w.plan || {}).total)}${t('건')} · ${t('90% 미만 2주 연속 시 대응 조치, OBD 80% 미만 2주 연속 시 거점 세션 샘플링 확대')})</summary>${table}</details>` : '');

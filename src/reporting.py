@@ -89,13 +89,27 @@ def build_results_workbook(payload: dict) -> bytes:
     col0 = kpi.get("collection") or {}
     plan = col0.get("data_plan") or {}
     if plan:
-        _table(ws, ["원천", "산출식", "계획(건)"], [
-            ["차량 OBD 세션", f"{plan['obd']['vehicles']}대 × 주 {plan['obd']['per_vehicle_week']}회 × {plan['obd']['weeks']}주", plan["obd"]["count"]],
-            ["CPO 거점 충전 세션(서포터즈 차량 세션 제외)", f"주 {plan['cpo']['per_week']}건 × {plan['cpo']['weeks']}주", plan["cpo"]["count"]],
-            ["합계", "", plan["total"]],
-            [f"서포터즈 이탈 {plan['attrition_pct']}% 반영 시", "", plan["total_with_attrition"]],
-            ["목표", "", plan["target"]],
-        ], "1차년도 데이터 확보 계획(평가의견 4·14)")
+        _table(ws, ["구분", "산출식", "계획(건)"], [
+            ["A 서포터즈 결합형 — 충전", f"{plan['obd']['vehicles']}대 × 주 {plan['obd']['per_vehicle_week']}회 × {plan['obd']['weeks']}주", plan["obd"].get("charge_count", plan["obd"]["count"])],
+            ["A 서포터즈 결합형 — 운행", f"{plan['obd']['vehicles']}대 × 주 {plan['obd'].get('drive_per_vehicle_week', 0)}회 × {plan['obd']['weeks']}주"
+             + (" (실측 후 입력, 0이면 미산입)" if not plan["obd"].get("drive_per_vehicle_week") else ""), plan["obd"].get("drive_count", 0)],
+            ["B 거점 결합형(서포터즈 차량 세션 제외)", f"주 {plan['cpo']['per_week']}건 × {plan['cpo']['weeks']}주", plan["cpo"]["count"]],
+            ["합계", "A + B", plan["total"]],
+            [f"서포터즈 이탈 {plan['attrition_pct']}% 반영", "A × (1 − 이탈률) + B", plan["total_with_attrition"]],
+            [f"결합 성공률 {plan.get('join_rate_pct', 100)}% 적용(N)", "× r(② AI 학습 블록 결합 성공률)", plan.get("expected", plan["total_with_attrition"])],
+            ["목표", f"달성 조건 r ≥ {plan.get('min_join_rate_pct')}%", plan["target"]],
+        ], "1차년도 데이터셋 확보 계획(평가의견 4·14) — 1건 = 이벤트(운행·충전·거점 충전) × [① 차량·충전기 + ② AI 학습 블록]")
+    ds = col0.get("dataset")
+    if ds:
+        bk = ds.get("by_kind") or {}
+        _table(ws, ["이벤트", "건수", "성과 산입(결합 성공)"], [
+            ["차량 운행(A)", (bk.get("drive") or {}).get("events"), (bk.get("drive") or {}).get("counted")],
+            ["차량 충전(A)", (bk.get("charge") or {}).get("events"), (bk.get("charge") or {}).get("counted")],
+            ["거점 충전(B)", (bk.get("site_charge") or {}).get("events"), (bk.get("site_charge") or {}).get("counted")],
+            ["합계", ds.get("events"), ds.get("counted")],
+            ["② AI 학습 블록 결합 성공률(%)", ds.get("join_rate_pct"), f"조건 ≥ {ds.get('min_join_rate_pct')}%"],
+            ["서포터즈 충전 ↔ 충전기 세션 결합(건)", ds.get("supporter_charges_linked_to_charger"), "-"],
+        ], "실증 데이터셋(결합 레코드) 현황")
     f = col0.get("funnel")
     if f:
         _table(ws, ["단계", "건수"], [["원천 행", f["raw"]], ["유효(필수 필드·충전량>0)", f["valid"]], ["중복 제거 후", f["deduplicated"]],

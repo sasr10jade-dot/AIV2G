@@ -30,8 +30,8 @@ def plan_target_evaluations() -> tuple[dict, dict]:
         if hit and hit[0] == key and time.time() - hit[1] < _EVAL_TTL_SEC:
             return hit[2], hit[3]
         cfg = SimConfig()
-        ev_df, _ch, grid_df, _real = source.load_scenario(cfg)
-        city_hourly = build_city_hourly(ev_df, grid_df, cfg)
+        ev_df, ch_df, grid_df, _real = source.load_scenario(cfg)
+        city_hourly = build_city_hourly(ev_df, grid_df, cfg, charger_df=ch_df)
         evaluations = {tc: evaluate_plan_targets(city_hourly, tc) for tc in KNOWN_TARGETS}
         prov = source.provenance()
         _eval_cache["v"] = (key, time.time(), evaluations, prov)
