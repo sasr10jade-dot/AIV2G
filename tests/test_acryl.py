@@ -41,7 +41,7 @@ def _batch(**over):
 def test_export_pseudonymizes_and_writes_manifest_with_hashes():
     m = link.export_training_dataset("opuser", cfg=SMALL)
     names = {f["name"] for f in m["files"]}
-    assert names == {"ev_telemetry.csv", "charger_sessions.csv", "grid_signal.csv", "city_hourly.csv"}
+    assert names == {"ev_telemetry.csv", "charger_sessions.csv", "grid_signal.csv", "city_hourly.csv", "dataset.csv"}
     ev = pd.read_csv(link.export_file(m["export_id"], "ev_telemetry.csv"))
     assert ev["ev_id"].str.startswith("PE-").all()                       # 가명 ID
     assert not any(c in ev.columns for c in ("plate", "username"))         # 식별정보 컬럼 없음
@@ -98,7 +98,7 @@ def test_receive_batch_is_idempotent_and_latest_issue_wins():
     row = fc[fc["timestamp"] == pd.Timestamp("2027-01-10 05:00")].iloc[0]
     assert row["value"] == 99.0 and row["model_version"] == "1.0.1"
     st = {s["target"]: s for s in link.forecast_status()}
-    assert st["ev_charging_demand_kw"]["batches"] == 2 and st["power_demand_mw"]["batches"] == 0
+    assert st["ev_charging_demand_kw"]["batches"] == 2 and st["ev_available_v2g_kwh"]["batches"] == 0 and "power_demand_mw" not in st
 
 
 @pytest.mark.parametrize("over, msg", [

@@ -1,7 +1,8 @@
 """㈜아크릴 예측모델 연계 — 계획서 5.2 '기관 간 연계(인터페이스) 및 책임'의 코드화.
 
   아우토크립트 → 아크릴  학습용 정제 데이터(가명처리) 제공. 1차 학습용 데이터는 2027-01 초 누적분 제공 목표.
-  아크릴 → 아우토크립트  예측 추론 결과(충전수요·전력수요·EV 가용자원) 일 배치 제공 → V2G 의사결정 입력.
+  아크릴 → 아우토크립트  예측 추론 결과(주: 시간대별 EV 충전수요, 보조: EV 가용 배터리 자원) 일 배치 제공 → V2G 의사결정 입력.
+                          전력수요는 예측 대상이 아니라 입력 변수(2026-11-23 결정).
 
 데이터 제공(export)
 - 차량 ID는 가명(`pseudonym.pseudo_id("ev", …)`)으로 바꾸고, 번호판 등 식별정보 컬럼은 싣지 않는다.
@@ -29,7 +30,7 @@ import pandas as pd
 
 from src.datagen.config import SimConfig
 from src.paths import DATA_DIR
-from src.pipeline import store
+from src.pipeline import dataset, store
 from src.pipeline.source import load_scenario
 from src.pipeline.store import build_city_hourly
 from src.privacy import consent
@@ -39,7 +40,6 @@ EXPORT_DIR = DATA_DIR / "exports"
 PROVIDER = "acryl"
 FORECAST_TARGETS = {
     "ev_charging_demand_kw": "EV 충전수요(kW)",
-    "power_demand_mw": "시간대별 전력수요(MW)",
     "ev_available_v2g_kwh": "EV 가용 배터리 자원(kWh)",
 }
 MAX_POINTS_PER_BATCH = 5000
@@ -50,10 +50,16 @@ EXPORT_COLUMNS = {
     "ev_telemetry": ["timestamp", "ev_id", "ev_type", "vehicle_model", "zone", "soc_pct", "connected", "driving",
                      "charging_kw", "battery_capacity_kwh", "v2g_capable"],
     "charger_sessions": ["session_id", "charger_id", "zone", "start_ts", "end_ts", "duration_h", "energy_kwh", "ev_id",
-                         "operator_id", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code"],
+                         "operator_id", "charger_type", "connector_type", "avg_power_kw", "stop_reason", "error_code",
+                         "site_id", "soc_start_pct", "soc_end_pct", "vehicle_model"],
     "grid_signal": ["timestamp", "power_demand_mw", "renewable_gen_mw", "temperature_c", "price_krw_per_kwh", "is_holiday"],
     "city_hourly": ["timestamp", "power_demand_mw", "renewable_gen_mw", "temperature_c", "price_krw_per_kwh", "is_holiday",
-                    "ev_charging_demand_kw", "ev_available_v2g_kwh", "ev_connected_count"],
+                    "ev_charging_demand_kw", "supporter_charging_demand_kw", "site_charging_demand_kw",
+                    "ev_available_v2g_kwh", "ev_connected_count"],
+    # 실증 데이터셋(결합 레코드) — 1건 = 유효 이벤트 × [① 차량·충전기 결합 + ② AI 학습 데이터](계획서 3.3)
+    "dataset": ["source", "kind", "ev_id", "start_ts", "end_ts", "soc_start_pct", "soc_end_pct", "energy_kwh",
+                "vehicle_model", "battery_capacity_kwh", "charger_id", "site_id", "power_demand_mw", "renewable_gen_mw",
+                "temperature_c", "price_krw_per_kwh", "is_holiday", "block1_ok", "context_ok", "counted", "project_year"],
 }
 
 
@@ -117,6 +123,7 @@ def export_training_dataset(actor: str, period_start: str | None = None, period_
         "charger_sessions": (_clip_period(charger_df, "start_ts", start, end), origin_ev),
         "grid_signal": (_clip_period(grid_df, "timestamp", start, end), "public" if is_real else "synthetic"),
         "city_hourly": (_clip_period(city, "timestamp", start, end), origin_ev),
+        "dataset": (_clip_period(dataset.build_dataset(ev_df, charger_df, grid_df), "start_ts", start, end), origin_ev),
     }
     export_id = "EXP-" + datetime.now(timezone.utc).strftime("%Y%m%d") + "-" + uuid.uuid4().hex[:8]
     folder = (out_dir or EXPORT_DIR) / export_id
@@ -136,7 +143,7 @@ def export_training_dataset(actor: str, period_start: str | None = None, period_
     bundle_hash = hashlib.sha256("".join(f["sha256"] for f in files).encode()).hexdigest()
     manifest = {
         "export_id": export_id, "created_at": _now(), "created_by": actor, "recipient": "㈜아크릴",
-        "purpose": "AI 예측모델(충전수요·전력수요·가용자원) 학습·검증 — 사업 목적 범위 내 이용 후 파기",
+        "purpose": "AI 예측모델(주: 시간대별 EV 충전수요, 보조: EV 가용 배터리 자원) 학습·검증 — 사업 목적 범위 내 이용 후 파기",
         "period": {"start": start.date().isoformat() if start is not None else None,
                    "end": end.date().isoformat() if end is not None else None},
         "pseudonymized": ["ev_id"], "excluded_vehicles": len(excluded), "is_real_data": bool(is_real),
