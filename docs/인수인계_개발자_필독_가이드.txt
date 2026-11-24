@@ -37,7 +37,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 
 [3단계] 서버 기동 — 두 가지 방법
   (A) 내 PC에서만:   python -m uvicorn src.api:app --host 127.0.0.1 --port 5050 --reload
-  (B) 사내 와이파이 개발 서버 — 서버 PC 192.168.27.171(macOS, 계정 jade), 폴더 ~/AIV2G-dev, 포트 5050
+  (B) 사내 와이파이 개발 서버 — 서버 PC 192.168.35.92(macOS, 계정 jade), 폴더 ~/AIV2G-dev, 포트 5050
         상시 구동: launchd 서비스 kr.aiv2g.dev (로그인 시 자동 시작, 죽으면 자동 재시작)
         코드 반영: cd ~/AIV2G-dev && git pull origin main && launchctl kickstart -k gui/$(id -u)/kr.aiv2g.dev
         로그:      ~/AIV2G-dev/output/dev_server.log
@@ -46,10 +46,10 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
         직접 실행: scripts/run_dev_lan.sh 5050      (Windows PC에서는 scripts\run_dev_lan.cmd)
         HTTPS(휴대폰 앱 설치·PWA용): 포트 5443, launchd 서비스 kr.aiv2g.dev-https, 로그 output/dev_server_https.log
                    휴대폰 브라우저는 http 주소에서 앱 설치·서비스 워커를 막으므로, 내부 루트 인증서로 HTTPS를 연다.
-                   인증서: scripts/make_lan_cert.sh 192.168.27.171 → ~/AIV2G-dev/certs/ (저장소 제외, 개인키 권한 600,
+                   인증서: scripts/make_lan_cert.sh 192.168.35.92 → ~/AIV2G-dev/certs/ (저장소 제외, 개인키 권한 600,
                    서버 인증서 825일 — 만료 전 같은 명령을 다시 실행하면 CA는 그대로 두고 서버 인증서만 갱신)
-                   휴대폰: http://192.168.27.171:5050/install → '인증서 받기'로 lan-ca.crt 설치·신뢰(최초 1회)
-                           → https://192.168.27.171:5443/install 에서 앱 설치
+                   휴대폰: http://192.168.35.92:5050/install → '인증서 받기'로 lan-ca.crt 설치·신뢰(최초 1회)
+                           → https://192.168.35.92:5443/install 에서 앱 설치
                    코드 반영 시 두 서비스 모두 재시작: launchctl kickstart -k gui/$(id -u)/kr.aiv2g.dev-https
                    두 포트가 로그인을 함께 쓰려면 .env의 SESSION_SECRET이 고정돼 있어야 한다(현재 설정됨).
   * 앱 객체는 src.api:app 이다(예전 문서의 src.api.main:app 은 존재하지 않는다).
@@ -58,13 +58,13 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
   * 내부망 전용이다. 5050·5443 포트를 공유기 포트포워딩·터널로 외부에 열지 않는다. 서비스가 안정되면 다른 서버로 이관한다.
   * macOS에는 LightGBM이 쓰는 libomp가 없어 run_dev_lan.sh가 scikit-learn에 포함된 libomp를 잡아 준다(Homebrew 불필요).
 
-[4단계] 브라우저 접속 (내 PC면 127.0.0.1, 사내망이면 192.168.27.171)
-  - 개발자 진입점 (추천): http://192.168.27.171:5050/dev
-  - PC 운영 대시보드 : http://192.168.27.171:5050/dashboard
-  - 가입 승인 관리   : http://192.168.27.171:5050/approvals
-  - 웹앱 관리 (어드민) : http://192.168.27.171:5050/admin
-  - 모바일 서포터즈 앱: http://192.168.27.171:5050/app   (앱 설치는 https://192.168.27.171:5443/install)
-  - 대화형 API 문서  : http://192.168.27.171:5050/docs
+[4단계] 브라우저 접속 (내 PC면 127.0.0.1, 사내망이면 192.168.35.92)
+  - 개발자 진입점 (추천): http://192.168.35.92:5050/dev
+  - PC 운영 대시보드 : http://192.168.35.92:5050/dashboard
+  - 가입 승인 관리   : http://192.168.35.92:5050/approvals
+  - 웹앱 관리 (어드민) : http://192.168.35.92:5050/admin
+  - 모바일 서포터즈 앱: http://192.168.35.92:5050/app   (앱 설치는 https://192.168.35.92:5443/install)
+  - 대화형 API 문서  : http://192.168.35.92:5050/docs
 
 --------------------------------------------------------------------------------
 3. 2026-11-19 요구사항 보강 내역 (요구사항정의서 v1.0 미흡·누락 대응)

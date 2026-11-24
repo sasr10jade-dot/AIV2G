@@ -12,7 +12,7 @@
 # 이미 CA가 있으면 CA는 그대로 두고 서버 인증서만 다시 만든다(휴대폰에 다시 설치할 필요 없음).
 set -e
 LAN_IP="$( (ipconfig getifaddr en0 || ipconfig getifaddr en1 || hostname -I | cut -d" " -f1) 2>/dev/null | head -1)"
-LAN_IP="${LAN_IP:-192.168.27.171}"
+LAN_IP="${LAN_IP:-192.168.35.92}"
 IP="${1:-$LAN_IP}"
 cd "$(dirname "$0")/.."
 mkdir -p certs
