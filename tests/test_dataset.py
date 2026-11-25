@@ -57,7 +57,8 @@ def test_one_record_is_event_with_vehicle_charger_and_ai_blocks():
     assert charge["charger_id"] == "C1" and charge["charger_session_id"] == "S1"          # 차량 충전 ↔ 충전기 세션 결합
     assert charge["soc_start_pct"] == 70.0 and charge["energy_kwh"] == 14.0
     drive = ds[ds["kind"] == "drive"].iloc[0]
-    assert drive["soc_start_pct"] == 80.0 and drive["soc_end_pct"] == 72.0 and drive["energy_kwh"] == 0.0
+    assert drive["soc_start_pct"] == 80.0 and drive["soc_end_pct"] == 70.0 and drive["energy_kwh"] == 0.0   # 종료 SOC = 운행 직후(09시) 관측
+    assert charge["soc_end_pct"] == 80.0                                                                    # 다음 관측 없음 → 마지막 관측
     assert ds["context_ok"].all() and ds["counted"].all() and (ds["temperature_c"] == 5.0).all()
     s = dataset.summarize(ds)
     assert s["counted"] == 4 and s["join_rate_pct"] == 100.0 and s["supporter_charges_linked_to_charger"] == 1

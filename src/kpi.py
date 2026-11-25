@@ -214,6 +214,11 @@ def vehicle_session_table(ev_df: pd.DataFrame) -> pd.DataFrame:
     med = step.groupby(df["ev_id"]).transform("median").fillna(1.0)
     df["_step_h"] = step.fillna(med).clip(upper=1.0)
     df["_kwh"] = pd.to_numeric(df["charging_kw"], errors="coerce").fillna(0) * df["_step_h"]
+    # 종료 SOC = 이벤트 마지막 관측 다음 시각의 SOC(그 시간 동안의 운행·충전이 반영된 값). 다음 관측이 없거나 1시간 넘게 떨어지면 마지막 관측값
+    if "soc_pct" in df.columns:
+        nxt = df["soc_pct"].groupby(df["ev_id"]).shift(-1)
+        far = df["timestamp"].groupby(df["ev_id"]).diff(-1).abs() > pd.Timedelta(hours=1)
+        df["_soc_after"] = nxt.where(~far).fillna(df["soc_pct"])
     seg = df[state.notna() & (df["_seg"] > 0)]
     seg = seg[seg["_state"] == seg.groupby(["ev_id", "_seg"])["_state"].transform("first")]
     if seg.empty:
@@ -226,7 +231,7 @@ def vehicle_session_table(ev_df: pd.DataFrame) -> pd.DataFrame:
         "start_ts": g["timestamp"].first(),
         "end_ts": g["timestamp"].last() + pd.to_timedelta(g["_step_h"].last(), unit="h"),
         "soc_start_pct": g[soc].first() if soc else None,
-        "soc_end_pct": g[soc].last() if soc else None,
+        "soc_end_pct": g["_soc_after"].last() if soc else None,
         "energy_kwh": g["_kwh"].sum().round(3),
     }).reset_index(drop=True)
     out.loc[out["kind"] == "drive", "energy_kwh"] = 0.0
