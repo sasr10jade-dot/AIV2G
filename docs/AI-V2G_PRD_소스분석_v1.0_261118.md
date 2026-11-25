@@ -252,6 +252,7 @@ CPO 3사 REST/CSV ───────┼─▶ 표준 스키마·품질검증 
 | A15 | curated 저장 시 행마다 `data_source`(obd·cpo·public·participant_input·synthetic)·`generation`(measured·inferred·synthetic) 기록 | `src/pipeline/source.py` annotate_rows, ingest.py, cpo/sync.py |
 | Y2E01 | 대조 지역(대전·대구·제주) ASOS 기온 수집·실증 지역 비교 | `src/pipeline/region_compare.py`, `GET /ingest/regions/compare` |
 | Y2B01·Y2B02 | 현재 데이터(실측 우선) 드리프트 → 재학습 → 승격/거부 사이클, 서버 launchd 주간 배치(월 05:00) 등록·실행 확인 | `src/automation/scheduler.py` run_cycle_on_data, `scripts/run_retrain_cycle.py`, `scripts/register_retrain_launchd.sh` |
+| AI 지속 업무 C1~C4 | 일 배치(매일 04:30): 데이터셋 결합(C4) → 충전수요·가용 배터리 48시간 예측 갱신(C1) → 아크릴 예측 오차(C3) → 승인 서포터즈 차량별 충전 계획·앱 추천 발행(C2). 단계별 실패 격리·예외 기록 | `src/automation/daily_batch.py`, `scripts/run_daily_batch.py`, `scripts/register_daily_launchd.sh`, `GET /kpi/daily-batch` |
 
 ### 10.5 화면·운영 개선
 - 모든 화면: 데이터 요청 중 **딤 + 프로그레스 링**(`/loading.js`, 0.3초 이상 걸릴 때만, 자동 새로고침 제외). 대시보드의 상단 퍼센트 진행 막대는 제거.

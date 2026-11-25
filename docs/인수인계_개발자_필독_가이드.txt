@@ -43,6 +43,10 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
         로그:      ~/AIV2G-dev/output/dev_server.log
         재학습 배치: launchd kr.aiv2g.retrain(매주 월 05:00) — 등록 scripts/register_retrain_launchd.sh,
                    즉시 실행 launchctl kickstart gui/$(id -u)/kr.aiv2g.retrain, 결과 data/batch/retrain_history.jsonl
+        일 배치:   launchd kr.aiv2g.daily(매일 04:30) — 데이터 결합 → 예측 갱신 → 아크릴 오차 → 차량별 충전 계획·앱 추천
+                   등록 scripts/register_daily_launchd.sh, 즉시 실행 launchctl kickstart gui/$(id -u)/kr.aiv2g.daily,
+                   결과 data/batch/daily/<날짜>/, data/batch/daily_history.jsonl, 로그 output/daily.log,
+                   관리자 조회 GET /kpi/daily-batch. 추천은 앱 추천 기록에만 남기고 문자·푸시는 보내지 않는다.
         직접 실행: scripts/run_dev_lan.sh 5050      (Windows PC에서는 scripts\run_dev_lan.cmd)
         HTTPS(휴대폰 앱 설치·PWA용): 포트 5443, launchd 서비스 kr.aiv2g.dev-https, 로그 output/dev_server_https.log
                    휴대폰 브라우저는 http 주소에서 앱 설치·서비스 워커를 막으므로, 내부 루트 인증서로 HTTPS를 연다.

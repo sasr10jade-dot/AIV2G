@@ -168,6 +168,14 @@ def dataset_status(sample: int = Query(0, ge=0, le=50, description="결합 레�
     return out
 
 
+@router.get("/kpi/daily-batch", summary="일 배치 실행 이력 — 데이터 결합·예측 갱신·아크릴 오차·충전 계획/추천(AI 지속 업무 C1~C4)",
+            dependencies=[Depends(require_admin)])
+def daily_batch_history(limit: int = Query(14, ge=1, le=90)) -> dict:
+    from src.automation import daily_batch
+    items = daily_batch.history(limit)
+    return {"schedule": "매일 04:30 (서버 launchd kr.aiv2g.daily)", "count": len(items), "items": items}
+
+
 @router.get("/kpi/management", summary="성과·관리 지표판 — 필수성과 5·관리지표 7·경제적 편익 4·원천별 데이터·레퍼런스·보상 단계(평가의견 5·6·8·10·11)",
             dependencies=[Depends(require_admin)])
 def management_board(evaluate: bool = Query(False, description="true면 예측 정확도를 지금 계산(수십 초), 아니면 캐시된 평가만 사용")) -> dict:
