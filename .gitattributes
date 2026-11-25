@@ -1,0 +1,13 @@
+# 줄바꿈 규칙: 저장소에는 LF로 두고, 윈도우 전용 스크립트는 CRLF로 꺼낸다
+* text=auto
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.sh text eol=lf
+*.xlsx binary
+*.hwpx binary
+*.docx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
