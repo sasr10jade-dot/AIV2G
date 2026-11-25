@@ -20,7 +20,7 @@ OBDData/(실차 원본), downloads/(APK). 이 파일들은 USB 등으로 별도 
 - config/        : CPO 3사 연계, 공공 API, 요금표, 거점, 차종(제외 차종 포함), VPP·정산 가정값(vpp_settlement.json)
 - data/          : SQLite DB(curated.db·privacy.db), 계정(users.json), CPO 수신 실적(cpo_status.json) — 실행 중 생성
 - scripts/       : 서버 구동(run_dev_lan.cmd), CPO 동기화, 실차 OBD 배치, API 문서 생성 등
-- tests/         : pytest 테스트 스위트(588개)
+- tests/         : pytest 테스트 스위트(593개)
 - android/       : 서포터즈 모바일 TWA 안드로이드 앱 빌드 프로젝트
 
 --------------------------------------------------------------------------------
