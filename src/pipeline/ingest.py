@@ -25,7 +25,7 @@ def run(cfg: SimConfig | None = None) -> dict:
         raise ValueError(f"데이터 품질 검증 실패: {failed}\n{quality_md}")
 
     weekly_report = store.build_ev_weekly_report(ev_df, cfg)
-    city_hourly = store.build_city_hourly(ev_df, grid_df, cfg)
+    city_hourly = store.build_city_hourly(ev_df, grid_df, cfg, charger_df=charger_df)   # 라벨 = 서포터즈 + 거점(2026-11-23)
 
     from .source import annotate_rows, provenance
     prov = provenance()   # 행마다 출처(data_source)·생성방식(generation)을 붙여 저장한다(요구사항 A15)

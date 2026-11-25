@@ -1,0 +1,527 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>AI-V2G DB 구조(ERD) v1.0</title>
+<style>
+body{font-family:'Malgun Gothic',Arial,sans-serif;margin:24px 32px;color:#222;line-height:1.5}
+h1{font-size:22px;margin-bottom:4px} h2{font-size:18px;margin-top:28px;border-bottom:2px solid #345;padding-bottom:4px}
+h3{font-size:15px;margin:18px 0 6px} .sub{color:#666;font-size:13px}
+table{border-collapse:collapse;font-size:13px;margin:6px 0} th,td{border:1px solid #bbb;padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#eef2f6} code{background:#f3f3f3;padding:0 3px;border-radius:3px}
+.erd{overflow:auto;border:1px solid #ccc;padding:12px;background:#fff} li{font-size:13px;margin:3px 0}
+</style></head><body>
+<h1>AI-V2G DB 구조(ERD) v1.0</h1>
+<div class="sub">기준: 2026-11-25, 개발 서버 실제 DB 스키마와 소스 코드(데이터 내용은 읽지 않음). 도표는 인터넷 연결 시 표시됩니다(Mermaid).</div>
+<h2>1. 저장소 구성</h2><table><tr><th>파일</th><th>구분</th><th>담는 것</th><th>테이블 수</th></tr>
+<tr><td><code>data/curated.db</code></td><td>운영 DB(SQLite)</td><td>수집 데이터·AI 학습 테이블·추천·아크릴 연계·서포터즈·모의 정산/보상·예외 기록(+ schema_migrations)</td><td>22</td></tr>
+<tr><td><code>data/privacy.db</code></td><td>개인정보·감사 DB(SQLite)</td><td>동의, 해시체인 감사로그, 설문, 앱 공지·문구</td><td>7</td></tr>
+<tr><td><code>data/batch/batch_state.db</code></td><td>OBD 배치 상태(SQLite)</td><td>수신한 OBD 원본 파일의 처리 상태(중복·격리 판정)</td><td>1</td></tr>
+<tr><td><code>data/users.json</code></td><td>계정 저장소(JSON)</td><td>로그인 계정·권한·차주 본인 차량</td><td>-</td></tr>
+<tr><td><code>data/charge_tags.json</code></td><td>충전 인증 태그(JSON)</td><td>RFID/회원카드 태그 가명(PT-) ↔ 서포터즈 차량</td><td>-</td></tr>
+</table><h2>2. ERD</h2><div class='sub'>점선 = 시각(timestamp)으로 결합하는 관계, 실선 = ID로 잇는 관계. <code>EV_KEY</code>는 공통 차량 ID(테이블 아님). 도메인 상세도에서 컬럼 없이 이름만 있는 상자는 다른 도메인 테이블입니다.</div>
+<h3>2-0. 전체 관계도(테이블 이름만)</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    users_json ||--o{ vehicle_registrations : &quot;가입 신청&quot;
+    users_json ||--o{ odometer_logs : &quot;주행거리 기록&quot;
+    users_json |o--o| EV_KEY : &quot;차주 본인 차량&quot;
+    vehicle_registrations |o--o| EV_KEY : &quot;승인 시 ev_id 부여&quot;
+    vehicle_registrations ||--o{ vehicle_replacements : &quot;예비 투입&quot;
+    EV_KEY ||--o{ vehicle_replacements : &quot;교체 대상&quot;
+    EV_KEY ||--o{ charge_tags_json : &quot;충전 인증 태그&quot;
+    EV_KEY ||--o{ ev_telemetry : &quot;OBD 시계열&quot;
+    EV_KEY ||--o{ ev_weekly_report : &quot;주간 집계&quot;
+    EV_KEY |o--o{ charger_sessions : &quot;서포터즈 충전 결합&quot;
+    EV_KEY ||--o{ raw_files : &quot;OBD 원본 파일&quot;
+    charger_registry ||--o{ charger_sessions : &quot;충전기&quot;
+    grid_signal ||--|| city_hourly : &quot;같은 시각(외부 변수)&quot;
+    ev_telemetry }o..|| city_hourly : &quot;시간별 집계&quot;
+    charger_sessions }o..|| city_hourly : &quot;거점 수요 시간 분배&quot;
+    external_forecasts }o..|| city_hourly : &quot;같은 시각 오차 비교&quot;
+    EV_KEY ||--o{ advisories : &quot;충전 추천&quot;
+    EV_KEY ||--o{ consents : &quot;동의&quot;
+    EV_KEY |o--o| ess_group_members : &quot;ESS 그룹&quot;
+    EV_KEY ||--o{ virtual_trades : &quot;모의 거래&quot;
+    settlement_runs ||--o{ virtual_trades : &quot;정산 회차&quot;
+    virtual_trades ||--o{ point_ledger : &quot;포인트 적립&quot;
+    EV_KEY ||--o{ point_ledger : &quot;포인트&quot;
+    EV_KEY ||--o{ settlement_inquiries : &quot;정산 문의&quot;
+    mission_settings ||--o{ mission_completions : &quot;미션&quot;
+    EV_KEY ||--o{ mission_completions : &quot;미션 달성&quot;
+    surveys ||--o{ survey_responses : &quot;응답&quot;
+    EV_KEY ||--o{ survey_responses : &quot;응답자&quot;
+    dataset_exports
+    modeling_issues
+    dashboard_run_history
+    audit_log
+    audit_checkpoint
+    app_notices
+    app_content
+</pre></div>
+<h3>2-1. 계정·서포터즈</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    EV_KEY {
+        TEXT ev_id PK &quot;차량 ID (EV-001 / 앱 가입 EV-U0001)&quot;
+    }
+    users_json {
+        TEXT username PK &quot;로그인 ID&quot;
+        TEXT password_hash &quot;해시만 저장&quot;
+        TEXT role &quot;admin / owner / viewer&quot;
+        TEXT owned_ev_id FK &quot;차주 계정의 본인 차량&quot;
+        TEXT created_at
+    }
+    vehicle_registrations {
+        TEXT registration_id PK
+        TEXT username FK
+        TEXT plate &quot;마스킹 표시값&quot;
+        TEXT plate_enc &quot;번호판 암호문&quot;
+        TEXT plate_hash &quot;중복 확인용 해시&quot;
+        TEXT vehicle_model
+        TEXT occupation
+        TEXT region_sido
+        TEXT region_sigungu
+        TEXT departure_time &quot;평소 출발 시각&quot;
+        REAL target_soc_pct &quot;20~100&quot;
+        REAL min_soc_pct &quot;10~90&quot;
+        REAL odometer_km
+        TEXT status &quot;pending / approved / rejected&quot;
+        TEXT ev_id FK &quot;승인 시 부여&quot;
+        TEXT consent_version
+        TEXT consented_at
+        TEXT created_at
+        TEXT reviewed_by
+        TEXT reviewed_at
+        TEXT reject_reason
+        INTEGER reserve &quot;예비 참여자&quot;
+        TEXT reserved_at
+        TEXT reserve_note
+        TEXT affiliation &quot;private / public 등&quot;
+    }
+    odometer_logs {
+        TEXT username FK
+        TEXT recorded_at
+        REAL odometer_km
+        TEXT source &quot;signup / profile / app&quot;
+    }
+    vehicle_replacements {
+        INTEGER replacement_id PK
+        TEXT inactive_ev_id FK &quot;빠지는 차량&quot;
+        TEXT registration_id FK &quot;투입되는 예비 신청&quot;
+        TEXT new_ev_id FK
+        TEXT reason
+        TEXT replaced_at
+        TEXT replaced_by
+    }
+    charge_tags_json {
+        TEXT tag_pseudo_id PK &quot;PT- 가명 (태그 원문 미저장)&quot;
+        TEXT ev_id FK
+        TEXT registered_at
+        TEXT by
+    }
+    users_json ||--o{ vehicle_registrations : &quot;가입 신청&quot;
+    users_json ||--o{ odometer_logs : &quot;주행거리 기록&quot;
+    users_json |o--o| EV_KEY : &quot;차주 본인 차량&quot;
+    vehicle_registrations |o--o| EV_KEY : &quot;승인 시 ev_id 부여&quot;
+    vehicle_registrations ||--o{ vehicle_replacements : &quot;예비 투입&quot;
+    EV_KEY ||--o{ vehicle_replacements : &quot;교체 대상&quot;
+    EV_KEY ||--o{ charge_tags_json : &quot;충전 인증 태그&quot;
+</pre></div>
+<h3>2-2. 수집 데이터(실측 연계 시 생성)</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    EV_KEY {
+        TEXT ev_id PK &quot;차량 ID (EV-001 / 앱 가입 EV-U0001)&quot;
+    }
+    ev_telemetry {
+        TEXT timestamp &quot;1시간 단위&quot;
+        TEXT ev_id FK
+        TEXT ev_type
+        TEXT vehicle_model
+        INTEGER zone
+        REAL soc_pct
+        INTEGER connected
+        INTEGER driving
+        REAL charging_kw
+        REAL battery_capacity_kwh
+        INTEGER v2g_capable
+        TEXT data_source &quot;obd / synthetic&quot;
+        TEXT generation &quot;measured / inferred / synthetic&quot;
+    }
+    charger_registry {
+        TEXT charger_id PK
+        TEXT operator_id
+        TEXT operator_name
+        TEXT site_id &quot;거점&quot;
+        INTEGER zone
+        TEXT charger_type
+        TEXT connector_type
+        REAL max_kw
+        INTEGER v2g_capable
+        INTEGER active
+    }
+    charger_sessions {
+        TEXT session_id PK &quot;운영사:세션ID&quot;
+        TEXT charger_id FK
+        INTEGER zone
+        TEXT start_ts
+        TEXT end_ts
+        REAL duration_h
+        REAL energy_kwh
+        TEXT ev_id FK &quot;서포터즈 차량일 때만&quot;
+        TEXT operator_id
+        TEXT source
+        TEXT charger_type
+        TEXT connector_type
+        REAL avg_power_kw
+        TEXT stop_reason
+        TEXT error_code
+        TEXT site_id
+        REAL soc_start_pct
+        REAL soc_end_pct
+        TEXT vehicle_model
+        TEXT data_source &quot;cpo&quot;
+        TEXT generation &quot;measured&quot;
+    }
+    grid_signal {
+        TEXT timestamp PK &quot;1시간 단위&quot;
+        REAL power_demand_mw
+        REAL renewable_gen_mw
+        REAL temperature_c
+        REAL price_krw_per_kwh
+        INTEGER is_holiday
+        TEXT data_source &quot;public / synthetic&quot;
+        TEXT generation
+    }
+    city_hourly {
+        TEXT timestamp PK &quot;AI 학습 테이블&quot;
+        REAL power_demand_mw
+        REAL renewable_gen_mw
+        REAL temperature_c
+        REAL price_krw_per_kwh
+        INTEGER is_holiday
+        REAL ev_charging_demand_kw &quot;예측 대상(주)&quot;
+        REAL supporter_charging_demand_kw
+        REAL site_charging_demand_kw
+        REAL ev_available_v2g_kwh &quot;예측 대상(보조)&quot;
+        INTEGER ev_connected_count
+    }
+    ev_weekly_report {
+        TEXT ev_id FK
+        INTEGER week &quot;데이터 시작일 기준 주차&quot;
+        TEXT ev_type
+        INTEGER zone
+        REAL avg_soc_pct
+        REAL min_soc_pct
+        REAL total_charging_kwh
+        INTEGER driving_hours
+        INTEGER connected_hours
+    }
+    raw_files {
+        TEXT file_key PK &quot;sha256|파일명 (batch_state.db)&quot;
+        TEXT sha256
+        TEXT filename
+        INTEGER size_bytes
+        TEXT data_date
+        TEXT plate
+        TEXT ev_id FK
+        TEXT received_ts
+        TEXT status &quot;shadow_ok / applied / quarantined / duplicate&quot;
+        TEXT processed_ts
+        INTEGER rows
+        TEXT detail
+    }
+    EV_KEY ||--o{ ev_telemetry : &quot;OBD 시계열&quot;
+    EV_KEY ||--o{ ev_weekly_report : &quot;주간 집계&quot;
+    EV_KEY |o--o{ charger_sessions : &quot;서포터즈 충전 결합&quot;
+    EV_KEY ||--o{ raw_files : &quot;OBD 원본 파일&quot;
+    charger_registry ||--o{ charger_sessions : &quot;충전기&quot;
+    grid_signal ||--|| city_hourly : &quot;같은 시각(외부 변수)&quot;
+    ev_telemetry }o..|| city_hourly : &quot;시간별 집계&quot;
+    charger_sessions }o..|| city_hourly : &quot;거점 수요 시간 분배&quot;
+    external_forecasts }o..|| city_hourly : &quot;같은 시각 오차 비교&quot;
+</pre></div>
+<h3>2-3. AI 예측·추천·운영</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    EV_KEY {
+        TEXT ev_id PK &quot;차량 ID (EV-001 / 앱 가입 EV-U0001)&quot;
+    }
+    external_forecasts {
+        TEXT batch_id PK
+        TEXT provider PK &quot;acryl&quot;
+        TEXT model_id
+        TEXT model_version
+        TEXT target PK &quot;충전수요 / 가용배터리&quot;
+        TEXT scope PK &quot;city&quot;
+        TEXT timestamp PK
+        REAL value
+        REAL lower
+        REAL upper
+        TEXT issued_at
+        TEXT received_at
+    }
+    advisories {
+        TEXT advisory_id PK &quot;ADV-&quot;
+        TEXT ev_id FK
+        TEXT created_at
+        TEXT channel &quot;dashboard / app / api&quot;
+        TEXT inputs &quot;JSON&quot;
+        TEXT plan &quot;JSON 충전·방전 구간&quot;
+        REAL net_krw
+        INTEGER verified
+        TEXT status &quot;issued / accepted / declined / expired&quot;
+        TEXT responded_at
+    }
+    dataset_exports {
+        TEXT export_id PK
+        TEXT created_at
+        TEXT created_by
+        TEXT period_start
+        TEXT period_end
+        TEXT tables &quot;JSON&quot;
+        TEXT row_counts &quot;JSON&quot;
+        TEXT sha256
+        TEXT path
+        TEXT destroyed_at
+        TEXT destroyed_by
+        TEXT destruction_note
+    }
+    modeling_issues {
+        INTEGER issue_id PK
+        TEXT fingerprint
+        TEXT stage &quot;ingest / forecast / retrain ...&quot;
+        TEXT kind &quot;error / exception / data&quot;
+        TEXT message
+        TEXT detail
+        INTEGER count
+        TEXT first_seen
+        TEXT last_seen
+        TEXT status &quot;open / resolved&quot;
+        TEXT resolved_at
+        TEXT resolved_by
+        TEXT resolution_note
+    }
+    dashboard_run_history {
+        TEXT generated_at
+        INTEGER n_ev
+        INTEGER weeks
+        REAL savings_krw
+        REAL savings_pct
+        REAL forecast_mae
+        REAL closed_loop_drift_pct
+        REAL closed_loop_improve_pct
+    }
+    external_forecasts }o..|| city_hourly : &quot;같은 시각 오차 비교&quot;
+    EV_KEY ||--o{ advisories : &quot;충전 추천&quot;
+</pre></div>
+<h3>2-4. VPP 모의 정산·보상</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    EV_KEY {
+        TEXT ev_id PK &quot;차량 ID (EV-001 / 앱 가입 EV-U0001)&quot;
+    }
+    ess_group_members {
+        TEXT ev_id PK
+        TEXT group_type
+        REAL score
+        TEXT reason
+        TEXT selected_at
+        TEXT selected_by
+    }
+    settlement_runs {
+        INTEGER run_id PK
+        TEXT period_from
+        TEXT period_to
+        TEXT status &quot;draft / confirmed / cancelled&quot;
+        TEXT totals &quot;JSON&quot;
+        TEXT created_at
+        TEXT created_by
+        TEXT decided_at
+        TEXT decided_by
+        TEXT note
+    }
+    virtual_trades {
+        INTEGER trade_id PK
+        TEXT ev_id FK
+        TEXT trade_date &quot;UNIQUE(ev_id, trade_date, generation)&quot;
+        TEXT affiliation
+        REAL peak_discharge_kwh
+        REAL absorb_kwh
+        REAL value_krw
+        INTEGER points
+        TEXT generation &quot;measured / inferred&quot;
+        TEXT data_source
+        TEXT settled_at
+        INTEGER run_id FK
+        REAL tou_krw
+        REAL peak_krw
+        REAL curtail_krw
+        TEXT consent_note
+    }
+    point_ledger {
+        INTEGER entry_id PK
+        TEXT ev_id FK
+        TEXT kind &quot;earn / redeem / adjust&quot;
+        INTEGER points
+        INTEGER trade_id FK
+        TEXT memo
+        TEXT created_at
+        TEXT created_by
+    }
+    settlement_inquiries {
+        INTEGER inquiry_id PK
+        TEXT ev_id FK
+        TEXT trade_date
+        TEXT message
+        TEXT status &quot;open / resolved&quot;
+        TEXT created_at
+        TEXT resolved_at
+        TEXT resolved_by
+        TEXT answer
+        INTEGER adjust_points
+    }
+    mission_settings {
+        TEXT mission_id PK
+        INTEGER enabled
+        INTEGER points
+        TEXT updated_by
+        TEXT updated_at
+    }
+    mission_completions {
+        INTEGER completion_id PK
+        TEXT ev_id FK
+        TEXT mission_id FK
+        TEXT period_key &quot;UNIQUE(ev_id, mission_id, period_key)&quot;
+        INTEGER points
+        TEXT completed_at
+    }
+    EV_KEY |o--o| ess_group_members : &quot;ESS 그룹&quot;
+    EV_KEY ||--o{ virtual_trades : &quot;모의 거래&quot;
+    settlement_runs ||--o{ virtual_trades : &quot;정산 회차&quot;
+    virtual_trades ||--o{ point_ledger : &quot;포인트 적립&quot;
+    EV_KEY ||--o{ point_ledger : &quot;포인트&quot;
+    EV_KEY ||--o{ settlement_inquiries : &quot;정산 문의&quot;
+    mission_settings ||--o{ mission_completions : &quot;미션&quot;
+    EV_KEY ||--o{ mission_completions : &quot;미션 달성&quot;
+</pre></div>
+<h3>2-5. 개인정보·감사·앱 운영(privacy.db)</h3><div class='erd'><pre class='mermaid'>
+erDiagram
+    EV_KEY {
+        TEXT ev_id PK &quot;차량 ID (EV-001 / 앱 가입 EV-U0001)&quot;
+    }
+    consents {
+        INTEGER id PK
+        TEXT ev_id FK
+        TEXT purpose &quot;data_collection / v2g_discharge ...&quot;
+        TEXT version
+        TEXT granted_at
+        TEXT withdrawn_at
+        TEXT recorded_by
+    }
+    audit_log {
+        INTEGER id PK
+        TEXT ts
+        TEXT actor &quot;username&quot;
+        TEXT action
+        TEXT target
+        TEXT detail &quot;JSON&quot;
+        TEXT prev_hash &quot;해시 체인&quot;
+        TEXT hash
+    }
+    audit_checkpoint {
+        INTEGER id PK &quot;항상 1&quot;
+        TEXT last_hash
+        INTEGER purged_through_id
+        INTEGER purged_total
+        TEXT purged_at
+    }
+    surveys {
+        INTEGER id PK
+        TEXT title
+        TEXT description
+        TEXT questions &quot;JSON&quot;
+        TEXT status &quot;open / closed&quot;
+        TEXT created_by
+        TEXT created_at
+        TEXT closed_at
+    }
+    survey_responses {
+        INTEGER id PK
+        INTEGER survey_id FK
+        TEXT ev_id FK &quot;UNIQUE(survey_id, ev_id)&quot;
+        TEXT answers &quot;JSON&quot;
+        TEXT created_at
+    }
+    app_notices {
+        INTEGER id PK
+        TEXT title
+        TEXT body
+        INTEGER pinned
+        INTEGER published
+        TEXT created_by
+        TEXT created_at
+        TEXT updated_at
+        TEXT title_en
+        TEXT body_en
+    }
+    app_content {
+        TEXT key PK
+        TEXT ko
+        TEXT en
+        TEXT updated_by
+        TEXT updated_at
+    }
+    EV_KEY ||--o{ consents : &quot;동의&quot;
+    surveys ||--o{ survey_responses : &quot;응답&quot;
+    EV_KEY ||--o{ survey_responses : &quot;응답자&quot;
+</pre></div>
+<h2>3. 테이블 설명</h2>
+<h3>계정·서포터즈</h3><table><tr><th>테이블</th><th>용도</th></tr>
+<tr><td><code>users_json</code></td><td>로그인 계정. 비밀번호는 해시만, 차주 계정은 본인 차량(owned_ev_id)만 조회</td></tr>
+<tr><td><code>vehicle_registrations</code></td><td>서포터즈 가입 신청·승인. 번호판은 암호문+해시, 승인 시 ev_id 부여, 예비 참여자 관리</td></tr>
+<tr><td><code>odometer_logs</code></td><td>누적 주행거리 기록(가입·정정·앱 입력)</td></tr>
+<tr><td><code>vehicle_replacements</code></td><td>미활동 차량을 예비 참여자로 교체한 이력</td></tr>
+<tr><td><code>charge_tags_json</code></td><td>충전 인증 태그 가명 ↔ 차량. 거점 세션을 서포터즈 차량에 결합할 때 사용(태그 원문 미저장)</td></tr>
+</table>
+<h3>수집 데이터(실측 연계 시 생성)</h3><table><tr><th>테이블</th><th>용도</th></tr>
+<tr><td><code>ev_telemetry</code></td><td>서포터즈 차량 OBD 1시간 시계열(SOC·연결·운행·충전 kW)</td></tr>
+<tr><td><code>charger_registry</code></td><td>연계 충전기 목록(운영사·거점·출력·V2G 가능)</td></tr>
+<tr><td><code>charger_sessions</code></td><td>CPO 충전 세션. 서포터즈 차량이면 ev_id 결합, 거점 SOC·차종 포함</td></tr>
+<tr><td><code>grid_signal</code></td><td>공공데이터 시간별 외부 변수(전력수요·재생에너지·기온·가격·공휴일)</td></tr>
+<tr><td><code>city_hourly</code></td><td>AI 학습 테이블. 외부 변수 + 충전수요(서포터즈+거점) + 가용 배터리</td></tr>
+<tr><td><code>ev_weekly_report</code></td><td>차량별 주간 운행·충전 요약</td></tr>
+<tr><td><code>raw_files</code></td><td>OBD 원본 파일 수신·처리 상태(batch_state.db)</td></tr>
+</table>
+<h3>AI 예측·추천·운영</h3><table><tr><th>테이블</th><th>용도</th></tr>
+<tr><td><code>external_forecasts</code></td><td>아크릴 예측 수신값(배치·모델 버전·구간)</td></tr>
+<tr><td><code>advisories</code></td><td>차량별 충전(·방전) 추천과 차주 응답. 일 배치도 여기에 발행</td></tr>
+<tr><td><code>dataset_exports</code></td><td>아크릴 학습 데이터 제공 이력(해시·파기 기록)</td></tr>
+<tr><td><code>modeling_issues</code></td><td>수집·예측·재학습 단계 예외 기록</td></tr>
+<tr><td><code>dashboard_run_history</code></td><td>대시보드 재계산 시 핵심 지표 이력</td></tr>
+</table>
+<h3>VPP 모의 정산·보상</h3><table><tr><th>테이블</th><th>용도</th></tr>
+<tr><td><code>ess_group_members</code></td><td>이동형 ESS 그룹 선정 차량</td></tr>
+<tr><td><code>settlement_runs</code></td><td>모의 정산 회차(초안·확정·취소)</td></tr>
+<tr><td><code>virtual_trades</code></td><td>차량·일자별 모의 거래(피크 방전·흡수, 금액, 포인트)</td></tr>
+<tr><td><code>point_ledger</code></td><td>포인트 적립·사용·조정 원장</td></tr>
+<tr><td><code>settlement_inquiries</code></td><td>정산 문의와 답변·포인트 조정</td></tr>
+<tr><td><code>mission_settings</code></td><td>미션 설정(포인트·사용 여부)</td></tr>
+<tr><td><code>mission_completions</code></td><td>차량별 미션 달성</td></tr>
+</table>
+<h3>개인정보·감사·앱 운영(privacy.db)</h3><table><tr><th>테이블</th><th>용도</th></tr>
+<tr><td><code>consents</code></td><td>차량별 목적별 동의·철회(수집·V2G 방전 등)</td></tr>
+<tr><td><code>audit_log</code></td><td>해시체인 감사로그(조회·변경·추천 발행 등)</td></tr>
+<tr><td><code>audit_checkpoint</code></td><td>보존기간 지난 감사로그 정리 시 체인 이어붙이기 지점</td></tr>
+<tr><td><code>surveys</code></td><td>설문</td></tr>
+<tr><td><code>survey_responses</code></td><td>설문 응답(차량당 1회)</td></tr>
+<tr><td><code>app_notices</code></td><td>앱 공지(국·영문)</td></tr>
+<tr><td><code>app_content</code></td><td>앱 화면 문구(국·영문)</td></tr>
+</table>
+<h2>4. 설계 메모</h2><ul>
+<li>모든 차량 데이터는 <b>ev_id(차량 ID)</b> 한 키로 이어진다. 도표의 <code>EV_KEY</code>는 테이블이 아니라 이 공통 키를 나타낸다.</li>
+<li>SQLite에 외래키 제약(FOREIGN KEY)은 걸려 있지 않다. 관계는 코드에서 ID로 맞춘다(도표의 FK는 논리 관계).</li>
+<li>점선 관계는 ID가 아니라 <b>시각(timestamp)으로 결합</b>하는 관계다: OBD·충전 세션을 시간별로 모아 city_hourly를 만들고, 아크릴 예측은 같은 시각 실측과 비교한다.</li>
+<li>실증 데이터셋(1건 = 이벤트 × [① 차량·충전기 + ② AI 학습 블록])은 테이블로 저장하지 않고 ev_telemetry·charger_sessions·grid_signal에서 그때그때 만든다. 일 배치 결과는 data/batch/daily/&lt;날짜&gt;/dataset.csv(차량 ID 가명).</li>
+<li>개발 서버 curated.db에는 지금 운영 테이블만 있다. ev_telemetry·charger_sessions·grid_signal·city_hourly·ev_weekly_report는 실측 수집(업로드·CPO 연계)이 시작되면 생긴다. 그 전에는 합성 데이터로 화면을 계산한다.</li>
+<li>개인정보: 번호판은 암호문(plate_enc)+해시(plate_hash)로 저장, 충전 인증 태그 원문은 저장하지 않음, 외부 제공 시 ev_id는 PE- 가명으로 바꾼다.</li>
+<li>스키마 버전은 schema_migrations(1~12)로 관리하고, 앱이 DB를 열 때 자동 적용된다(src/pipeline/migrations.py).</li>
+<li>data/backup/의 curated_before_reward_reset_*.db는 11-19 보상 초기화 전 백업으로, 구조는 curated.db와 같다.</li>
+<li>DB 밖 파일 저장소: 모델 레지스트리(data/models/), 배치 이력(data/batch/*.jsonl), 원본 수신 파일(data/raw/).</li>
+</ul>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true, theme:'default', er:{useMaxWidth:true, layoutDirection:'TB'}, maxTextSize:200000});
+</script></body></html>
